@@ -1676,6 +1676,117 @@ def attach_poll(leagues, teams):
         league["polls"] = out
 
 
+
+# --------------------------------------------------------------------------- #
+# Records and history (Wikipedia: champions, titles by program, Tewaaraton)
+# --------------------------------------------------------------------------- #
+HISTORY_SOURCES = {
+    "tournament": "https://en.wikipedia.org/wiki/NCAA_Division_I_men%27s_lacrosse_tournament",
+    "tewaaraton": "https://en.wikipedia.org/wiki/Tewaaraton_Award",
+}
+
+
+def _wiki_tables(html):
+    """-> [(headers, rows_of_cells)] with header text normalised."""
+    out = []
+    for tb in tables(html):
+        heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                 for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+        rows = []
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+            cells = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", c)).strip()
+                     for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, re.S)]
+            if cells:
+                rows.append(cells)
+        out.append((heads, rows))
+    return out
+
+
+def build_history(teams):
+    """Champions by year, titles by program, and Tewaaraton winners."""
+    by_name = {norm_team(t["name"]): t["id"] for t in teams if t["leagueId"] == "ncaa-d1"}
+
+    def team_id(name):
+        key = norm_team(name)
+        return by_name.get(key) or next((tid for k, tid in by_name.items() if k.startswith(key)), None)
+
+    history = {"champions": [], "programs": [], "tewaaraton": [], "sources": []}
+
+    # --- titles by program: "Team | Titles | Years won" -> year -> champion
+    try:
+        html = get(HISTORY_SOURCES["tournament"])
+        history["sources"].append(HISTORY_SOURCES["tournament"])
+        year_winner = {}
+        for heads, rows in _wiki_tables(html):
+            low = [h.lower() for h in heads]
+            if not ("team" in low and "titles" in low):
+                continue
+            i_years = next((i for i, h in enumerate(low) if "years" in h), None)
+            if i_years is None:
+                continue
+            for cells in rows:
+                if len(cells) <= i_years or not re.fullmatch(r"\d+", cells[1] or ""):
+                    continue
+                program = cells[0].replace("\u00a0", " ").strip()
+                if not program or program.lower() == "team":
+                    continue
+                years = [int(y) for y in re.findall(r"\b(19\d{2}|20\d{2})\b", cells[i_years])]
+                history["programs"].append({
+                    "team": program, "titles": int(cells[1]), "years": years,
+                    "teamId": team_id(program),
+                })
+                for y in years:
+                    year_winner.setdefault(y, program)
+        # the page carries both an all-time table and an NCAA-only table; keep the
+        # fuller total per program so the list doesn't list Syracuse twice
+        best = {}
+        for p in history["programs"]:
+            key = norm_team(p["team"])
+            if key not in best or p["titles"] > best[key]["titles"]:
+                best[key] = p
+        history["programs"] = sorted(best.values(), key=lambda p: -p["titles"])
+
+        history["champions"] = [
+            {"year": y, "team": w, "teamId": team_id(w)}
+            for y, w in sorted(year_winner.items(), reverse=True)
+        ]
+        print(f"  + champions: {len(history['champions'])} seasons, {len(history['programs'])} programs")
+    except Exception as e:
+        print(f"  ! champions: {e}")
+
+    # --- Tewaaraton winners
+    try:
+        html = get(HISTORY_SOURCES["tewaaraton"])
+        history["sources"].append(HISTORY_SOURCES["tewaaraton"])
+        for heads, rows in _wiki_tables(html):
+            low = [h.lower() for h in heads]
+            if "year" not in low or not any("men's winner" in h for h in low):
+                continue
+            i_year = low.index("year")
+            i_winner = next(i for i, h in enumerate(low) if "men's winner" in h)
+            i_school = next((i for i, h in enumerate(low) if h.strip() == "school"), None)
+            i_pos = next((i for i, h in enumerate(low) if h.strip() == "position"), None)
+            for cells in rows:
+                if len(cells) <= max(i_year, i_winner) or not re.fullmatch(r"\d{4}", cells[i_year] or ""):
+                    continue
+                school = cells[i_school] if i_school is not None and i_school < len(cells) else ""
+                pos = cells[i_pos] if i_pos is not None and i_pos < len(cells) else ""
+                history["tewaaraton"].append({
+                    "year": int(cells[i_year]),
+                    "player": cells[i_winner].replace("\u00a0", " ").strip(),
+                    "school": school, "position": pos,
+                    "teamId": team_id(school) if school else None,
+                })
+            if history["tewaaraton"]:
+                break
+        history["tewaaraton"].sort(key=lambda r: -r["year"])
+        print(f"  + Tewaaraton winners: {len(history['tewaaraton'])}")
+    except Exception as e:
+        print(f"  ! Tewaaraton: {e}")
+
+    return history
+
+
 def main():
     print("College (NCAA D1)…")
     leagues, teams, players = build_college()
@@ -1724,6 +1835,9 @@ def main():
 
     print("Game logs…")
     build_boxscores(teams, players)
+
+    print("Records and history…")
+    dataset_history = build_history(teams)
 
     print("Standings…")
     attach_standings(leagues, teams)
@@ -1781,6 +1895,7 @@ def main():
         "leagues": leagues,
         "teams": teams,
         "players": players,
+        "history": dataset_history,
     }
     out = os.path.join(ROOT, "public", "data.json")
     with open(out, "w") as f:

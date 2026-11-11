@@ -21,12 +21,13 @@ not the UI — is what decides whether it ships.
 - Game-log form: last-5 averages, best game, streak, W/L strip
 - Three D1 polls (committee, RPI, USILA coaches) via a browser-rendered fetch, with a
   day-by-day archive in `rankings-history.json`
+- Records page: 126 seasons of national champions, titles by program, 26 Tewaaraton winners
 
 ## Next (in progress or ready to start)
 
-### 1. Awards and record books — scrape
-All-American teams, Tewaaraton history, all-time individual and team records, champions by year.
-Static pages, low refresh rate, high reference value.
+### 1. All-Americans and all-time records
+Champions, titles by program and Tewaaraton are in. Still missing: All-American teams by year, and
+all-time individual/team record books. Both are on Wikipedia/USILA and parse the same way.
 
 ### 2. Weekly poll movement — already have the data
 `rankings-history.json` keeps a snapshot per poll per day, so a "movement" column (up/down since

@@ -175,9 +175,36 @@ export interface Player {
   games: GameRow[];
 }
 
+export interface Champion {
+  year: number;
+  team: string;
+  teamId: string | null;
+}
+
+export interface ProgramTitles {
+  team: string;
+  titles: number;
+  years: number[];
+  teamId: string | null;
+}
+
+export interface TewaaratonWinner {
+  year: number;
+  player: string;
+  school: string;
+  position: string;
+  teamId: string | null;
+}
+
 export interface Dataset {
   meta: { generated: string; dataset: string; season: string; sources?: string[] };
   leagues: League[];
   teams: Team[];
   players: Player[];
+  history?: {
+    champions: Champion[];
+    programs: ProgramTitles[];
+    tewaaraton: TewaaratonWinner[];
+    sources: string[];
+  };
 }

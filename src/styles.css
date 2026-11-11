@@ -1566,3 +1566,13 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .game-form .stat-group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-strip { border-top: 1px solid var(--line); padding-top: 10px; }
 }
+
+/* six nav items need a tighter header before the mobile breakpoint */
+@media (max-width: 1000px) {
+  .nav-links { gap: 0; }
+  .nav-link { padding: 6px 8px; font-size: 12.8px; }
+  .nav-link[href="#/history"], .nav-link[href="#/my-roster"] { display: none; }
+}
+
+/* history page: keep the long champions list from towering over the rail */
+.history-scroll { max-height: 520px; overflow-y: auto; }
