@@ -1,0 +1,8 @@
+node_modules/
+dist/
+scripts/.cache/
+.netlify/
+*.log
+.DS_Store
+tsconfig.tsbuildinfo
+public/players/pll/*.raw
