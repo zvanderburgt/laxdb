@@ -116,9 +116,12 @@ export default function Home() {
           ))}
         </div>
         <div className="hero-coverage">
-          Coverage: {data.teams.filter((t) => t.leagueId === "ncaa-d1").length} NCAA Division I programs
-          and {data.teams.filter((t) => t.leagueId === "pll").length} PLL clubs · seasons 2021–2026 ·
-          headshots for pro players
+          Coverage:{" "}
+          {data.leagues
+            .filter((l) => data.players.some((p) => p.leagueId === l.id))
+            .map((l) => `${data.teams.filter((t) => t.leagueId === l.id).length} ${l.short}`)
+            .join(" · ")}{" "}
+          · seasons 2021–2026 · headshots for pro players
         </div>
       </section>
 

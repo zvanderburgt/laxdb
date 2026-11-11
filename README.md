@@ -43,14 +43,15 @@ Product details:
 
 ## The data
 
-**~1,500 real players, 36 teams, ~2,600 player-seasons, 2021–2026.** No invented names or synthetic
-stat lines anywhere in the dataset.
+**~10,000 real players, 200+ teams, ~12,000 player-seasons, 2021–2026.** No invented names or
+synthetic stat lines anywhere in the dataset.
 
 | Source | What it gives | Notes |
 | --- | --- | --- |
 | School athletics sites (Sidearm) — 25 D1 programs | Full cumulative season stats (G, A, PTS, SH, GB, TO, CT, FO) + roster bios (position, height, weight, class, hometown, high school) | One page per season per school; 2022–2026 |
 | NCAA.com individual statistic pages | Goaltending: minutes, goals allowed, saves, save %, GAA | School pages omit the goalie table |
 | Premier Lacrosse League stats API | Per-season pro lines 2021–2026, jersey, position, experience, headshots | `stats.premierlacrosseleague.com/api/v4/players/season-stats` |
+| MCLA (mcla.us) | College club: full skater + goalie tables per team, 2025–2026 | 172 teams, 9 conferences; positions come from the stat table's prefix |
 
 Coverage gaps, stated plainly:
 

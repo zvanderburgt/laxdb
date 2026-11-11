@@ -99,7 +99,9 @@ export default function Players() {
           <div className="eyebrow">Database</div>
           <h1>Players</h1>
           <p className="muted">
-            {rows.length.toLocaleString()} of {data.players.length.toLocaleString()} players · 2022–2026 seasons
+            {rows.length.toLocaleString()} of {data.players.length.toLocaleString()} players ·{" "}
+            {Math.min(...data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))))}–
+            {Math.max(...data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))))} seasons
           </p>
         </div>
         <Segmented

@@ -647,6 +647,8 @@ kbd {
 .pos-g { background: rgba(122, 92, 250, 0.16); color: #6a4cf0; }
 .pos-fo { background: rgba(255, 45, 85, 0.13); color: #d61f4a; }
 .pos-lsm { background: rgba(90, 200, 250, 0.18); color: #0071a8; }
+.pos-f { background: rgba(120, 120, 128, 0.16); color: #5c5c62; }
+[data-theme="dark"] .pos-f { color: #c7c7cc; }
 [data-theme="dark"] .pos-a { color: #5ac8fa; }
 [data-theme="dark"] .pos-m { color: #30d158; }
 [data-theme="dark"] .pos-d { color: #ffb340; }

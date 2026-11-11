@@ -579,6 +579,185 @@ def fetch_pll_years(years):
             p["teamId"] = ""
     return teams, list(by_id.values())
 
+
+# --------------------------------------------------------------------------- #
+# MCLA — college club lacrosse (mcla.us), full roster stats per team
+# --------------------------------------------------------------------------- #
+MCLA_EL = {"fr": 2029, "fr.": 2029, "so": 2028, "so.": 2028, "jr": 2027, "jr.": 2027,
+           "sr": 2026, "sr.": 2026, "gr": 2026, "gr.": 2026, "5th": 2026}
+
+MCLA_PALETTE = [
+    ("#0B3D91", "#C8A951"), ("#7A0019", "#F2A900"), ("#00573F", "#FFFFFF"),
+    ("#1D2A57", "#5AC8FA"), ("#6F2C91", "#FFC72C"), ("#8B2332", "#C5B783"),
+    ("#00274C", "#FFCB05"), ("#041E42", "#E03A3E"), ("#00356B", "#7AB800"),
+    ("#A6192E", "#111111"), ("#004B23", "#F2A900"), ("#0C2340", "#00A3AD"),
+]
+
+
+def mcla_colors(name):
+    h = sum(ord(c) * (i + 7) for i, c in enumerate(name))
+    return MCLA_PALETTE[h % len(MCLA_PALETTE)]
+
+
+def parse_mcla_teams(html):
+    """[(conference, slug, year)] from the MCLA teams directory."""
+    out, seen = [], set()
+    for tb in tables(html):
+        heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                 for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+        conf = heads[0] if heads else "MCLA"
+        for slug, year in re.findall(r'href="/teams/([a-z0-9\-]+)/(\d{4})"', tb):
+            key = (slug, year)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append((conf, slug, year))
+    return out
+
+
+def find_col(heads, *names):
+    for n in names:
+        for i, h in enumerate(heads):
+            if h.lower().strip() == n:
+                return i
+    return None
+
+
+def parse_mcla_stats(html, tid):
+    """Skater and goalie tables -> list of stat rows."""
+    rows = []
+    for tb in tables(html):
+        heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                 for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+        low = [h.lower() for h in heads]
+        if "player" not in low:
+            continue
+        is_goal = "ga" in low and "s" in low
+        idx = {k: find_col(heads, k) for k in
+               ("#", "player", "el", "gp", "g", "a", "po", "sh", "gb", "pn", "cto", "ga", "s", "s%", "fo-w", "fo-l")}
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+            c = cells(tr)
+            if idx["player"] is None or idx["player"] >= len(c):
+                continue
+            name = c[idx["player"]].strip()
+            if not name or norm_name(name) in DENY_NAMES:
+                continue
+            # MCLA prints the position as a prefix inside the player cell ("LSM Colton Storfer")
+            pos_hint = None
+            toks = name.split()
+            if len(toks) > 1 and toks[0].upper().rstrip(".") in POS_MAP:
+                pos_hint = POS_MAP[toks[0].upper().rstrip(".")]
+                name = " ".join(toks[1:])
+            el = (c[idx["el"]].lower().strip() if idx["el"] is not None and idx["el"] < len(c) else "")
+            row = {
+                "name": title_name(name),
+                "jersey": int(num(c[idx["#"]])) if idx["#"] is not None and idx["#"] < len(c) else 0,
+                "classYear": MCLA_EL.get(el),
+                "gp": int(num(c[idx["gp"]])) if idx["gp"] is not None and idx["gp"] < len(c) else 0,
+                "g": int(num(c[idx["g"]])) if idx["g"] is not None and idx["g"] < len(c) else 0,
+                "a": int(num(c[idx["a"]])) if idx["a"] is not None and idx["a"] < len(c) else 0,
+                "gb": int(num(c[idx["gb"]])) if idx["gb"] is not None and idx["gb"] < len(c) else 0,
+                "ct": int(num(c[idx["cto"]])) if idx["cto"] is not None and idx["cto"] < len(c) else 0,
+                "pen": int(num(c[idx["pn"]])) if idx["pn"] is not None and idx["pn"] < len(c) else 0,
+                "sh": int(num(c[idx["sh"]])) if idx["sh"] is not None and idx["sh"] < len(c) else 0,
+                "foW": int(num(c[idx["fo-w"]])) if idx["fo-w"] is not None and idx["fo-w"] < len(c) else 0,
+                "foA": 0,
+            }
+            if idx["fo-l"] is not None and idx["fo-l"] < len(c):
+                row["foA"] = row["foW"] + int(num(c[idx["fo-l"]]))
+            if is_goal:
+                row["position"] = "G"
+                row["ga"] = int(num(c[idx["ga"]])) if idx["ga"] is not None and idx["ga"] < len(c) else 0
+                row["sv"] = int(num(c[idx["s"]])) if idx["s"] is not None and idx["s"] < len(c) else 0
+                row["min"] = 0
+                row["to"] = 0
+            else:
+                row["position"] = pos_hint or "F"
+                row["ga"] = row["sv"] = row["min"] = row["to"] = 0
+            row["pts"] = row["g"] + row["a"]
+            rows.append(row)
+    return rows
+
+
+def build_mcla(seasons=("2026", "2025")):
+    index = get("https://mcla.us/teams")
+    teams_list = parse_mcla_teams(index)
+    print(f"  MCLA teams listed: {len(teams_list)}")
+    leagues = [{
+        "id": "mcla", "name": "MCLA", "short": "MCLA", "level": "College Club",
+        "type": "field", "country": "USA", "tier": 3, "strength": 0.8,
+    }]
+    teams, players = [], []
+    by_team = {}
+    for conf, slug, year in teams_list:
+        tid = f"t-mcla-{slug}"
+        stats = {}
+        pretty = slug.replace("-", " ").title()
+        for season in seasons:
+            try:
+                h = get(f"https://mcla.us/teams/{slug}/{season}/stats")
+                rows = parse_mcla_stats(h, tid)
+                if rows:
+                    stats[season] = rows
+                m = re.search(r"<title>\d{4} Stats \| ([^|<]+)\|", h)
+                if m:
+                    pretty = m.group(1).strip()
+            except Exception:
+                pass
+            time.sleep(0.15)
+        if not stats:
+            continue
+        team = {
+            "id": tid, "name": pretty, "shortName": " ".join(pretty.split(" ")[:-1]) or pretty,
+            "slug": f"mcla-{slug}",
+            "leagueId": "mcla", "city": "", "cityName": "", "region": "",
+            "conference": conf, "colors": list(mcla_colors(pretty)),
+        }
+        teams.append(team)
+        # merge seasons by player name
+        merged = {}
+        for season, rows in stats.items():
+            for row in rows:
+                key = norm_name(row["name"])
+                p = merged.setdefault(key, {
+                    "name": row["name"], "jersey": row["jersey"], "classYear": row["classYear"],
+                    "position": row["position"], "seasons": [],
+                })
+                if row["classYear"] and not p["classYear"]:
+                    p["classYear"] = row["classYear"]
+                if row["position"] == "G":
+                    p["position"] = "G"
+                p["seasons"].append({
+                    "season": season, "teamId": tid, "leagueId": "mcla", "type": "regular",
+                    "gp": row["gp"], "gs": row["gp"] if row["position"] == "G" else row["gp"],
+                    "g": row["g"], "a": row["a"], "pts": row["pts"], "sh": row["sh"],
+                    "gb": row["gb"], "to": row["to"], "ct": row["ct"],
+                    "foW": row["foW"], "foA": row["foA"], "pen": row["pen"],
+                    "min": row["min"], "ga": row["ga"], "sv": row["sv"], "w": 0, "l": 0,
+                })
+        for key, p in merged.items():
+            pos = p["position"]
+            pid = f"p-mcla-{slugify(p['name'])}-{slug[:10]}"
+            players.append({
+                "id": pid, "slug": slugify(p["name"]), "firstName": p["name"].split(" ")[0],
+                "lastName": " ".join(p["name"].split(" ")[1:]), "name": p["name"],
+                "position": pos,
+                "positionName": {"G": "Goalie", "F": "Field player"}.get(pos, POS_NAME.get(pos, "Field player")),
+                "hand": "", "heightIn": 0, "weightLb": 0, "dob": "",
+                "birthplace": {"city": "", "state": "", "country": "USA"},
+                "classYear": p["classYear"], "gradYear": p["classYear"] or 2026,
+                "highSchool": "", "teamId": tid, "leagueId": "mcla",
+                "jersey": p["jersey"], "status": "Active",
+                "commit": None, "draft": None, "rankings": [], "awards": [],
+                "scouting": {"report": "", "author": "", "date": "", "grades": {}},
+                "bio": "", "strengths": [],
+                "seasons": sorted(p["seasons"], key=lambda s: s["season"]),
+                "games": [],
+            })
+    print(f"  MCLA: {len(teams)} teams, {len(players)} players")
+    return leagues, teams, players
+
+
 # --------------------------------------------------------------------------- #
 # Photos
 # --------------------------------------------------------------------------- #
@@ -633,6 +812,12 @@ def main():
     goalies = fetch_ncaa_goalies()
     matched = match_goalies(goalies, players)
     print(f"  + goalies matched: {matched} of {len(goalies)}")
+
+    print("MCLA…")
+    mcla_leagues, mcla_teams, mcla_players = build_mcla()
+    leagues.extend(mcla_leagues)
+    teams.extend(mcla_teams)
+    players.extend(mcla_players)
 
     print("PLL…")
     pll_teams, pll_players = fetch_pll_years([2021, 2022, 2023, 2024, 2025, 2026])
@@ -690,7 +875,7 @@ def main():
         "teams": teams,
         "players": players,
     }
-    out = os.path.join(ROOT, "src", "data", "dataset.json")
+    out = os.path.join(ROOT, "public", "data.json")
     with open(out, "w") as f:
         json.dump(dataset, f, separators=(",", ":"))
     size = os.path.getsize(out) / 1024

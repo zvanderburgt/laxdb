@@ -83,7 +83,7 @@ export function TeamsPage() {
                   </span>
                   <span className="team-card-body">
                     <span className="team-card-name">{t.shortName}</span>
-                    <span className="team-card-sub">{t.conference} · {t.city}</span>
+                    <span className="team-card-sub">{[t.conference, t.city].filter(Boolean).join(" · ")}</span>
                     <span className="team-card-meta">
                       {roster.length} players · {pts.toLocaleString()} career pts
                     </span>
@@ -140,8 +140,8 @@ export function TeamPage() {
               </div>
               <h1>{team.name}</h1>
               <div className="profile-sub">
-                <span>{team.city}</span>
-                <span className="dot">·</span>
+                {team.city ? <span>{team.city}</span> : null}
+                {team.city ? <span className="dot">·</span> : null}
                 <Link to={`/league/${team.leagueId}`}>{league?.name}</Link>
               </div>
               <div className="profile-meta">

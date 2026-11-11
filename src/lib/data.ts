@@ -1,19 +1,45 @@
-import raw from "../data/dataset.json";
 import type { Dataset, Player, SeasonRow, Team, League, Position } from "./types";
 
-export const data = raw as unknown as Dataset;
+/** Populated by loadDataset() before the app renders (see main.tsx). */
+export let data: Dataset = {
+  meta: { generated: "", dataset: "Loading", season: "" },
+  leagues: [],
+  teams: [],
+  players: [],
+};
 
-export const playerById = new Map(data.players.map((p) => [p.id, p]));
-export const playerBySlug = new Map(data.players.map((p) => [p.slug, p]));
-export const teamById = new Map(data.teams.map((t) => [t.id, t]));
-export const teamBySlug = new Map(data.teams.map((t) => [t.slug, t]));
-export const leagueById = new Map(data.leagues.map((l) => [l.id, l]));
+export const playerById = new Map<string, Player>();
+export const playerBySlug = new Map<string, Player>();
+export const teamById = new Map<string, Team>();
+export const teamBySlug = new Map<string, Team>();
+export const leagueById = new Map<string, League>();
 
-export const PLAYER_COUNT = data.players.length;
-export const TEAM_COUNT = data.teams.length;
-export const SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
+export let PLAYER_COUNT = 0;
+export let TEAM_COUNT = 0;
+export let SEASON_COUNT = 0;
+export let CURRENT = "";
 
-export const CURRENT = data.meta.season;
+/** The dataset is ~9 MB, so it ships as a static file and is fetched once. */
+export async function loadDataset(): Promise<void> {
+  const res = await fetch(`${import.meta.env.BASE_URL}data.json`, { cache: "no-cache" });
+  if (!res.ok) throw new Error(`dataset fetch failed: ${res.status}`);
+  data = (await res.json()) as Dataset;
+
+  for (const p of data.players) {
+    playerById.set(p.id, p);
+    playerBySlug.set(p.slug, p);
+  }
+  for (const t of data.teams) {
+    teamById.set(t.id, t);
+    teamBySlug.set(t.slug, t);
+  }
+  for (const l of data.leagues) leagueById.set(l.id, l);
+
+  PLAYER_COUNT = data.players.length;
+  TEAM_COUNT = data.teams.length;
+  SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
+  CURRENT = data.meta.season;
+}
 
 export const positionLabel: Record<string, string> = {
   A: "Attack",
