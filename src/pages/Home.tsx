@@ -53,8 +53,8 @@ export default function Home() {
               {PLAYER_COUNT.toLocaleString()} players. <span className="shine">One profile.</span>
             </h1>
             <p className="hero-sub reveal">
-              Real stat lines from NCAA Division I and the Premier Lacrosse League, 2021–2026.
-              Career histories, position-aware metrics, and side-by-side comparison.
+              Real stat lines from NCAA Division I, the MCLA and the Premier Lacrosse League,
+              2021–2026. Career histories, position-aware metrics, side-by-side comparison.
             </p>
             <form
               className="hero-search reveal"
