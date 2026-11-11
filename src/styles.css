@@ -1540,3 +1540,29 @@ th.is-sorted { color: var(--text); }
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--text); }
 th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
+
+/* ------------------------------ game log form ------------------------------ */
+.game-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 16px 18px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.game-form .stat-group-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
+.form-strip { display: flex; align-items: center; gap: 5px; justify-content: flex-end; }
+.form-dot {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 7px;
+  font-size: 10.5px; font-weight: 600;
+}
+.form-dot.is-w { background: color-mix(in srgb, #1f9d55 18%, transparent); color: #1f7a44; }
+.form-dot.is-l { background: color-mix(in srgb, #d64545 16%, transparent); color: #b13737; }
+.form-dot.is-t { background: var(--surface-2); color: var(--text-3); }
+.form-label { margin-left: 6px; }
+@media (max-width: 900px) {
+  .game-form { grid-template-columns: 1fr; gap: 12px; padding-bottom: 14px; }
+  .game-form .stat-group-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-strip { border-top: 1px solid var(--line); padding-top: 10px; }
+}

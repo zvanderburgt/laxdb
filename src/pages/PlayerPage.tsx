@@ -12,6 +12,7 @@ import {
   seasonTotals,
   similarPlayers,
   teamById,
+  gameSummary,
   teamOf,
   teammatesOf,
   usePlayerGames,
@@ -765,6 +766,7 @@ function GameLog({ player }: { player: Player }) {
   }
 
   const games = [...loaded].sort((a, b) => b.date.localeCompare(a.date));
+  const summary = gameSummary([...loaded]);
   const pts = (g: { g: number; a: number }) => g.g + g.a;
   const score = (g: { g: number; a: number; sv: number | null; ga: number | null }) =>
     isGoal ? (g.sv ?? 0) - (g.ga ?? 0) : pts(g);
@@ -809,6 +811,57 @@ function GameLog({ player }: { player: Player }) {
           >
             CSV
           </button>
+        </div>
+      </div>
+      <div className="game-form">
+        <div className="stat-group-grid">
+          {isGoal ? (
+            <>
+              <Stat
+                label="Last 5 save %"
+                value={
+                  summary.last5.shots
+                    ? (summary.last5.sv / summary.last5.shots).toFixed(3).replace(/^0/, "")
+                    : "—"
+                }
+                sub={`${summary.last5.gp} games`}
+                tone="accent"
+              />
+              <Stat
+                label="Single-game high"
+                value={`${summary.highs.sv} saves`}
+                sub={`${summary.last5.ga.toFixed(1)} GA/game`}
+              />
+            </>
+          ) : (
+            <>
+              <Stat
+                label="Last 5 PTS/G"
+                value={summary.last5.pts.toFixed(2)}
+                sub={`${summary.last5.g.toFixed(1)}G · ${summary.last5.a.toFixed(1)}A`}
+                tone="accent"
+              />
+              <Stat
+                label="Best game"
+                value={`${summary.best?.pts ?? 0} pts`}
+                sub={
+                  summary.best
+                    ? `${summary.best.g}G · ${summary.best.a}A vs ${summary.best.opponent}`
+                    : "no games"
+                }
+              />
+            </>
+          )}
+          <Stat label="Streak" value={`${summary.streak} ${summary.streak === 1 ? "game" : "games"}`} sub="point streak" />
+          <Stat label="Ground balls" value={`${summary.highs.gb} GB`} sub={`${summary.highs.ct} CT best`} />
+        </div>
+        <div className="form-strip" aria-label="Recent results">
+          {summary.form.map((r, i) => (
+            <span key={i} className={`form-dot ${r === "W" ? "is-w" : r === "L" ? "is-l" : "is-t"}`} title={r}>
+              {r}
+            </span>
+          ))}
+          <span className="muted small form-label">last {summary.form.length}</span>
         </div>
       </div>
       <div className="table-scroll">

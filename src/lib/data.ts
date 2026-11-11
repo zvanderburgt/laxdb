@@ -456,3 +456,50 @@ export function usePlayerGames(playerId: string): GameRow[] | null {
   }, [playerId]);
   return games;
 }
+
+
+/** Single-game highs and recent form from a player's game rows. */
+export function gameSummary(games: GameRow[]) {
+  const n = games.length;
+  const avg = (rows: GameRow[], f: (g: GameRow) => number) =>
+    rows.length ? rows.reduce((s, g) => s + f(g), 0) / rows.length : 0;
+  const max = (f: (g: GameRow) => number) => games.reduce((m, g) => Math.max(m, f(g)), 0);
+  const pts = (g: GameRow) => g.g + g.a;
+
+  const last5 = games.slice(-5);
+  const best = games.reduce<GameRow | null>(
+    (b, g) => (!b || pts(g) > pts(b) ? g : b),
+    null
+  );
+  let streak = 0;
+  for (let i = games.length - 1; i >= 0; i--) {
+    if (pts(games[i]) > 0) streak++;
+    else break;
+  }
+  return {
+    games: n,
+    last5: {
+      gp: last5.length,
+      pts: avg(last5, pts),
+      g: avg(last5, (g) => g.g),
+      a: avg(last5, (g) => g.a),
+      sv: avg(last5, (g) => g.sv ?? 0),
+      ga: avg(last5, (g) => g.ga ?? 0),
+      shots: last5.reduce((n, g) => n + (g.sv ?? 0) + (g.ga ?? 0), 0),
+    },
+    highs: {
+      g: max((g) => g.g),
+      a: max((g) => g.a),
+      pts: max(pts),
+      gb: max((g) => g.gb),
+      ct: max((g) => g.ct),
+      sv: max((g) => g.sv ?? 0),
+    },
+    best: best
+      ? { g: best.g, a: best.a, pts: pts(best), opponent: best.opponent, date: best.date }
+      : null,
+    streak,
+    /** the last few results, newest last, for the form strip */
+    form: games.slice(-8).map((g) => g.result),
+  };
+}
