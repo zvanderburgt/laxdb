@@ -807,12 +807,41 @@ LEVEL_STRENGTH = {
 
 
 def parse_netfront_team(html):
-    """-> (skater season rows, goalie season rows) from a NetFront team page."""
+    """-> (skater rows, goalie rows, career lines) from a NetFront team page.
+
+    Team pages carry one season of detail plus a career aggregate per player
+    (the league's own total across every season it has on record)."""
     skaters, goalies = [], []
+    career = {}
     for tb in tables(html):
         heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
                  for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
         low = [h.lower() for h in heads]
+        if "seasons" in low:
+            # career aggregate table: Rank, Player, Seasons, GP, G, A, PTS, PIM
+            c_idx = {
+                "name": find_col(heads, "player", "goalie"),
+                "seasons": find_col(heads, "seasons"),
+                "gp": find_col(heads, "gp"), "g": find_col(heads, "g"),
+                "a": find_col(heads, "a"), "pts": find_col(heads, "pts"),
+                "pim": find_col(heads, "pim"), "w": find_col(heads, "w"),
+                "l": find_col(heads, "l"),
+            }
+            is_goal_c = "goalie" in low
+            for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+                c = cells(tr)
+                if c_idx["name"] is None or c_idx["name"] >= len(c):
+                    continue
+                nm = c[c_idx["name"]].strip()
+                if not nm:
+                    continue
+                get = lambda k: int(num(c[c_idx[k]])) if c_idx[k] is not None and c_idx[k] < len(c) else 0
+                career[(norm_name(nm), "G" if is_goal_c else "F")] = {
+                    "gp": get("gp"), "g": get("g"), "a": get("a"), "pts": get("pts"),
+                    "pen": get("pim"), "seasons": get("seasons"),
+                    "w": get("w"), "l": get("l"),
+                }
+            continue
         if not ("season" in low and "phase" in low):
             continue
         is_goal = "goalie" in low
@@ -860,7 +889,7 @@ def parse_netfront_team(html):
                 )
                 row["pts"] = row["pts"] or row["g"] + row["a"]
                 skaters.append(row)
-    return skaters, goalies
+    return skaters, goalies, career
 
 
 def build_netfront():
@@ -882,6 +911,7 @@ def build_netfront():
             "strength": LEVEL_STRENGTH.get(level, 0.8),
         })
         n_players = 0
+        league_players = {}   # (norm_name, pos) -> player, merged across teams
         for link in team_links:
             tslug = link.rstrip("/").split("/")[-1]
             tid = f"t-{tslug}"
@@ -889,7 +919,7 @@ def build_netfront():
                 th = get(link)
             except Exception:
                 continue
-            skaters, goalies = parse_netfront_team(th)
+            skaters, goalies, career = parse_netfront_team(th)
             if not skaters and not goalies:
                 continue
             m = re.search(r"<title>([^<|]+)", th)
@@ -919,24 +949,43 @@ def build_netfront():
                     "min": 0, "ga": 0, "sv": 0, "w": row["w"], "l": row["l"],
                     "gaa": row["gaa"] or None, "svp": row["svp"] or None,
                 })
+            # fold this team's rows into the league-level record: a player carded
+            # by two teams is one person with seasons on both, not two profiles
             for key, p in merged.items():
-                pid = f"p-nf-{tslug}-{slugify(p['name'])}"
-                players.append({
-                    "id": pid, "slug": slugify(p["name"]), "firstName": p["name"].split(" ")[0],
-                    "lastName": " ".join(p["name"].split(" ")[1:]), "name": p["name"],
-                    "position": p["position"],
-                    "positionName": "Goalie" if p["position"] == "G" else "Runner",
-                    "hand": "", "heightIn": 0, "weightLb": 0, "dob": "",
-                    "birthplace": {"city": "", "state": "", "country": "CAN"},
-                    "classYear": None, "gradYear": 2026, "highSchool": "",
-                    "teamId": tid, "leagueId": lid, "jersey": 0, "status": "Active",
-                    "commit": None, "draft": None, "rankings": [], "awards": [],
-                    "scouting": {"report": "", "author": "", "date": "", "grades": {}},
-                    "bio": "", "strengths": [],
-                    "seasons": sorted(p["seasons"], key=lambda s: s["season"]),
-                    "games": [],
-                })
-                n_players += 1
+                rec = league_players.setdefault(
+                    key, {"name": p["name"], "position": p["position"], "seasons": [], "team_gp": {}, "career": None}
+                )
+                rec["seasons"].extend(p["seasons"])
+                if p["position"] == "G":
+                    rec["position"] = "G"
+                for s in p["seasons"]:
+                    rec["team_gp"][s["teamId"]] = rec["team_gp"].get(s["teamId"], 0) + s["gp"]
+                cl = career.get(key)
+                if cl and (rec["career"] is None or cl["gp"] >= rec["career"]["gp"]):
+                    rec["career"] = cl
+
+        for (nm, pos), p in league_players.items():
+            if not p["team_gp"]:
+                continue
+            tid = max(p["team_gp"], key=lambda t: p["team_gp"][t])
+            players.append({
+                "id": f"p-nf-{slug}-{slugify(p['name'])}",
+                "slug": slugify(p["name"]), "firstName": p["name"].split(" ")[0],
+                "lastName": " ".join(p["name"].split(" ")[1:]), "name": p["name"],
+                "position": p["position"],
+                "positionName": "Goalie" if p["position"] == "G" else "Runner",
+                "hand": "", "heightIn": 0, "weightLb": 0, "dob": "",
+                "birthplace": {"city": "", "state": "", "country": "CAN"},
+                "classYear": None, "gradYear": 2026, "highSchool": "",
+                "teamId": tid, "leagueId": lid, "jersey": 0, "status": "Active",
+                "commit": None, "draft": None, "rankings": [], "awards": [],
+                "scouting": {"report": "", "author": "", "date": "", "grades": {}},
+                "bio": "", "strengths": [],
+                "seasons": sorted(p["seasons"], key=lambda s: s["season"]),
+                "careerLine": p["career"],
+                "games": [],
+            })
+            n_players += 1
         print(f"  + {short:14s} {len(team_links):3d} teams, {n_players:5d} players")
     return leagues, teams, players
 

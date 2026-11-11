@@ -121,6 +121,10 @@ export interface Player {
   bio: string;
   strengths: string[];
   seasons: SeasonRow[];
+  /** the league's own career aggregate (box feeds publish this separately) */
+  careerLine?: {
+    gp: number; g: number; a: number; pts: number; pen: number; seasons: number; w?: number; l?: number;
+  } | null;
   games: GameRow[];
 }
 

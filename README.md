@@ -67,6 +67,11 @@ Coverage gaps, stated plainly:
   the UI hides those tabs instead of inventing content.
 - Career totals cover the seasons indexed here (2021/2022 onward), not necessarily a full career.
   The profile states the span under the stat strip.
+- Box league team pages publish one season of detail plus a career aggregate. Box profiles
+  therefore show the current campaign season-by-season and the league's own career total beneath
+  it — labelled as such, rather than presented as a full season history.
+- Box rosters carry no F/D/T split (the feeds list skaters and goalies only), so box skaters are
+  badged as runners.
 
 Rebuild the dataset:
 

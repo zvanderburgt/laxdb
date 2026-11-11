@@ -622,9 +622,21 @@ function StatsTab({ player }: { player: Player }) {
           </tfoot>
         </table>
       </div>
-      <div className="table-note">
-        Field lacrosse counts ground balls and turnovers; box lacrosse counts loose balls and penalty minutes.
-      </div>
+      {player.careerLine && player.careerLine.gp > 0 ? (
+        <div className="table-note">
+          <strong>League career</strong> ({player.careerLine.seasons}{" "}
+          {player.careerLine.seasons === 1 ? "season" : "seasons"} on record)
+          {isGoal
+            ? ` · ${player.careerLine.gp} GP · ${player.careerLine.w ?? 0}–${player.careerLine.l ?? 0}`
+            : ` · ${player.careerLine.gp} GP · ${player.careerLine.g}G · ${player.careerLine.a}A · ${player.careerLine.pts} PTS · ${player.careerLine.pen} PIM`}
+          . Season detail above covers the current campaign only — the source publishes career
+          totals without a season-by-season breakdown.
+        </div>
+      ) : (
+        <div className="table-note">
+          Field lacrosse counts ground balls and turnovers; box lacrosse counts loose balls and penalty minutes.
+        </div>
+      )}
     </Card>
   );
 }
