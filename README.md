@@ -49,8 +49,9 @@ Product details:
 - **Advanced search** — league, class, region, high school, minimum games, and sorting by shooting %,
   faceoff % or save %; every filter mirrors into the URL so results are shareable.
 - **Sortable leaderboards** — click any column on a league leaderboard.
-- **National poll** — the NCAA committee top 10 for D1, fetched through a headless browser because
-  ncaa.com renders that table client-side (`python3 scripts/fetch-rankings.py`, then re-import).
+- **Rankings** — three D1 polls (NCAA committee top 10, NCAA RPI, USILA coaches), fetched through a
+  headless browser because those pages render client-side (`python3 scripts/fetch-rankings.py`,
+  then re-import). Each fetch also appends to `public/rankings-history.json`.
 - **Recent form** — last-5 averages, best game, point streak and a W/L strip on every game log.
 - **Per-game view** on season tables, **CSV export**, and a **1200×630 share card** per player.
 - **My roster** — save players in-browser (no account) and export the list.

@@ -20,6 +20,21 @@ export interface StaffMember {
   role: string;
 }
 
+export interface PollRow {
+  rank: number;
+  name: string;
+  record: string;
+  extra: string;
+  teamId: string | null;
+}
+
+export interface Poll {
+  key: string;
+  source: string;
+  fetched: string;
+  rows: PollRow[];
+}
+
 export interface League {
   id: string;
   name: string;
@@ -31,11 +46,7 @@ export interface League {
   strength: number;
   standings?: StandingRow[];
   ratings?: { teamId: string; elo: number; sos: number; rank: number }[];
-  poll?: {
-    source: string;
-    fetched: string;
-    rows: { rank: number; name: string; record: string; teamId: string | null }[];
-  };
+  polls?: Poll[];
 }
 
 export interface Team {
@@ -51,7 +62,7 @@ export interface Team {
   colors: [string, string];
   staff?: StaffMember[];
   logo?: string;
-  pollRank?: number;
+  pollRanks?: Record<string, number>;
   elo?: number;
   sos?: number;
   record?: {

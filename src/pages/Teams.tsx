@@ -6,6 +6,7 @@ import {
   data,
   leagueById,
   leaguePlayerCount,
+  POLL_LABELS,
   rosterOf,
   teamOrigins,
   teamSeasonStats,
@@ -310,7 +311,16 @@ export function TeamPage() {
                 <div><dt>City</dt><dd>{team.city}</dd></div>
                 <div><dt>Competition</dt><dd>{league?.name}</dd></div>
                 {team.elo ? <div><dt>Elo rating</dt><dd>{team.elo}{team.sos ? ` · SOS ${team.sos}` : ""}</dd></div> : null}
-                {team.pollRank ? <div><dt>National poll</dt><dd>#{team.pollRank}</dd></div> : null}
+                {team.pollRanks && Object.keys(team.pollRanks).length ? (
+                  <div>
+                    <dt>Rankings</dt>
+                    <dd>
+                      {Object.entries(team.pollRanks)
+                        .map(([k, v]) => `${POLL_LABELS[k] ?? k} #${v}`)
+                        .join(" · ")}
+                    </dd>
+                  </div>
+                ) : null}
                 <div><dt>Format</dt><dd>{league?.type === "box" ? "Box (6v6)" : "Field (10v10)"}</dd></div>
               </dl>
             </Card>

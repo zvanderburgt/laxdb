@@ -6,6 +6,7 @@ import {
   data,
   leagueById,
   leagueOrigins,
+  POLL_LABELS,
   leaguePlayerCount,
   leagueTeams,
   ratedTeams,
@@ -141,18 +142,29 @@ function RatingsCard({ league }: { league: League }) {
 }
 
 function PollCard({ league }: { league: League }) {
-  const poll = league.poll;
-  if (!poll?.rows?.length) return null;
+  const polls = league.polls ?? [];
+  const [key, setKey] = useState(polls[0]?.key ?? "");
+  if (!polls.length) return null;
+  const current = polls.find((p) => p.key === key) ?? polls[0];
+  const hasRecord = current.rows.some((r) => r.record);
+
   return (
     <Card padded={false} className="standings-card">
       <div className="card-toolbar">
         <div>
-          <h3 className="card-title">National poll</h3>
+          <h3 className="card-title">Rankings</h3>
           <p className="muted small">
-            {poll.source}
-            {poll.fetched ? ` · retrieved ${poll.fetched}` : ""}
+            {current.source}
+            {current.fetched ? ` · retrieved ${current.fetched}` : ""}
           </p>
         </div>
+        <Segmented
+          size="sm"
+          ariaLabel="Poll"
+          value={current.key}
+          onChange={setKey}
+          options={polls.map((p) => ({ value: p.key, label: POLL_LABELS[p.key] ?? p.key }))}
+        />
       </div>
       <div className="table-scroll">
         <table className="data-table">
@@ -160,14 +172,14 @@ function PollCard({ league }: { league: League }) {
             <tr>
               <th className="c">#</th>
               <th>Team</th>
-              <th className="r">Record</th>
+              <th className="r">{hasRecord ? "Record" : "Points"}</th>
             </tr>
           </thead>
           <tbody>
-            {poll.rows.map((r) => {
+            {current.rows.map((r) => {
               const team = r.teamId ? teamById.get(r.teamId) : undefined;
               return (
-                <tr key={r.rank}>
+                <tr key={`${r.rank}-${r.name}`}>
                   <td className="c num muted">{r.rank}</td>
                   <td>
                     {team ? (
@@ -179,7 +191,7 @@ function PollCard({ league }: { league: League }) {
                       <span className="muted">{r.name}</span>
                     )}
                   </td>
-                  <td className="r num muted">{r.record}</td>
+                  <td className="r num muted">{hasRecord ? r.record : r.extra}</td>
                 </tr>
               );
             })}
@@ -187,7 +199,9 @@ function PollCard({ league }: { league: League }) {
         </table>
       </div>
       <div className="table-note">
-        Programs we do not carry rosters for are listed without a link.
+        Programs we do not carry rosters for are listed without a link. The coaches poll is the
+        season&apos;s final ballot; Inside Lacrosse is not included because the site blocks automated
+        reads.
       </div>
     </Card>
   );

@@ -1640,7 +1640,7 @@ def materialise_assets(teams, players):
 
 
 def attach_poll(leagues, teams):
-    """Merge the NCAA poll scraped by scripts/fetch-rankings.py (browser-rendered)."""
+    """Merge the polls scraped by scripts/fetch-rankings.py (browser-rendered)."""
     path = os.path.join(ROOT, "public", "rankings.json")
     if not os.path.exists(path):
         return
@@ -1649,26 +1649,31 @@ def attach_poll(leagues, teams):
     except Exception as e:
         print(f"  ! poll: {e}")
         return
+    polls = payload.get("polls") or []
+    if not polls:
+        return
     by_key = {norm_team(t["name"]): t for t in teams if t["leagueId"] == "ncaa-d1"}
-    rows, matched = [], 0
-    for r in payload.get("rows", []):
-        key = norm_team(r.get("team", ""))
-        team = by_key.get(key) or next((t for k, t in by_key.items() if k.startswith(key)), None)
-        if team:
-            team["pollRank"] = r["rank"]
-            matched += 1
-        rows.append({
-            "rank": r["rank"], "name": r.get("team", ""), "record": r.get("record", ""),
-            "teamId": team["id"] if team else None,
+    out = []
+    for poll in polls:
+        rows, matched = [], 0
+        for r in poll.get("rows", []):
+            key = norm_team(r.get("team", ""))
+            team = by_key.get(key) or next((t for k, t in by_key.items() if k.startswith(key)), None)
+            if team:
+                team.setdefault("pollRanks", {})[poll["key"]] = r["rank"]
+                matched += 1
+            rows.append({
+                "rank": r["rank"], "name": r.get("team", ""), "record": r.get("record", ""),
+                "extra": r.get("extra", ""), "teamId": team["id"] if team else None,
+            })
+        out.append({
+            "key": poll["key"], "source": poll.get("source", poll["key"]),
+            "fetched": poll.get("fetched", ""), "rows": rows,
         })
+        print(f"  + poll {poll['key']}: {len(rows)} ranked ({matched} matched)")
     league = next((l for l in leagues if l["id"] == "ncaa-d1"), None)
-    if league and rows:
-        league["poll"] = {
-            "source": payload.get("source", "NCAA rankings"),
-            "fetched": payload.get("fetched", ""),
-            "rows": rows,
-        }
-    print(f"  + poll: {len(rows)} ranked teams ({matched} matched to programs)")
+    if league:
+        league["polls"] = out
 
 
 def main():

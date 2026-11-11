@@ -19,14 +19,18 @@ not the UI — is what decides whether it ships.
 - Team logos (194 clubs) and headshots (1,060 players, up from 453)
 - Advanced player search with shareable filter URLs; sortable league leaderboards
 - Game-log form: last-5 averages, best game, streak, W/L strip
-- NCAA committee poll (top 10) via a browser-rendered fetch, on league and team pages
+- Three D1 polls (committee, RPI, USILA coaches) via a browser-rendered fetch, with a
+  day-by-day archive in `rankings-history.json`
 
 ## Next (in progress or ready to start)
 
-### 1. More polls — one fetcher, more pages
-`scripts/fetch-rankings.py` already drives a browser to read ncaa.com. Add the USILA coaches poll
-and the Inside Lacrosse media poll (IL 403s on plain HTTP, but the same browser path should work),
-and keep a week-by-week archive instead of only the current poll.
+### 1. Awards and record books — scrape
+All-American teams, Tewaaraton history, all-time individual and team records, champions by year.
+Static pages, low refresh rate, high reference value.
+
+### 2. Weekly poll movement — already have the data
+`rankings-history.json` keeps a snapshot per poll per day, so a "movement" column (up/down since
+the previous snapshot) is pure presentation once there are two snapshots.
 
 ## Later (needs a new source)
 

@@ -65,6 +65,12 @@ function normalizePlayer(p: Player) {
   p.photo ??= "";
 }
 
+export const POLL_LABELS: Record<string, string> = {
+  committee: "Committee",
+  rpi: "RPI",
+  usila: "Coaches",
+};
+
 export const positionLabel: Record<string, string> = {
   A: "Attack",
   M: "Midfield",
