@@ -310,6 +310,7 @@ export function TeamPage() {
                 <div><dt>City</dt><dd>{team.city}</dd></div>
                 <div><dt>Competition</dt><dd>{league?.name}</dd></div>
                 {team.elo ? <div><dt>Elo rating</dt><dd>{team.elo}{team.sos ? ` · SOS ${team.sos}` : ""}</dd></div> : null}
+                {team.pollRank ? <div><dt>National poll</dt><dd>#{team.pollRank}</dd></div> : null}
                 <div><dt>Format</dt><dd>{league?.type === "box" ? "Box (6v6)" : "Field (10v10)"}</dd></div>
               </dl>
             </Card>

@@ -140,6 +140,59 @@ function RatingsCard({ league }: { league: League }) {
   );
 }
 
+function PollCard({ league }: { league: League }) {
+  const poll = league.poll;
+  if (!poll?.rows?.length) return null;
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">National poll</h3>
+          <p className="muted small">
+            {poll.source}
+            {poll.fetched ? ` · retrieved ${poll.fetched}` : ""}
+          </p>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="c">#</th>
+              <th>Team</th>
+              <th className="r">Record</th>
+            </tr>
+          </thead>
+          <tbody>
+            {poll.rows.map((r) => {
+              const team = r.teamId ? teamById.get(r.teamId) : undefined;
+              return (
+                <tr key={r.rank}>
+                  <td className="c num muted">{r.rank}</td>
+                  <td>
+                    {team ? (
+                      <Link to={`/team/${team.slug}`} className="team-link">
+                        <TeamLogo team={team} size={20} />
+                        {team.shortName}
+                      </Link>
+                    ) : (
+                      <span className="muted">{r.name}</span>
+                    )}
+                  </td>
+                  <td className="r num muted">{r.record}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-note">
+        Programs we do not carry rosters for are listed without a link.
+      </div>
+    </Card>
+  );
+}
+
 function StandingsCard({ league }: { league: League }) {
   const rows = (league.standings ?? []).slice();
   if (!rows.length) return null;
@@ -329,6 +382,7 @@ export function LeaguePage() {
       <div className="page">
         <StandingsCard league={league} />
         <RatingsCard league={league} />
+        <PollCard league={league} />
         <div className="leader-grid">
           <Card padded={false} className="leader-table">
             <div className="card-toolbar">

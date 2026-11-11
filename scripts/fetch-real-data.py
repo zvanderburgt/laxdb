@@ -1638,6 +1638,39 @@ def materialise_assets(teams, players):
     print(f"  + logos: {logos} teams · headshots: {photos} players")
 
 
+
+def attach_poll(leagues, teams):
+    """Merge the NCAA poll scraped by scripts/fetch-rankings.py (browser-rendered)."""
+    path = os.path.join(ROOT, "public", "rankings.json")
+    if not os.path.exists(path):
+        return
+    try:
+        payload = json.load(open(path))
+    except Exception as e:
+        print(f"  ! poll: {e}")
+        return
+    by_key = {norm_team(t["name"]): t for t in teams if t["leagueId"] == "ncaa-d1"}
+    rows, matched = [], 0
+    for r in payload.get("rows", []):
+        key = norm_team(r.get("team", ""))
+        team = by_key.get(key) or next((t for k, t in by_key.items() if k.startswith(key)), None)
+        if team:
+            team["pollRank"] = r["rank"]
+            matched += 1
+        rows.append({
+            "rank": r["rank"], "name": r.get("team", ""), "record": r.get("record", ""),
+            "teamId": team["id"] if team else None,
+        })
+    league = next((l for l in leagues if l["id"] == "ncaa-d1"), None)
+    if league and rows:
+        league["poll"] = {
+            "source": payload.get("source", "NCAA rankings"),
+            "fetched": payload.get("fetched", ""),
+            "rows": rows,
+        }
+    print(f"  + poll: {len(rows)} ranked teams ({matched} matched to programs)")
+
+
 def main():
     print("College (NCAA D1)…")
     leagues, teams, players = build_college()
@@ -1689,6 +1722,9 @@ def main():
 
     print("Standings…")
     attach_standings(leagues, teams)
+
+    print("Poll rankings…")
+    attach_poll(leagues, teams)
 
     print("Support staff…")
     staff_sidearm(teams)

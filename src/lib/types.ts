@@ -31,6 +31,11 @@ export interface League {
   strength: number;
   standings?: StandingRow[];
   ratings?: { teamId: string; elo: number; sos: number; rank: number }[];
+  poll?: {
+    source: string;
+    fetched: string;
+    rows: { rank: number; name: string; record: string; teamId: string | null }[];
+  };
 }
 
 export interface Team {
@@ -46,6 +51,7 @@ export interface Team {
   colors: [string, string];
   staff?: StaffMember[];
   logo?: string;
+  pollRank?: number;
   elo?: number;
   sos?: number;
   record?: {

@@ -18,12 +18,15 @@ not the UI — is what decides whether it ships.
 - Payload split: `data.json` 11.7 MB (down from 15.3) + `games.json` 1.3 MB loaded on demand
 - Team logos (194 clubs) and headshots (1,060 players, up from 453)
 - Advanced player search with shareable filter URLs; sortable league leaderboards
+- Game-log form: last-5 averages, best game, streak, W/L strip
+- NCAA committee poll (top 10) via a browser-rendered fetch, on league and team pages
 
 ## Next (in progress or ready to start)
 
-### 1. Game highs and recent form — cheap, on top of the shipped box scores
-Single-game career highs, "last 5 games" averages, and a form strip on the profile. The game rows
-are already stored; this is presentation.
+### 1. More polls — one fetcher, more pages
+`scripts/fetch-rankings.py` already drives a browser to read ncaa.com. Add the USILA coaches poll
+and the Inside Lacrosse media poll (IL 403s on plain HTTP, but the same browser path should work),
+and keep a week-by-week archive instead of only the current poll.
 
 ## Later (needs a new source)
 
