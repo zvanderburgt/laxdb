@@ -358,3 +358,46 @@ export const ratedTeams = (leagueId: string) => {
     .map((r) => ({ ...r, team: teamById.get(r.teamId) }))
     .filter((r) => r.team);
 };
+
+
+/** Team-level season totals rolled up from the roster + standings goals for/against. */
+const teamStatCache = new Map<string, {
+  gp: number; gpg: number; gapg: number; shotPct: number; foPct: number; savePct: number;
+}>();
+
+export function teamSeasonStats(teamId: string) {
+  const cached = teamStatCache.get(teamId);
+  if (cached) return cached;
+  const roster = data.players.filter((p) => p.teamId === teamId);
+  let gp = 0, g = 0, sh = 0, sv = 0, ga = 0, foW = 0, foA = 0;
+  for (const p of roster) {
+    const s = currentSeason(p);
+    gp = Math.max(gp, s.gp);
+    g += s.g;
+    sh += s.sh;
+    sv += s.sv;
+    ga += s.ga;
+    foW += s.foW;
+    foA += s.foA;
+  }
+  const team = teamById.get(teamId);
+  const played = team?.record ? team.record.w + team.record.l + team.record.t : 0;
+  const out = {
+    gp: gp || played,
+    gpg: gp ? g / gp : 0,
+    gapg: 0,
+    shotPct: sh ? (g / sh) * 100 : 0,
+    foPct: foA ? (foW / foA) * 100 : 0,
+    savePct: sv + ga ? (sv / (sv + ga)) * 100 : 0,
+  };
+  const standingsRow = data.leagues
+    .flatMap((l) => l.standings ?? [])
+    .find((r) => r.teamId === teamId);
+  if (standingsRow && standingsRow.w + standingsRow.l + standingsRow.t > 0) {
+    const games = standingsRow.w + standingsRow.l + standingsRow.t;
+    out.gapg = standingsRow.ga / games;
+    out.gpg = standingsRow.gf / games;
+  }
+  teamStatCache.set(teamId, out);
+  return out;
+}

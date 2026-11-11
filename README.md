@@ -41,6 +41,8 @@ Product details:
 - **Team Elo + strength of schedule** for D1 (from ESPN results), on league and team pages.
 - **Teammates** on every profile — who shared a roster, ranked by career points.
 - **Where they come from** — top high schools and hometowns per program and per league.
+- **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
+- **Team season summaries** — goals/game, goals against/game, shooting %, save %, faceoff %.
 - **Per-game view** on season tables, **CSV export**, and a **1200×630 share card** per player.
 - **My roster** — save players in-browser (no account) and export the list.
 - **Command palette** (⌘K / Ctrl+K) across players, teams and leagues.

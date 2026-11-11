@@ -8,11 +8,12 @@ import {
   leaguePlayerCount,
   rosterOf,
   teamOrigins,
+  teamSeasonStats,
   teamById,
   teamBySlug,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, PositionBadge, SectionHead, PlayerAvatar } from "../components/ui";
+import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar } from "../components/ui";
 
 export function TeamsPage() {
   const [q, setQ] = useState("");
@@ -114,6 +115,7 @@ export function TeamPage() {
   const league = leagueById.get(team.leagueId);
   const roster = rosterOf(team.id);
   const origins = teamOrigins(team.id);
+  const stats = teamSeasonStats(team.id);
   const skaters = roster.filter((p) => p.position !== "G");
   const goalies = roster.filter((p) => p.position === "G");
   const leaders = [...skaters].sort((a, b) => (currentSeason(b).pts ?? 0) - (currentSeason(a).pts ?? 0)).slice(0, 3);
@@ -169,6 +171,23 @@ export function TeamPage() {
       </div>
 
       <div className="page">
+        <Card>
+          <div className="card-toolbar">
+            <div>
+              <h3 className="card-title">Season at a glance</h3>
+              <p className="muted small">
+                {data.meta.season} · rolled up from the roster{stats.gapg ? " and league results" : ""}
+              </p>
+            </div>
+          </div>
+          <div className="stat-group-grid team-stats">
+            <Stat label="Goals / game" value={stats.gpg ? stats.gpg.toFixed(1) : "—"} tone="accent" />
+            <Stat label="Goals allowed / game" value={stats.gapg ? stats.gapg.toFixed(1) : "—"} />
+            <Stat label="Shooting %" value={stats.shotPct ? stats.shotPct.toFixed(1) : "—"} />
+            <Stat label="Save %" value={stats.savePct ? stats.savePct.toFixed(1) : "—"} />
+            {stats.foPct ? <Stat label="Faceoff %" value={stats.foPct.toFixed(1)} /> : null}
+          </div>
+        </Card>
         <div className="leader-grid">
           <Card padded={false} className="leader-table">
             <div className="card-toolbar">

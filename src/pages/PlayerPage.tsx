@@ -536,7 +536,7 @@ function StatsTab({ player }: { player: Player }) {
               const box = league?.type === "box";
               const headers = box
                 ? ["Season", "Team", "League", "GP", "G", "A", "PTS", "PIM"]
-                : ["Season", "Team", "League", "GP", "GS", "G", "A", "PTS", "SH", "SH%", "GB", "TO", "CT", "FO%"];
+                : ["Season", "Team", "League", "GP", "GS", "G", "A", "PTS", "SH", "SH%", "GB", "TO", "CT", "FO%", "PIM"];
               downloadCsv(
                 `${player.slug}-${player.seasons[0]?.season ?? ""}-${player.seasons[player.seasons.length - 1]?.season ?? ""}.csv`,
                 headers,
@@ -552,6 +552,7 @@ function StatsTab({ player }: { player: Player }) {
                         s.sh ? ((s.g / s.sh) * 100).toFixed(1) : "",
                         s.gb, s.to, s.ct,
                         s.foA ? (s.foW / s.foA).toFixed(3) : "",
+                        s.pen,
                       ]),
                 ])
               );
@@ -606,6 +607,7 @@ function StatsTab({ player }: { player: Player }) {
                   <th className="r">TO</th>
                   <th className="r">CT</th>
                   <th className="r">FO%</th>
+                  <th className="r">PIM</th>
                 </>
               )}
             </tr>
@@ -662,6 +664,7 @@ function StatsTab({ player }: { player: Player }) {
                       <td className="r num">{val(s.to, s.gp)}</td>
                       <td className="r num">{val(s.ct, s.gp)}</td>
                       <td className="r num">{s.foA ? (s.foW / s.foA).toFixed(3).replace(/^0/, "") : "—"}</td>
+                      <td className="r num">{val(s.pen, s.gp)}</td>
                     </>
                   )}
                 </tr>
@@ -709,6 +712,7 @@ function StatsTab({ player }: { player: Player }) {
                   <td className="r num strong">{val(totals.to, totals.gp)}</td>
                   <td className="r num strong">{val(totals.ct, totals.gp)}</td>
                   <td className="r num strong">{totals.fop ? totals.fop.toFixed(3).replace(/^0/, "") : "—"}</td>
+                  <td className="r num strong">{val(totals.pen, totals.gp)}</td>
                 </>
               )}
             </tr>
@@ -736,14 +740,52 @@ function StatsTab({ player }: { player: Player }) {
 
 function GameLog({ player }: { player: Player }) {
   const isGoal = player.position === "G";
+  const games = [...player.games].sort((a, b) => b.date.localeCompare(a.date));
+  const pts = (g: { g: number; a: number }) => g.g + g.a;
+  const score = (g: { g: number; a: number; sv: number | null; ga: number | null }) =>
+    isGoal ? (g.sv ?? 0) - (g.ga ?? 0) : pts(g);
+  const best = games.reduce<(typeof games)[number] | null>(
+    (b, g) => (!b || score(g) > score(b) ? g : b),
+    null
+  );
+  const wins = games.filter((g) => g.result === "W").length;
+  const losses = games.filter((g) => g.result === "L").length;
+  const totalPts = games.reduce((n, g) => n + pts(g), 0);
+
   return (
     <Card padded={false}>
       <div className="card-toolbar">
         <div>
           <h3 className="card-title">Game log</h3>
-          <p className="muted small">Last {player.games.length} games · {player.seasons[player.seasons.length - 1]?.season} season</p>
+          <p className="muted small">
+            {games.length} games · {wins}–{losses}
+            {!isGoal && totalPts ? ` · ${totalPts} points` : ""}
+            {best ? ` · best: ${isGoal ? `${best.sv ?? 0} saves` : `${pts(best)} pts`} vs ${best.opponent}` : ""}
+          </p>
         </div>
-        <span className="tag">{player.positionName}</span>
+        <div className="head-controls">
+          <span className="tag">{player.positionName}</span>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() =>
+              downloadCsv(
+                `${player.slug}-game-log.csv`,
+                isGoal
+                  ? ["Date", "Opponent", "Result", "SV", "GA", "SV%"]
+                  : ["Date", "Opponent", "Result", "G", "A", "PTS", "GB", "CT", "FO"],
+                games.map((g) =>
+                  isGoal
+                    ? [g.date, g.opponent, g.result, g.sv ?? 0, g.ga ?? 0,
+                       g.sv || g.ga ? ((g.sv ?? 0) / ((g.sv ?? 0) + (g.ga ?? 0))).toFixed(3) : ""]
+                    : [g.date, g.opponent, g.result, g.g, g.a, pts(g), g.gb, g.ct,
+                       g.foA ? `${g.foW}-${g.foA}` : ""]
+                )
+              )
+            }
+          >
+            CSV
+          </button>
+        </div>
       </div>
       <div className="table-scroll">
         <table className="data-table">
@@ -771,24 +813,30 @@ function GameLog({ player }: { player: Player }) {
             </tr>
           </thead>
           <tbody>
-            {player.games.map((g, i) => (
-              <tr key={i}>
+            {games.map((g, i) => (
+              <tr key={i} className={best && g === best ? "is-best" : undefined}>
                 <td className="num">{fmtDate(g.date)}</td>
                 <td>{g.opponent}</td>
                 <td className="c">
-                  <span className={`result ${g.result === "W" ? "win" : "loss"}`}>{g.result}</span>
+                  <span className={`result ${g.result === "W" ? "win" : g.result === "L" ? "loss" : ""}`}>
+                    {g.result}
+                  </span>
                 </td>
                 {isGoal ? (
                   <>
-                    <td className="r num">{g.sv}</td>
-                    <td className="r num">{g.ga}</td>
-                    <td className="r num">{g.sv && g.ga ? (g.sv / (g.sv + g.ga)).toFixed(3).replace(/^0/, "") : "—"}</td>
+                    <td className="r num">{g.sv ?? 0}</td>
+                    <td className="r num">{g.ga ?? 0}</td>
+                    <td className="r num">
+                      {(g.sv ?? 0) + (g.ga ?? 0)
+                        ? (((g.sv ?? 0) / ((g.sv ?? 0) + (g.ga ?? 0)))).toFixed(3).replace(/^0/, "")
+                        : "—"}
+                    </td>
                   </>
                 ) : (
                   <>
                     <td className="r num">{g.g}</td>
                     <td className="r num">{g.a}</td>
-                    <td className="r num strong">{g.g + g.a}</td>
+                    <td className="r num strong">{pts(g)}</td>
                     <td className="r num">{g.gb}</td>
                     <td className="r num">{g.ct}</td>
                     {player.position === "FO" ? <td className="r num">{g.foW}–{g.foA}</td> : null}
@@ -798,6 +846,9 @@ function GameLog({ player }: { player: Player }) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="table-note">
+        Parsed from each game&apos;s official box score. The highlighted row is the best game in this span.
       </div>
     </Card>
   );

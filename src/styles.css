@@ -1513,3 +1513,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   border-radius: 999px; background: var(--accent); color: #fff;
   font-size: 10px; font-weight: 600; line-height: 1;
 }
+
+/* game log best-game highlight */
+.data-table tr.is-best td { background: color-mix(in srgb, var(--accent) 11%, transparent); }
+.data-table tr.is-best td:first-child { box-shadow: inset 2px 0 0 var(--accent); }

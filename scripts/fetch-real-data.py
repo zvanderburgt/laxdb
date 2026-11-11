@@ -12,7 +12,7 @@ Output: src/data/dataset.json  (same schema the app already consumes)
 
 Usage:  python3 scripts/fetch-real-data.py [--no-photos]
 """
-import hashlib, json, re, sys, time, unicodedata, urllib.request, urllib.error, os
+import hashlib, html as _html, json, re, sys, time, unicodedata, urllib.request, urllib.error, os
 from datetime import date, timedelta
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -285,7 +285,8 @@ def parse_stats_page(html):
             if idx["pen"] is not None and idx["pen"] < len(c):
                 m = re.search(r"(\d+):(\d{2})", c[idx["pen"]])
                 if m:
-                    row["pen"] = int(m.group(1)) * 60 + int(m.group(2))
+                    # the feed prints penalty time as MM:SS; everything else stores minutes
+                    row["pen"] = round((int(m.group(1)) * 60 + int(m.group(2))) / 60, 1)
             if not row["pts"]:
                 row["pts"] = row["g"] + row["a"]
             out[norm_name(row["name"])] = row
@@ -991,6 +992,166 @@ def build_netfront():
 
 
 
+
+# --------------------------------------------------------------------------- #
+# Game logs — every D1 box score on the school sites
+# --------------------------------------------------------------------------- #
+BOX_GAMES_PER_PLAYER = 24
+
+
+def parse_boxscore(html, roster, label=""):
+    """One box score -> (game meta, {player_key: line}) for the side whose names match us.
+
+    The same page carries both teams; we pick the player table with the most name
+    matches against our roster rather than trusting table order."""
+    title_m = re.search(r"<title>([^<]*)", html)
+    title = _html.unescape(title_m.group(1)) if title_m else ""
+    meta = re.search(r"Lacrosse\s+(vs|at)\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{4})", title)
+    if not meta:
+        return None, {}
+    venue, opponent, day = meta.group(1), meta.group(2).strip(), meta.group(3)
+    try:
+        mm, dd, yy = day.split("/")
+        date_iso = f"{yy}-{mm.zfill(2)}-{dd.zfill(2)}"
+    except Exception:
+        return None, {}
+
+    skaters, goalies, totals = [], [], {}
+    for tb in tables(html):
+        heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip().lower()
+                 for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+        if not heads:
+            continue
+        if "player" in heads and "g" in heads and "a" in heads:
+            skaters.append((heads, tb))
+        elif "player" in heads and ("sv" in heads or "saves" in heads):
+            goalies.append((heads, tb))
+        elif "team" in heads and "total" in heads:
+            for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+                c = cells(tr)
+                if len(c) >= 2 and c[0] and c[-1].strip().isdigit():
+                    totals[c[0]] = int(c[-1])
+
+    best = None
+    for heads, tb in skaters:
+        rows, hits = [], 0
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+            c = cells(tr)
+            i_name = find_col(heads, "player")
+            if i_name is None or i_name >= len(c):
+                continue
+            name = title_name(c[i_name])
+            if not name or name.lower() in ("player", "totals"):
+                continue
+            key = norm_name(name)
+            line = {
+                "g": int(num(c[find_col(heads, "g")])) if find_col(heads, "g") is not None else 0,
+                "a": int(num(c[find_col(heads, "a")])) if find_col(heads, "a") is not None else 0,
+                "gb": int(num(c[find_col(heads, "gb")])) if find_col(heads, "gb") is not None else 0,
+                "ct": int(num(c[find_col(heads, "ct")])) if find_col(heads, "ct") is not None else 0,
+                "foW": 0, "foA": 0,
+            }
+            i_fo = find_col(heads, "fo")
+            if i_fo is not None and i_fo < len(c):
+                fo = re.match(r"(\d+)\s*-\s*(\d+)", c[i_fo])
+                if fo:
+                    line["foW"], lost = int(fo.group(1)), int(fo.group(2))
+                    line["foA"] = line["foW"] + lost
+            if key in roster:
+                hits += 1
+            rows.append((key, line))
+        if best is None or hits > best[0]:
+            best = (hits, rows)
+    if not best:
+        return None, {}
+
+    lines = {k: v for k, v in best[1]}
+    for heads, tb in goalies:
+        i_name = find_col(heads, "player")
+        i_sv = find_col(heads, "sv", "saves")
+        i_ga = find_col(heads, "ga", "goals allowed")
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+            c = cells(tr)
+            if i_name is None or i_name >= len(c):
+                continue
+            key = norm_name(title_name(c[i_name]))
+            if key not in roster:
+                continue
+            line = lines.setdefault(key, {"g": 0, "a": 0, "gb": 0, "ct": 0, "foW": 0, "foA": 0})
+            line["sv"] = int(num(c[i_sv])) if i_sv is not None and i_sv < len(c) else 0
+            line["ga"] = int(num(c[i_ga])) if i_ga is not None and i_ga < len(c) else 0
+
+    our_label = next((k for k in totals if label and label.lower() in k.lower()), None)
+    if our_label is None and totals:
+        our_label = next(iter(totals))
+    our_total = totals.get(our_label, 0) if our_label else 0
+    opp_total = max((v for k, v in totals.items() if k != our_label), default=0)
+    result = "—"
+    if our_total and opp_total:
+        result = "W" if our_total > opp_total else ("L" if our_total < opp_total else "T")
+    return {"date": date_iso, "opponent": opponent, "result": result, "venue": venue}, lines
+
+
+def build_boxscores(teams, players):
+    """Attach game logs to D1 players from the box score linked on every schedule row."""
+    tid_by_domain = {dom: f"t-{slugify(name)}" for name, dom, *_ in SCHOOLS}
+    rosters = {}
+    for p in players:
+        if p["leagueId"] != "ncaa-d1":
+            continue
+        rosters.setdefault(p["teamId"], {})[norm_name(p["name"])] = p
+
+    seen = set()
+    games_added, matched = 0, 0
+    for name, dom, *_ in SCHOOLS:
+        tid = tid_by_domain.get(dom)
+        if not tid:
+            continue
+        try:
+            sch = get(f"https://{dom}/sports/mens-lacrosse/schedule/{SEASONS[0]}")
+        except Exception:
+            continue
+        links = sorted(set(re.findall(r'href="([^"]*/boxscore/\d+)"', sch)))
+        for link in links:
+            url = link if link.startswith("http") else f"https://{dom}{link}"
+            key = f"{tid}|{url}"
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                html = get(url)
+            except Exception:
+                continue
+            roster = rosters.get(tid, {})
+            short = name.split()[0]
+            meta, lines = parse_boxscore(html, roster, short)
+            if meta:
+                for nk, line in lines.items():
+                    p = roster.get(nk)
+                    if not p:
+                        continue
+                    gkey = f"{p['id']}|{meta['date']}"
+                    if gkey in seen:
+                        continue
+                    seen.add(gkey)
+                    p["games"].append({
+                        "date": meta["date"], "opponent": meta["opponent"], "result": meta["result"],
+                        "g": line.get("g", 0), "a": line.get("a", 0),
+                        "gb": line.get("gb", 0), "ct": line.get("ct", 0),
+                        "sv": line.get("sv"), "ga": line.get("ga"),
+                        "foW": line.get("foW", 0), "foA": line.get("foA", 0),
+                    })
+                    games_added += 1
+
+    for p in players:
+        if p["games"]:
+            p["games"].sort(key=lambda g: g["date"])
+            p["games"] = p["games"][-BOX_GAMES_PER_PLAYER:]
+    with_games = sum(1 for p in players if p["games"])
+    print(f"  + box scores: {games_added} player-games across {with_games} players")
+    return games_added
+
+
 # --------------------------------------------------------------------------- #
 # Standings and support staff
 # --------------------------------------------------------------------------- #
@@ -1422,6 +1583,9 @@ def main():
         if t["leagueId"] == "ncaa-d1" and ("," in t["city"]):
             city, _, region = t["city"].partition(",")
             t["cityName"], t["region"] = city.strip(), region.strip()
+
+    print("Game logs…")
+    build_boxscores(teams, players)
 
     print("Standings…")
     attach_standings(leagues, teams)
