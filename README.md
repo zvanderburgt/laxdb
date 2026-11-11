@@ -106,6 +106,17 @@ can never disagree with the tables.
 - **Color**: one accent (`#0071e3` / `#0a84ff`); team colors only for identity washes and badges.
 - **Motion**: `cubic-bezier(.22,1,.36,1)`, 2–3px lifts, honors `prefers-reduced-motion`.
 
+## Deployment
+
+- Netlify site: `laxdb` → https://laxdb.netlify.app, building `main` from
+  `github.com/zvanderburgt/laxdb` (`npm run build` → `dist`, `NODE_VERSION=20`).
+  Every push to `main` triggers a build; `netlify.toml` carries the settings and cache headers.
+- Manual deploy fallback (no repo build): `python3 scripts/deploy-netlify.py` — zips `dist/`
+  and uploads it over the Netlify API. Auth comes from `NETLIFY_AUTH_TOKEN` or the token the
+  Netlify CLI stores after `netlify login`.
+- Repo pushes from this machine use the deploy key `~/.ssh/id_ed25519_github_laxdb`
+  (write access to `laxdb` only).
+
 ## Structure
 
 ```
