@@ -1,4 +1,5 @@
-import type { Dataset, Player, SeasonRow, Team, League, Position } from "./types";
+import type { Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
+import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
 export let data: Dataset = {
@@ -26,6 +27,7 @@ export async function loadDataset(): Promise<void> {
   data = (await res.json()) as Dataset;
 
   for (const p of data.players) {
+    normalizePlayer(p);
     playerById.set(p.id, p);
     playerBySlug.set(p.slug, p);
   }
@@ -39,6 +41,28 @@ export async function loadDataset(): Promise<void> {
   TEAM_COUNT = data.teams.length;
   SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
   CURRENT = data.meta.season;
+}
+
+/** The writer omits empty fields; restore the shape the UI expects, once. */
+function normalizePlayer(p: Player) {
+  p.awards ??= [];
+  p.rankings ??= [];
+  p.strengths ??= [];
+  p.games ??= [];
+  p.scouting ??= { report: "", author: "", date: "", grades: {} };
+  p.birthplace ??= { city: "", state: "", country: "" };
+  p.bio ??= "";
+  p.highSchool ??= "";
+  p.hand ??= "";
+  p.dob ??= "";
+  p.classYear ??= null;
+  p.jersey ??= 0;
+  p.heightIn ??= 0;
+  p.weightLb ??= 0;
+  p.experience ??= 0;
+  p.commit ??= null;
+  p.draft ??= null;
+  p.photo ??= "";
 }
 
 export const positionLabel: Record<string, string> = {
@@ -160,6 +184,20 @@ export function seasonTotals(rows: SeasonRow[]) {
     fop: sum("foW") + sum("foA") ? sum("foW") / (sum("foW") + sum("foA")) : 0,
     ppg: gp ? (g + a) / gp : 0,
   };
+}
+
+/* ------------------------------ game logs ---------------------------------- */
+
+let gamesPromise: Promise<Record<string, GameRow[]>> | null = null;
+
+/** Game logs ship separately (~1.3 MB) so the main payload stays lean. */
+export function loadGames(): Promise<Record<string, GameRow[]>> {
+  if (!gamesPromise) {
+    gamesPromise = fetch(`${import.meta.env.BASE_URL}games.json`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+  }
+  return gamesPromise;
 }
 
 export function rosterOf(teamId: string) {
@@ -400,4 +438,21 @@ export function teamSeasonStats(teamId: string) {
   }
   teamStatCache.set(teamId, out);
   return out;
+}
+
+
+/** Game rows for one player, fetched on first use. `null` while loading. */
+export function usePlayerGames(playerId: string): GameRow[] | null {
+  const [games, setGames] = useState<GameRow[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setGames(null);
+    loadGames().then((all) => {
+      if (alive) setGames(all[playerId] ?? []);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [playerId]);
+  return games;
 }

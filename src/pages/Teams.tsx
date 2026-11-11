@@ -13,7 +13,7 @@ import {
   teamBySlug,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar } from "../components/ui";
+import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 
 export function TeamsPage() {
   const [q, setQ] = useState("");
@@ -80,8 +80,11 @@ export function TeamsPage() {
               const pts = roster.reduce((n, p) => n + careerTotals(p).pts, 0);
               return (
                 <Link key={t.id} to={`/team/${t.slug}`} className="team-card">
-                  <span className="team-crest" style={{ background: `linear-gradient(150deg, ${t.colors[0]}, ${t.colors[1]})` }}>
-                    {t.shortName.slice(0, 2).toUpperCase()}
+                  <span
+                    className={`team-crest ${t.logo ? "has-logo" : ""}`}
+                    style={{ background: `linear-gradient(150deg, ${t.colors[0]}, ${t.colors[1]})` }}
+                  >
+                    {t.logo ? <TeamLogo team={t} size={44} /> : t.shortName.slice(0, 2).toUpperCase()}
                   </span>
                   <span className="team-card-body">
                     <span className="team-card-name">{t.shortName}</span>
@@ -133,8 +136,11 @@ export function TeamPage() {
             <Link to={`/league/${team.leagueId}`}>{league?.name}</Link>
           </div>
           <div className="profile-head">
-            <span className="team-crest xl" style={{ background: `linear-gradient(150deg, ${team.colors[0]}, ${team.colors[1]})` }}>
-              {team.shortName.slice(0, 2).toUpperCase()}
+            <span
+              className={`team-crest xl ${team.logo ? "has-logo" : ""}`}
+              style={{ background: `linear-gradient(150deg, ${team.colors[0]}, ${team.colors[1]})` }}
+            >
+              {team.logo ? <TeamLogo team={team} size={88} /> : team.shortName.slice(0, 2).toUpperCase()}
             </span>
             <div className="profile-id">
               <div className="profile-tags">

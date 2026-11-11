@@ -430,11 +430,18 @@ def build_college():
             except Exception as e:
                 print(f"  ! {name} stats {season}: {e}")
             time.sleep(0.35)
+        photos, team_logo = {}, None
         try:
             rh = get(f"https://{site}/sports/mens-lacrosse/roster/{SEASONS[0]}")
             roster = parse_roster_page(rh)
+            photos = parse_roster_photos(rh)
+            og = re.search(r'property="og:image" content="([^"]+)"', rh)
+            if og:
+                team_logo = og.group(1)
         except Exception as e:
             print(f"  ! {name} roster: {e}")
+        if team_logo:
+            team["logoRemote"] = team_logo
         time.sleep(0.35)
 
         if not ok:
@@ -494,6 +501,7 @@ def build_college():
                 "scouting": {"report": "", "author": "", "date": "", "grades": {}},
                 "bio": "", "strengths": [],
                 "seasons": [seasons[k] for k in sorted(seasons)],
+                "photoRemote": photos.get(nk),
                 "games": [],
                 "pendingGoalie": pending_goalie,
             })
@@ -993,6 +1001,58 @@ def build_netfront():
 
 
 
+
+# --------------------------------------------------------------------------- #
+# Assets: team logos and player headshots
+# --------------------------------------------------------------------------- #
+ASSET_DIR = os.path.join(ROOT, "public")
+
+
+def fetch_bytes(url, timeout=30):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def save_image(data, rel_path, size=(160, 160)):
+    """Downscale to a small webp so a thousand headshots stay a few megabytes."""
+    try:
+        from PIL import Image
+        import io as _io
+        im = Image.open(_io.BytesIO(data))
+        im = im.convert("RGBA")
+        im.thumbnail(size, Image.LANCZOS)
+        out = os.path.join(ASSET_DIR, rel_path)
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        im.save(out, "WEBP", quality=82, method=4)
+        return True
+    except Exception:
+        return False
+
+
+def grab(url, rel_path, size=(160, 160)):
+    """Download once; skip when the file is already on disk."""
+    out = os.path.join(ASSET_DIR, rel_path)
+    if os.path.exists(out) and os.path.getsize(out) > 200:
+        return True
+    try:
+        return save_image(fetch_bytes(url), rel_path, size)
+    except Exception:
+        return False
+
+
+def parse_roster_photos(html):
+    """Sidearm prints the headshot in the player card, keyed by its aria-label."""
+    out = {}
+    for m in re.finditer(r'aria-label="([^"]+?) jersey number', html):
+        name = _html.unescape(m.group(1)).strip()
+        seg = html[m.start(): m.start() + 2600]
+        hit = re.search(r'(https://images\.sidearmdev\.com/crop\?url=[^"\s]+)', seg)
+        if hit:
+            url = _html.unescape(hit.group(1)).replace("width=100", "width=220").replace("height=100", "height=220")
+            out[norm_name(name)] = url
+    return out
+
 # --------------------------------------------------------------------------- #
 # Game logs — every D1 box score on the school sites
 # --------------------------------------------------------------------------- #
@@ -1191,7 +1251,7 @@ def standings_pll(teams):
                 "teamId": tid, "w": it.get("wins", 0), "l": it.get("losses", 0),
                 "t": it.get("ties", 0), "gf": it.get("scores", 0), "ga": it.get("scoresAgainst", 0),
                 "confW": it.get("conferenceWins"), "confL": it.get("conferenceLosses"),
-                "group": "League",
+                "group": "League", "logo": it.get("urlLogo"),
             }
     print(f"  + PLL: {len(rows)} teams")
     return rows
@@ -1264,6 +1324,7 @@ def standings_mcla(teams):
                 tid = by_slug.get(href.group(1))
                 if not tid:
                     continue
+                logo = re.search(r'<img[^>]+src="([^"]+)"', tr)
                 blocks = [(c[:6], groups[0] if groups else "")]
                 if len(c) >= 11:
                     blocks.append((c[6:12], groups[1] if len(groups) > 1 else ""))
@@ -1276,6 +1337,7 @@ def standings_mcla(teams):
                         "teamId": tid, "w": w, "l": l, "t": 0,
                         "gf": int(num(blk[4], int)), "ga": int(num(blk[5], int)),
                         "confW": conf_w, "confL": conf_l, "group": clean_group(conf, group),
+                        "logo": logo.group(1) if logo else None,
                     }
     print(f"  + MCLA: {len(rows)} teams")
     return rows
@@ -1468,6 +1530,8 @@ def attach_standings(leagues, teams):
         for row in rows:
             g = row.get("group", "")
             t = by_id[row["teamId"]]
+            if row.get("logo") and not t.get("logoRemote"):
+                t["logoRemote"] = row["logo"]
             t["record"] = {
                 "w": row["w"], "l": row["l"], "t": row["t"], "pct": row["pct"],
                 # inside a conference, the conference place is the one that means something
@@ -1538,6 +1602,42 @@ def download_photos(players):
 # --------------------------------------------------------------------------- #
 # Main
 # --------------------------------------------------------------------------- #
+
+PLAYER_EMPTY_KEYS = (
+    "bio", "strengths", "awards", "rankings", "commit", "draft", "highSchool",
+    "hand", "dob", "classYear", "experience", "jersey", "heightIn", "weightLb",
+    "photo", "photoRemote",
+)
+
+
+def strip_keys(obj, keys):
+    """Drop empty informational keys — the app fills defaults at load."""
+    for k in keys:
+        if k in obj and obj[k] in ("", None, [], {}, 0):
+            del obj[k]
+
+
+def materialise_assets(teams, players):
+    """Download team logos and player headshots once, store a relative path."""
+    logos = photos = 0
+    for t in teams:
+        remote = t.pop("logoRemote", None)
+        if not remote:
+            continue
+        if grab(remote, f"logos/{t['slug']}.webp", (120, 120)):
+            t["logo"] = f"logos/{t['slug']}.webp"
+            logos += 1
+    for p in players:
+        remote = p.pop("photoRemote", None)
+        if not remote:
+            continue
+        fname = re.sub(r"[^a-z0-9-]", "", p["id"].lower())
+        if grab(remote, f"players/ncaa/{fname}.webp", (200, 200)):
+            p["photo"] = f"players/ncaa/{fname}.webp"
+            photos += 1
+    print(f"  + logos: {logos} teams · headshots: {photos} players")
+
+
 def main():
     print("College (NCAA D1)…")
     leagues, teams, players = build_college()
@@ -1610,6 +1710,20 @@ def main():
         seen[slug] = 1
         p["slug"] = slug
 
+    materialise_assets(teams, players)
+
+    for t in teams:
+        strip_keys(t, ("city", "cityName", "region", "logo", "staff", "elo", "sos"))
+    for p in players:
+        strip_keys(p, PLAYER_EMPTY_KEYS)
+
+    # game logs are ~1.3 MB and only needed when a profile's game log opens
+    games_blob = {}
+    for p in players:
+        g = p.pop("games", None)
+        if g:
+            games_blob[p["id"]] = g
+
     dataset = {
         "meta": {
             "generated": date.today().isoformat(),
@@ -1630,8 +1744,13 @@ def main():
     out = os.path.join(ROOT, "public", "data.json")
     with open(out, "w") as f:
         json.dump(dataset, f, separators=(",", ":"))
+    games_out = os.path.join(ROOT, "public", "games.json")
+    with open(games_out, "w") as f:
+        json.dump(games_blob, f, separators=(",", ":"))
     size = os.path.getsize(out) / 1024
+    gsize = os.path.getsize(games_out) / 1024
     print(f"\nwrote {out}: {len(players)} players, {len(teams)} teams, {len(leagues)} leagues, {size:.0f} KB")
+    print(f"wrote {games_out}: {len(games_blob)} players with game logs, {gsize:.0f} KB")
     from collections import Counter
     print("by league:", Counter(p["leagueId"] for p in players))
     print("seasons:", sum(len(p["seasons"]) for p in players))

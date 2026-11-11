@@ -45,6 +45,7 @@ export interface Team {
   conference: string;
   colors: [string, string];
   staff?: StaffMember[];
+  logo?: string;
   elo?: number;
   sos?: number;
   record?: {

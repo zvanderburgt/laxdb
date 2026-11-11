@@ -14,6 +14,7 @@ import {
   teamById,
   teamOf,
   teammatesOf,
+  usePlayerGames,
 } from "../lib/data";
 import type { Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
@@ -28,6 +29,7 @@ import {
   Sparkline,
   Stat,
   PlayerAvatar,
+  TeamLogo,
 } from "../components/ui";
 
 type Tab = "overview" | "stats" | "gamelog" | "awards" | "scouting";
@@ -106,7 +108,7 @@ function Profile({ player }: { player: Player }) {
               <h1>{player.name}</h1>
               <div className="profile-sub">
                 <Link to={`/team/${team?.slug}`} className="profile-team">
-                  <span className="team-dot" style={{ background: team?.colors[0] }} />
+                  <TeamLogo team={team} size={18} />
                   {team?.name}
                 </Link>
                 <span className="dot">·</span>
@@ -231,7 +233,7 @@ function Profile({ player }: { player: Player }) {
               options={[
                 { value: "overview", label: "Overview" },
                 { value: "stats", label: "Stats" },
-                ...(player.games.length ? [{ value: "gamelog" as Tab, label: "Game log" }] : []),
+                ...(player.leagueId === "ncaa-d1" ? [{ value: "gamelog" as Tab, label: "Game log" }] : []),
                 ...(player.awards.length || player.draft || player.rankings.length
                   ? [{ value: "awards" as Tab, label: "Awards" }]
                   : []),
@@ -740,7 +742,29 @@ function StatsTab({ player }: { player: Player }) {
 
 function GameLog({ player }: { player: Player }) {
   const isGoal = player.position === "G";
-  const games = [...player.games].sort((a, b) => b.date.localeCompare(a.date));
+  const loaded = usePlayerGames(player.id);
+
+  if (loaded === null) {
+    return (
+      <Card>
+        <div className="eyebrow">Game log</div>
+        <p className="muted">Loading box scores…</p>
+      </Card>
+    );
+  }
+  if (!loaded.length) {
+    return (
+      <Card>
+        <div className="eyebrow">Game log</div>
+        <p className="muted">
+          No box scores on record for this player. Game logs come from each game&apos;s official box
+          score, which this program&apos;s site does not publish.
+        </p>
+      </Card>
+    );
+  }
+
+  const games = [...loaded].sort((a, b) => b.date.localeCompare(a.date));
   const pts = (g: { g: number; a: number }) => g.g + g.a;
   const score = (g: { g: number; a: number; sv: number | null; ga: number | null }) =>
     isGoal ? (g.sv ?? 0) - (g.ga ?? 0) : pts(g);

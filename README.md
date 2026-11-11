@@ -42,7 +42,13 @@ Product details:
 - **Teammates** on every profile — who shared a roster, ranked by career points.
 - **Where they come from** — top high schools and hometowns per program and per league.
 - **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
+  They ship as a second file (`games.json`, 1.3 MB) fetched the first time you open a log.
+- **Team logos** for 194 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
+- **Headshots** for 1,060 players — 453 PLL plus 607 parsed from school rosters.
 - **Team season summaries** — goals/game, goals against/game, shooting %, save %, faceoff %.
+- **Advanced search** — league, class, region, high school, minimum games, and sorting by shooting %,
+  faceoff % or save %; every filter mirrors into the URL so results are shareable.
+- **Sortable leaderboards** — click any column on a league leaderboard.
 - **Per-game view** on season tables, **CSV export**, and a **1200×630 share card** per player.
 - **My roster** — save players in-browser (no account) and export the list.
 - **Command palette** (⌘K / Ctrl+K) across players, teams and leagues.
@@ -89,8 +95,12 @@ Coverage gaps, stated plainly:
   it — labelled as such, rather than presented as a full season history.
 - Box rosters carry no F/D/T split (the feeds list skaters and goalies only), so box skaters are
   badged as runners.
-- Field-league penalty minutes are unreliable for some D1 rows (a mis-mapped source column), so
-  PIM is hidden for field leagues and excluded from CSV exports. Box PIM comes from NetFront and is sound.
+- Headshots exist for 1,060 of 16,690 players. Eleven D1 programs (Yale, Cornell, Johns Hopkins,
+  Navy, Georgetown, Villanova, Loyola, Towson, Penn, Hofstra, High Point) publish no roster photos;
+  MCLA and box leagues publish none at all.
+- Handedness is not published by any source, so there is no hand filter.
+- Field penalty time arrives as MM:SS and is normalised to minutes on import (it was stored in
+  seconds before, which inflated PIM by 60×). Box PIM comes from NetFront already in minutes.
 - D1 standings are derived from results, so a game ESPN doesn't carry leaves a record one short.
   The standings card says so instead of implying an official feed.
 - A player who plays in two different leagues (say the NLL and the PLL) has one profile per league.

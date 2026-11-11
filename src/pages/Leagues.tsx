@@ -12,7 +12,7 @@ import {
   teamById,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar } from "../components/ui";
+import { Avatar, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 import type { League } from "../lib/types";
 
 export function LeaguesPage() {
@@ -118,7 +118,7 @@ function RatingsCard({ league }: { league: League }) {
                 <td className="c num muted">{r.rank}</td>
                 <td>
                   <Link to={`/team/${r.team?.slug}`} className="team-link">
-                    <span className="team-dot" style={{ background: r.team?.colors[0] }} />
+                    <TeamLogo team={r.team} size={20} />
                     {r.team?.shortName}
                   </Link>
                 </td>
@@ -159,7 +159,7 @@ function StandingsCard({ league }: { league: League }) {
           <td className="c num muted">{multi ? r.groupRank ?? r.rank : r.rank}</td>
           <td>
             <Link to={`/team/${team?.slug}`} className="team-link">
-              <span className="team-dot" style={{ background: team?.colors[0] }} />
+              <TeamLogo team={team} size={20} />
               {team?.shortName ?? r.teamId}
             </Link>
           </td>
@@ -231,6 +231,8 @@ export function LeaguePage() {
   const league = leagueById.get(id);
   const [stat, setStat] = useState<(typeof STATS)[number]["value"]>("pts");
   const [pos, setPos] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<"val" | "gp" | "g" | "a" | "pts" | "ppg">("val");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
   if (!league) {
     return (
@@ -254,8 +256,35 @@ export function LeaguePage() {
       return { p, s, val };
     })
     .filter((r) => r.s.gp >= 3 && (stat === "svp" ? r.s.sv > 15 || (r.s.svp || 0) > 0 : true))
-    .sort((a, b) => b.val - a.val)
+    .sort((a, b) => {
+      const pick = (r: (typeof a)) => {
+        switch (sortKey) {
+          case "gp": return r.s.gp;
+          case "g": return r.s.g;
+          case "a": return r.s.a;
+          case "pts": return r.s.pts ?? 0;
+          case "ppg": return r.s.gp ? (r.s.pts ?? 0) / r.s.gp : 0;
+          default: return r.val;
+        }
+      };
+      return sortDir === "desc" ? pick(b) - pick(a) : pick(a) - pick(b);
+    })
     .slice(0, 40);
+
+  const th = (k: typeof sortKey, label: string) => (
+    <th className={`r sortable ${sortKey === k ? "is-sorted" : ""}`} onClick={() => sortBy(k)}>
+      {label}
+      <span className="sort-caret">{sortKey === k ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
+    </th>
+  );
+
+  const sortBy = (k: typeof sortKey) => {
+    if (k === sortKey) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else {
+      setSortKey(k);
+      setSortDir("desc");
+    }
+  };
 
   const teams = leagueTeams(league.id);
   const origins = leagueOrigins(league.id);
@@ -326,13 +355,16 @@ export function LeaguePage() {
                   <th>Player</th>
                   <th>Team</th>
                   <th className="c">Pos</th>
-                  <th className="r">GP</th>
-                  <th className="r">G</th>
-                  <th className="r">AST</th>
-                  <th className="r">PTS</th>
-                  <th className="r">PTS/G</th>
+                  {th("gp", "GP")}
+                  {th("g", "G")}
+                  {th("a", "AST")}
+                  {th("pts", "PTS")}
+                  {th("ppg", "PTS/G")}
                   {stat === "gb" || stat === "ct" || stat === "svp" ? (
-                    <th className="r">{stat === "svp" ? "SV%" : stat === "gb" ? "GB" : "CT"}</th>
+                    <th className={`r sortable ${sortKey === "val" ? "is-sorted" : ""}`} onClick={() => sortBy("val")}>
+                      {stat === "svp" ? "SV%" : stat === "gb" ? "GB" : "CT"}
+                      <span className="sort-caret">{sortKey === "val" ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
+                    </th>
                   ) : null}
                 </tr>
               </thead>
@@ -350,7 +382,7 @@ export function LeaguePage() {
                       </td>
                       <td>
                         <Link to={`/team/${team?.slug}`} className="team-link">
-                          <span className="team-dot" style={{ background: team?.colors[0] }} />
+                          <TeamLogo team={team} size={20} />
                           {team?.shortName}
                         </Link>
                       </td>

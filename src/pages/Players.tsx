@@ -13,7 +13,9 @@ import {
 import { Avatar, Empty, PositionBadge, Segmented, PlayerAvatar } from "../components/ui";
 
 const POSITIONS = ["A", "M", "D", "G", "FO", "LSM"];
-type SortKey = "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg";
+type SortKey =
+  | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
+  | "shp" | "fop" | "svp";
 
 export default function Players() {
   const route = useRoute();
@@ -25,7 +27,9 @@ export default function Players() {
   });
   const [league, setLeague] = useState(route.query.get("league") ?? "all");
   const [year, setYear] = useState(route.query.get("year") ?? "all");
-  const [state, setState] = useState("all");
+  const [state, setState] = useState(route.query.get("state") ?? "all");
+  const [minGp, setMinGp] = useState(route.query.get("gp") ?? "");
+  const [hs, setHs] = useState(route.query.get("hs") ?? "");
   const [sort, setSort] = useState<SortKey>("pts");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [view, setView] = useState<"table" | "cards">("table");
@@ -37,6 +41,8 @@ export default function Players() {
       .filter((p) => (league === "all" ? true : p.leagueId === league))
       .filter((p) => (year === "all" ? true : p.classYear === Number(year)))
       .filter((p) => (state === "all" ? true : p.birthplace.state === state))
+      .filter((p) => (hs.trim() ? p.highSchool.toLowerCase().includes(hs.trim().toLowerCase()) : true))
+      .filter((p) => (minGp ? currentSeason(p).gp >= Number(minGp) : true))
       .filter((p) =>
         needle
           ? p.name.toLowerCase().includes(needle) ||
@@ -62,6 +68,9 @@ export default function Players() {
         case "pts": return r.s.pts ?? 0;
         case "gb": return r.s.gb;
         case "ppg": return r.c.ppg;
+        case "shp": return r.s.sh ? (r.s.g / r.s.sh) * 100 : 0;
+        case "fop": return r.s.foA ? (r.s.foW / r.s.foA) * 100 : 0;
+        case "svp": return r.s.sv + r.s.ga ? (r.s.sv / (r.s.sv + r.s.ga)) * 100 : 0;
       }
     };
     list.sort((a, b) => {
@@ -73,7 +82,20 @@ export default function Players() {
       return dir === "asc" ? Number(av) - Number(bv) : Number(bv) - Number(av);
     });
     return list;
-  }, [q, pos, league, year, state, sort, dir]);
+  }, [q, pos, league, year, state, hs, minGp, sort, dir]);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (pos.length) params.set("pos", pos.join(","));
+    if (league !== "all") params.set("league", league);
+    if (year !== "all") params.set("year", year);
+    if (state !== "all") params.set("state", state);
+    if (hs.trim()) params.set("hs", hs.trim());
+    if (minGp) params.set("gp", minGp);
+    const qs = params.toString();
+    window.history.replaceState(null, "", `#/players${qs ? `?${qs}` : ""}`);
+  }, [q, pos, league, year, state, hs, minGp]);
 
   const toggleSort = (k: SortKey) => {
     if (sort === k) setDir(dir === "asc" ? "desc" : "asc");
@@ -83,7 +105,13 @@ export default function Players() {
     }
   };
 
-  const activeFilters = pos.length + (league !== "all" ? 1 : 0) + (year !== "all" ? 1 : 0) + (state !== "all" ? 1 : 0);
+  const activeFilters =
+    pos.length +
+    (league !== "all" ? 1 : 0) +
+    (year !== "all" ? 1 : 0) +
+    (state !== "all" ? 1 : 0) +
+    (hs.trim() ? 1 : 0) +
+    (minGp ? 1 : 0);
 
   const th = (k: SortKey, label: string, cls = "") => (
     <th className={`${cls} ${sort === k ? "is-sorted" : ""}`} onClick={() => toggleSort(k)}>
@@ -163,6 +191,40 @@ export default function Players() {
           ))}
         </select>
 
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          aria-label="Sort by"
+        >
+          <option value="pts">Sort: points</option>
+          <option value="ppg">Sort: points per game</option>
+          <option value="g">Sort: goals</option>
+          <option value="a">Sort: assists</option>
+          <option value="gb">Sort: ground balls</option>
+          <option value="shp">Sort: shooting %</option>
+          <option value="fop">Sort: faceoff %</option>
+          <option value="svp">Sort: save %</option>
+          <option value="gp">Sort: games</option>
+          <option value="name">Sort: name</option>
+        </select>
+
+        <input
+          className="filter-input"
+          value={hs}
+          onChange={(e) => setHs(e.target.value)}
+          placeholder="High school"
+          aria-label="High school"
+        />
+
+        <input
+          className="filter-input narrow"
+          value={minGp}
+          onChange={(e) => setMinGp(e.target.value.replace(/\D/g, ""))}
+          placeholder="Min GP"
+          aria-label="Minimum games played"
+          inputMode="numeric"
+        />
+
         {activeFilters > 0 ? (
           <button
             className="btn btn-ghost btn-sm"
@@ -171,6 +233,8 @@ export default function Players() {
               setLeague("all");
               setYear("all");
               setState("all");
+              setHs("");
+              setMinGp("");
             }}
           >
             Reset {activeFilters}

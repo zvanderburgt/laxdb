@@ -15,18 +15,13 @@ not the UI — is what decides whether it ships.
 - Teammates on every profile
 - Game logs from official D1 box scores (10,641 player-games, reconciles to season totals)
 - Team season summaries: goals/game, goals against/game, shooting %, save %, faceoff %
+- Payload split: `data.json` 11.7 MB (down from 15.3) + `games.json` 1.3 MB loaded on demand
+- Team logos (194 clubs) and headshots (1,060 players, up from 453)
+- Advanced player search with shareable filter URLs; sortable league leaderboards
 
 ## Next (in progress or ready to start)
 
-### 1. Advanced player search — no new source
-Filter by hometown, high-school, height, handedness, shooting % and games minimums; keep the
-filters in the URL so results are shareable. EP charges for the equivalent.
-
-### 2. Sortable leaderboards — no new source
-The league leaderboard has fixed columns; make every column sortable and add the per-game toggle
-that profiles already have.
-
-### 3. Game highs and recent form — cheap, on top of the shipped box scores
+### 1. Game highs and recent form — cheap, on top of the shipped box scores
 Single-game career highs, "last 5 games" averages, and a form strip on the profile. The game rows
 are already stored; this is presentation.
 

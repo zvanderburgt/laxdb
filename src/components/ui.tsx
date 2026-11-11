@@ -45,6 +45,33 @@ export function Avatar({
   );
 }
 
+/** Team mark: the real logo when we have one, the colour crest otherwise. */
+export function TeamLogo({
+  team,
+  size = 28,
+  className = "",
+}: {
+  team?: Team;
+  size?: number;
+  className?: string;
+}) {
+  if (!team) return null;
+  if (team.logo) {
+    return (
+      <img
+        className={`team-logo ${className}`}
+        src={team.logo}
+        alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return <span className={`team-dot ${className}`} style={{ background: team.colors[0] }} />;
+}
+
 /** Avatar that knows about team colors and headshots. */
 export function PlayerAvatar({
   player,
