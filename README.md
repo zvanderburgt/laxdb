@@ -72,6 +72,9 @@ Coverage gaps, stated plainly:
   it — labelled as such, rather than presented as a full season history.
 - Box rosters carry no F/D/T split (the feeds list skaters and goalies only), so box skaters are
   badged as runners.
+- A player who plays in two different leagues (say the NLL and the PLL) has one profile per league.
+  Merging those would need a date of birth, which none of these feeds publish; matching on name
+  alone would collapse different athletes who share one.
 
 Rebuild the dataset:
 
