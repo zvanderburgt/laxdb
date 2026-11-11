@@ -8,6 +8,7 @@ import PlayerPage from "./pages/PlayerPage";
 import { TeamPage, TeamsPage } from "./pages/Teams";
 import { LeaguePage, LeaguesPage } from "./pages/Leagues";
 import ComparePage from "./pages/Compare";
+import MyRoster from "./pages/MyRoster";
 import { Empty } from "./components/ui";
 
 function titleFor(path: string) {
@@ -16,7 +17,9 @@ function titleFor(path: string) {
   if (seg[0] === "player") return `${playerBySlug.get(seg[1] ?? "")?.name ?? "Player"} · LAXDB`;
   if (seg[0] === "team") return `${teamBySlug.get(seg[1] ?? "")?.name ?? "Team"} · LAXDB`;
   if (seg[0] === "league") return `${leagueById.get(seg[1] ?? "")?.name ?? "League"} · LAXDB`;
-  const label = { players: "Players", teams: "Teams", leagues: "Leagues", compare: "Compare" }[seg[0]];
+  const label = {
+    players: "Players", teams: "Teams", leagues: "Leagues", compare: "Compare", "my-roster": "My roster",
+  }[seg[0]];
   return label ? `${label} · LAXDB` : "LAXDB";
 }
 
@@ -37,6 +40,7 @@ function Routes() {
   else if (seg[0] === "leagues") page = <LeaguesPage />;
   else if (seg[0] === "league") page = <LeaguePage />;
   else if (seg[0] === "compare") page = <ComparePage />;
+  else if (seg[0] === "my-roster") page = <MyRoster />;
   else
     page = (
       <div className="page">

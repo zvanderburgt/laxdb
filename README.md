@@ -30,6 +30,7 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/teams`, `#/team/:slug` | Team directory; team page with real roster, leaders, record and support staff |
 | `#/leagues`, `#/league/:id` | Competition directory; standings, leaderboard with position filter, teams, goalie leaders |
 | `#/compare` | Up to three players side by side, row-scaled bars, deep-linkable (`?ids=`) |
+| `#/my-roster` | Players saved in this browser, with CSV export |
 
 Product details:
 
@@ -37,6 +38,11 @@ Product details:
   swap to MIN, GA, GAA, SV, SV%, W–L. Box leagues show GP, G, A, PTS, PIM and, for goalies, W–L, GAA,
   SV% — the columns their feeds actually publish (no goals-against or minutes are available, so the
   site reads the published rates instead of computing zeros).
+- **Team Elo + strength of schedule** for D1 (from ESPN results), on league and team pages.
+- **Teammates** on every profile — who shared a roster, ranked by career points.
+- **Where they come from** — top high schools and hometowns per program and per league.
+- **Per-game view** on season tables, **CSV export**, and a **1200×630 share card** per player.
+- **My roster** — save players in-browser (no account) and export the list.
 - **Command palette** (⌘K / Ctrl+K) across players, teams and leagues.
 - **Compare tray** persists in `localStorage` and follows you between pages.
 - **Deep links**: filters and comparisons live in the URL hash.
@@ -81,6 +87,8 @@ Coverage gaps, stated plainly:
   it — labelled as such, rather than presented as a full season history.
 - Box rosters carry no F/D/T split (the feeds list skaters and goalies only), so box skaters are
   badged as runners.
+- Field-league penalty minutes are unreliable for some D1 rows (a mis-mapped source column), so
+  PIM is hidden for field leagues and excluded from CSV exports. Box PIM comes from NetFront and is sound.
 - D1 standings are derived from results, so a game ESPN doesn't carry leaves a record one short.
   The standings card says so instead of implying an official feed.
 - A player who plays in two different leagues (say the NLL and the PLL) has one profile per league.

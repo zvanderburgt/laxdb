@@ -7,6 +7,7 @@ import {
   leagueById,
   leaguePlayerCount,
   rosterOf,
+  teamOrigins,
   teamById,
   teamBySlug,
   teamOf,
@@ -112,6 +113,7 @@ export function TeamPage() {
   }
   const league = leagueById.get(team.leagueId);
   const roster = rosterOf(team.id);
+  const origins = teamOrigins(team.id);
   const skaters = roster.filter((p) => p.position !== "G");
   const goalies = roster.filter((p) => p.position === "G");
   const leaders = [...skaters].sort((a, b) => (currentSeason(b).pts ?? 0) - (currentSeason(a).pts ?? 0)).slice(0, 3);
@@ -235,6 +237,34 @@ export function TeamPage() {
               })}
               {leaders.length === 0 ? <p className="muted small">No skaters indexed.</p> : null}
             </Card>
+            {origins.schools.length || origins.towns.length ? (
+              <Card>
+                <div className="eyebrow">Where they come from</div>
+                <div className="origin-block">
+                  <h5>High schools</h5>
+                  <ul className="origin-list">
+                    {origins.schools.map((o) => (
+                      <li key={o.label}>
+                        <span>{o.label}</span>
+                        <span className="num muted">{o.count}</span>
+                      </li>
+                    ))}
+                    {origins.schools.length === 0 ? <li className="muted">Not published for this league</li> : null}
+                  </ul>
+                </div>
+                <div className="origin-block">
+                  <h5>Hometowns</h5>
+                  <ul className="origin-list">
+                    {origins.towns.map((o) => (
+                      <li key={o.label}>
+                        <span>{o.label}</span>
+                        <span className="num muted">{o.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Card>
+            ) : null}
             {team.staff && team.staff.length ? (
               <Card>
                 <div className="eyebrow">Support staff</div>
@@ -254,6 +284,7 @@ export function TeamPage() {
                 <div><dt>Conference</dt><dd>{team.conference}</dd></div>
                 <div><dt>City</dt><dd>{team.city}</dd></div>
                 <div><dt>Competition</dt><dd>{league?.name}</dd></div>
+                {team.elo ? <div><dt>Elo rating</dt><dd>{team.elo}{team.sos ? ` · SOS ${team.sos}` : ""}</dd></div> : null}
                 <div><dt>Format</dt><dd>{league?.type === "box" ? "Box (6v6)" : "Field (10v10)"}</dd></div>
               </dl>
             </Card>

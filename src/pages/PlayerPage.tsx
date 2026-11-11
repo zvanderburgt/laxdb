@@ -13,8 +13,11 @@ import {
   similarPlayers,
   teamById,
   teamOf,
+  teammatesOf,
 } from "../lib/data";
 import type { Player, SeasonRow } from "../lib/types";
+import { downloadCsv, downloadPlayerCard } from "../lib/export";
+import { toggleSaved, useRoster } from "../lib/storage";
 import {
   Avatar,
   Card,
@@ -60,6 +63,10 @@ function Profile({ player }: { player: Player }) {
   const gaaVal = cur.min ? (cur.ga * 60) / cur.min : (cur.gaa || 0);
   const isGoal = player.position === "G";
   const isBox = league?.type === "box";
+
+  const roster = useRoster();
+  const saved = roster.some((p) => p.id === player.id);
+  const mates = useMemo(() => teammatesOf(player), [player.id]);
 
   const copy = async () => {
     try {
@@ -131,6 +138,21 @@ function Profile({ player }: { player: Player }) {
               </button>
               <button className="btn btn-secondary" onClick={copy}>
                 {copied ? "Link copied" : "Share"}
+              </button>
+              <button
+                className={`btn ${saved ? "btn-secondary is-saved" : "btn-secondary"}`}
+                aria-pressed={saved}
+                onClick={() => toggleSaved(player.id)}
+                title={saved ? "Remove from my roster" : "Save to my roster"}
+              >
+                {saved ? "★ Saved" : "☆ Save"}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => downloadPlayerCard(player, team, league)}
+                title="Download a shareable card"
+              >
+                Card
               </button>
             </div>
           </div>
@@ -243,6 +265,32 @@ function Profile({ player }: { player: Player }) {
               {player.jersey > 0 ? <div><dt>Jersey</dt><dd>#{player.jersey}</dd></div> : null}
             </dl>
           </Card>
+
+          {mates.length ? (
+            <Card>
+              <div className="eyebrow">Teammates · {mates.length}</div>
+              <div className="mate-list">
+                {mates.slice(0, 6).map((m) => (
+                  <Link key={m.id} to={`/player/${m.slug}`} className="leader-mini">
+                    <PlayerAvatar player={m} size={30} />
+                    <span className="leader-id">
+                      <span className="leader-name">{m.name}</span>
+                      <span className="leader-meta">
+                        {m.positionName} · {leagueById.get(m.leagueId)?.short ?? ""}
+                      </span>
+                    </span>
+                    <span className="leader-pts">
+                      <span className="num strong">{careerTotals(m).pts}</span>
+                      <span className="leader-pts-lbl">PTS</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              {mates.length > 6 ? (
+                <p className="muted small mate-more">and {mates.length - 6} more from the same rosters</p>
+              ) : null}
+            </Card>
+          ) : null}
 
           {player.draft ? (
             <Card>
@@ -443,6 +491,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
 
 function StatsTab({ player }: { player: Player }) {
   const [scope, setScope] = useState<string>("all");
+  const [perGame, setPerGame] = useState<"total" | "game">("total");
   const league = leagueById.get(player.leagueId);
   const isGoal = player.position === "G";
   const isBox = league?.type === "box";
@@ -453,6 +502,8 @@ function StatsTab({ player }: { player: Player }) {
     .slice()
     .sort((a, b) => b.season.localeCompare(a.season));
   const totals = seasonTotals(rows);
+  // per-game view: counting stats divided by games played, two decimals
+  const val = (n: number, gp: number) => (perGame === "game" ? (n / Math.max(1, gp)).toFixed(2) : String(n));
 
   return (
     <Card padded={false}>
@@ -461,12 +512,54 @@ function StatsTab({ player }: { player: Player }) {
           <h3 className="card-title">Season by season</h3>
           <p className="muted small">Regular season · {rows.length} seasons</p>
         </div>
-        <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Filter league">
-          <option value="all">All competitions</option>
-          {leagues.map((l) => (
-            <option key={l} value={l}>{leagueById.get(l)?.name ?? l}</option>
-          ))}
-        </select>
+        <div className="head-controls">
+          <Segmented
+            size="sm"
+            ariaLabel="Total or per game"
+            value={perGame}
+            onChange={setPerGame}
+            options={[
+              { value: "total", label: "Totals" },
+              { value: "game", label: "Per game" },
+            ]}
+          />
+          <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Filter league">
+            <option value="all">All competitions</option>
+            {leagues.map((l) => (
+              <option key={l} value={l}>{leagueById.get(l)?.name ?? l}</option>
+            ))}
+          </select>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => {
+              // mirror exactly what the table shows for this league's stat set
+              const box = league?.type === "box";
+              const headers = box
+                ? ["Season", "Team", "League", "GP", "G", "A", "PTS", "PIM"]
+                : ["Season", "Team", "League", "GP", "GS", "G", "A", "PTS", "SH", "SH%", "GB", "TO", "CT", "FO%"];
+              downloadCsv(
+                `${player.slug}-${player.seasons[0]?.season ?? ""}-${player.seasons[player.seasons.length - 1]?.season ?? ""}.csv`,
+                headers,
+                rows.map((s) => [
+                  s.season,
+                  teamById.get(s.teamId)?.name ?? s.teamId,
+                  leagueById.get(s.leagueId)?.short ?? s.leagueId,
+                  s.gp,
+                  ...(box
+                    ? [s.g, s.a, s.pts ?? 0, s.pen]
+                    : [
+                        s.gs, s.g, s.a, s.pts ?? 0, s.sh,
+                        s.sh ? ((s.g / s.sh) * 100).toFixed(1) : "",
+                        s.gb, s.to, s.ct,
+                        s.foA ? (s.foW / s.foA).toFixed(3) : "",
+                      ]),
+                ])
+              );
+            }}
+          >
+            CSV
+          </button>
+        </div>
       </div>
       <div className="table-scroll">
         <table className="data-table stats-table">
@@ -553,21 +646,21 @@ function StatsTab({ player }: { player: Player }) {
                     )
                   ) : isBoxRow ? (
                     <>
-                      <td className="r num">{s.g}</td>
-                      <td className="r num">{s.a}</td>
-                      <td className="r num strong">{s.pts ?? 0}</td>
-                      <td className="r num">{s.pen}</td>
+                      <td className="r num">{val(s.g, s.gp)}</td>
+                      <td className="r num">{val(s.a, s.gp)}</td>
+                      <td className="r num strong">{val(s.pts ?? 0, s.gp)}</td>
+                      <td className="r num">{val(s.pen, s.gp)}</td>
                     </>
                   ) : (
                     <>
-                      <td className="r num">{s.g}</td>
-                      <td className="r num">{s.a}</td>
-                      <td className="r num strong">{s.pts ?? 0}</td>
-                      <td className="r num">{s.sh}</td>
+                      <td className="r num">{val(s.g, s.gp)}</td>
+                      <td className="r num">{val(s.a, s.gp)}</td>
+                      <td className="r num strong">{val(s.pts ?? 0, s.gp)}</td>
+                      <td className="r num">{val(s.sh, s.gp)}</td>
                       <td className="r num">{s.sh ? ((s.g / s.sh) * 100).toFixed(1) : "—"}</td>
-                      <td className="r num">{s.gb}</td>
-                      <td className="r num">{s.to}</td>
-                      <td className="r num">{s.ct}</td>
+                      <td className="r num">{val(s.gb, s.gp)}</td>
+                      <td className="r num">{val(s.to, s.gp)}</td>
+                      <td className="r num">{val(s.ct, s.gp)}</td>
                       <td className="r num">{s.foA ? (s.foW / s.foA).toFixed(3).replace(/^0/, "") : "—"}</td>
                     </>
                   )}
@@ -600,21 +693,21 @@ function StatsTab({ player }: { player: Player }) {
                 )
               ) : isBox ? (
                 <>
-                  <td className="r num strong">{totals.g}</td>
-                  <td className="r num strong">{totals.a}</td>
-                  <td className="r num strong">{totals.pts}</td>
-                  <td className="r num strong">{totals.pen}</td>
+                  <td className="r num strong">{val(totals.g, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.a, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.pts, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.pen, totals.gp)}</td>
                 </>
               ) : (
                 <>
-                  <td className="r num strong">{totals.g}</td>
-                  <td className="r num strong">{totals.a}</td>
-                  <td className="r num strong">{totals.pts}</td>
-                  <td className="r num strong">{totals.sh}</td>
+                  <td className="r num strong">{val(totals.g, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.a, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.pts, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.sh, totals.gp)}</td>
                   <td className="r num strong">{totals.sh ? ((totals.g / totals.sh) * 100).toFixed(1) : "—"}</td>
-                  <td className="r num strong">{totals.gb}</td>
-                  <td className="r num strong">{totals.to}</td>
-                  <td className="r num strong">{totals.ct}</td>
+                  <td className="r num strong">{val(totals.gb, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.to, totals.gp)}</td>
+                  <td className="r num strong">{val(totals.ct, totals.gp)}</td>
                   <td className="r num strong">{totals.fop ? totals.fop.toFixed(3).replace(/^0/, "") : "—"}</td>
                 </>
               )}

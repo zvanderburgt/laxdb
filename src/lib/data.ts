@@ -269,3 +269,92 @@ export function classYears(): number[] {
 export function statesList(): string[] {
   return [...new Set(data.players.map((p) => p.birthplace.state))].sort();
 }
+
+
+/* ------------------------------------------------------------------ *
+ * Derived views: teammates, recruiting origins, ratings
+ * All memoised once — the dataset is ~17k players, never recompute per render.
+ * ------------------------------------------------------------------ */
+
+let rosterIndex: Map<string, Player[]> | null = null;
+
+/** Built on first use — `data` is empty until loadDataset() resolves. */
+function rosterByTeamSeason() {
+  if (rosterIndex) return rosterIndex;
+  const byKey = new Map<string, Player[]>();
+  for (const p of data.players) {
+    for (const s of p.seasons) {
+      const key = `${s.teamId}|${s.season}`;
+      const arr = byKey.get(key);
+      if (arr) arr.push(p);
+      else byKey.set(key, [p]);
+    }
+  }
+  rosterIndex = byKey;
+  return byKey;
+}
+
+const teammateIndex = new Map<string, Player[]>();
+
+/** Everyone who shared a team-season with this player, best career first. */
+export function teammatesOf(player: Player): Player[] {
+  const cached = teammateIndex.get(player.id);
+  if (cached) return cached;
+  const seen = new Map<string, Player>();
+  const index = rosterByTeamSeason();
+  for (const s of player.seasons) {
+    for (const mate of index.get(`${s.teamId}|${s.season}`) ?? []) {
+      if (mate.id !== player.id && !seen.has(mate.id)) seen.set(mate.id, mate);
+    }
+  }
+  const list = [...seen.values()].sort((a, b) => careerTotals(b).pts - careerTotals(a).pts);
+  teammateIndex.set(player.id, list);
+  return list;
+}
+
+export type OriginRow = { label: string; count: number };
+
+const originCache = new Map<string, { schools: OriginRow[]; towns: OriginRow[] }>();
+
+/** Top high schools and hometowns feeding a set of players. */
+export function originsOf(players: Player[]) {
+  const schools = new Map<string, number>();
+  const towns = new Map<string, number>();
+  for (const p of players) {
+    const hs = (p.highSchool ?? "").trim();
+    if (hs) schools.set(hs, (schools.get(hs) ?? 0) + 1);
+    const town = [p.birthplace?.city, p.birthplace?.state].filter(Boolean).join(", ").trim();
+    if (town) towns.set(town, (towns.get(town) ?? 0) + 1);
+  }
+  const top = (m: Map<string, number>, n = 6): OriginRow[] =>
+    [...m.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+      .slice(0, n);
+  return { schools: top(schools), towns: top(towns) };
+}
+
+export function teamOrigins(teamId: string) {
+  const key = `team:${teamId}`;
+  if (!originCache.has(key)) originCache.set(key, originsOf(data.players.filter((p) => p.teamId === teamId)));
+  return originCache.get(key)!;
+}
+
+export function leagueOrigins(leagueId: string) {
+  const key = `league:${leagueId}`;
+  if (!originCache.has(key)) originCache.set(key, originsOf(data.players.filter((p) => p.leagueId === leagueId)));
+  return originCache.get(key)!;
+}
+
+/** Players from one high school or hometown, for the origins lists to link into search. */
+export function playersFromSchool(school: string) {
+  return data.players.filter((p) => p.highSchool === school).length;
+}
+
+export const ratedTeams = (leagueId: string) => {
+  const league = leagueById.get(leagueId);
+  if (!league?.ratings?.length) return [];
+  return league.ratings
+    .map((r) => ({ ...r, team: teamById.get(r.teamId) }))
+    .filter((r) => r.team);
+};

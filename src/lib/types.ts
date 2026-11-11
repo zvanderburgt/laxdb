@@ -30,6 +30,7 @@ export interface League {
   tier: number;
   strength: number;
   standings?: StandingRow[];
+  ratings?: { teamId: string; elo: number; sos: number; rank: number }[];
 }
 
 export interface Team {
@@ -44,6 +45,8 @@ export interface Team {
   conference: string;
   colors: [string, string];
   staff?: StaffMember[];
+  elo?: number;
+  sos?: number;
   record?: {
     w: number; l: number; t: number; pct: number; rank: number; teams: number;
     overallRank?: number; overallTeams?: number; group?: string;

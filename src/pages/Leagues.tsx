@@ -5,8 +5,10 @@ import {
   currentSeason,
   data,
   leagueById,
+  leagueOrigins,
   leaguePlayerCount,
   leagueTeams,
+  ratedTeams,
   teamById,
   teamOf,
 } from "../lib/data";
@@ -85,6 +87,58 @@ const STATS = [
   { value: "ct", label: "Caused TOs" },
   { value: "svp", label: "Save %" },
 ] as const;
+
+function RatingsCard({ league }: { league: League }) {
+  const rows = ratedTeams(league.id);
+  if (!rows.length) return null;
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Ratings</h3>
+          <p className="muted small">
+            Elo built from this season&apos;s final scores · SOS is the average opponent rating
+          </p>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="c">#</th>
+              <th>Team</th>
+              <th className="r">Elo</th>
+              <th className="r">SOS</th>
+              <th className="r">W–L</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.teamId}>
+                <td className="c num muted">{r.rank}</td>
+                <td>
+                  <Link to={`/team/${r.team?.slug}`} className="team-link">
+                    <span className="team-dot" style={{ background: r.team?.colors[0] }} />
+                    {r.team?.shortName}
+                  </Link>
+                </td>
+                <td className="r num strong">{r.elo}</td>
+                <td className="r num">{r.sos}</td>
+                <td className="r num">
+                  {r.team?.record ? `${r.team.record.w}–${r.team.record.l}` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-note">
+        Every team starts at 1500, so ratings describe this season only — they are not a
+        cross-era ranking.
+      </div>
+    </Card>
+  );
+}
 
 function StandingsCard({ league }: { league: League }) {
   const rows = (league.standings ?? []).slice();
@@ -204,6 +258,7 @@ export function LeaguePage() {
     .slice(0, 40);
 
   const teams = leagueTeams(league.id);
+  const origins = leagueOrigins(league.id);
   const totalGoals = data.players
     .filter((p) => p.leagueId === league.id)
     .reduce((n, p) => n + careerTotals(p).g, 0);
@@ -244,6 +299,7 @@ export function LeaguePage() {
 
       <div className="page">
         <StandingsCard league={league} />
+        <RatingsCard league={league} />
         <div className="leader-grid">
           <Card padded={false} className="leader-table">
             <div className="card-toolbar">
@@ -330,6 +386,35 @@ export function LeaguePage() {
                     </span>
                   </Link>
                 ))}
+              </div>
+            </Card>
+            <Card>
+              <div className="eyebrow">Where they come from</div>
+              <div className="origin-block">
+                <h5>High schools</h5>
+                <ul className="origin-list">
+                  {origins.schools.length ? (
+                    origins.schools.map((o) => (
+                      <li key={o.label}>
+                        <span>{o.label}</span>
+                        <span className="num muted">{o.count}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="muted">Not published for this league</li>
+                  )}
+                </ul>
+              </div>
+              <div className="origin-block">
+                <h5>Hometowns</h5>
+                <ul className="origin-list">
+                  {origins.towns.map((o) => (
+                    <li key={o.label}>
+                      <span>{o.label}</span>
+                      <span className="num muted">{o.count}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </Card>
             <Card>

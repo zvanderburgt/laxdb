@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, navigate, useCompare, useRoute, useTheme } from "../lib/app";
+import { useRoster } from "../lib/storage";
 import {
   data,
   playerById,
@@ -17,11 +18,13 @@ const NAV = [
   { to: "/teams", label: "Teams" },
   { to: "/leagues", label: "Leagues" },
   { to: "/compare", label: "Compare" },
+  { to: "/my-roster", label: "My roster" },
 ];
 
 export function Nav() {
   const route = useRoute();
   const { theme, toggle } = useTheme();
+  const roster = useRoster();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -64,6 +67,9 @@ export function Nav() {
                 className={`nav-link ${route.path.startsWith(n.to) ? "is-active" : ""}`}
               >
                 {n.label}
+                {n.to === "/my-roster" && roster.length ? (
+                  <span className="nav-count">{roster.length}</span>
+                ) : null}
               </Link>
             ))}
           </nav>

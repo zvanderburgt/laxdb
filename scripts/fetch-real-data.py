@@ -1127,7 +1127,7 @@ def standings_d1(teams):
     tally of those games. Games missing from ESPN mean an incomplete record, which
     is stated in the UI rather than hidden."""
     by_name = {norm_team(t["name"]): t["id"] for t in teams if t["leagueId"] == "ncaa-d1"}
-    rows, unmatched = {}, set()
+    rows, unmatched, games = {}, set(), []
     day = D1_SEASON_START
     while day <= D1_SEASON_END:
         try:
@@ -1143,11 +1143,21 @@ def standings_d1(teams):
             cs = comp.get("competitors") or []
             if len(cs) != 2:
                 continue
+            g_date = (ev.get("date") or "")[:10]
+            pair = []
             for me, opp in ((cs[0], cs[1]), (cs[1], cs[0])):
                 name = me.get("team", {}).get("displayName", "")
                 tid = by_name.get(norm_team(name))
                 if not tid:
+                    # opponents outside our roster set still need a rating, or the
+                    # Elo graph is missing most of its edges
                     unmatched.add(name)
+                    tid = "x-" + norm_team(name)
+                try:
+                    pair.append((tid, int(me.get("score", 0)), int(opp.get("score", 0)), g_date))
+                except Exception:
+                    continue
+                if tid.startswith("x-"):
                     continue
                 row = rows.setdefault(tid, {"teamId": tid, "w": 0, "l": 0, "t": 0,
                                             "gf": 0, "ga": 0, "confW": None, "confL": None,
@@ -1161,9 +1171,33 @@ def standings_d1(teams):
                     row["w"] += 1
                 else:
                     row["l"] += 1
+            if len(pair) == 2:
+                games.append((g_date, pair[0][0], pair[1][0], pair[0][1], pair[1][1]))
         day += timedelta(days=1)
-    print(f"  + D1: {len(rows)} teams from results ({len(unmatched)} ESPN names unmatched)")
+    print(f"  + D1: {len(rows)} teams from results ({len(unmatched)} ESPN names unmatched, {len(games)} games)")
+    rows["__games__"] = games
     return rows
+
+
+def compute_elo(games, k=24, start=1500):
+    """Chronological Elo over a season's results, plus strength of schedule.
+
+    Every team starts at 1500, so early-season ratings are noisy by definition —
+    the UI says "this season" rather than implying a historical rating."""
+    rating, opp_sum, cnt = {}, {}, {}
+    for _date, a, b, sa, sb in sorted(games, key=lambda g: g[0]):
+        ra, rb = rating.get(a, start), rating.get(b, start)
+        exp_a = 1 / (1 + 10 ** ((rb - ra) / 400))
+        score_a = 1.0 if sa > sb else 0.0
+        rating[a] = ra + k * (score_a - exp_a)
+        rating[b] = rb + k * ((1 - score_a) - (1 - exp_a))
+        for me, opp_rating in ((a, rb), (b, ra)):
+            opp_sum[me] = opp_sum.get(me, 0) + opp_rating
+            cnt[me] = cnt.get(me, 0) + 1
+    return {
+        t: {"elo": round(rating[t]), "sos": round(opp_sum[t] / cnt[t]), "games": cnt[t]}
+        for t in rating
+    }
 
 
 def staff_sidearm(teams):
@@ -1237,9 +1271,17 @@ def staff_mcla(teams):
 def attach_standings(leagues, teams):
     by_id = {t["id"]: t for t in teams}
     collected = {}
-    collected.update(standings_d1(teams))
+    d1_rows = standings_d1(teams)
+    d1_games = d1_rows.pop("__games__", [])
+    collected.update(d1_rows)
     collected.update(standings_mcla(teams))
     collected.update(standings_pll(teams))
+
+    ratings = compute_elo(d1_games)
+    for tid, r in ratings.items():
+        if tid in by_id:
+            by_id[tid]["elo"] = r["elo"]
+            by_id[tid]["sos"] = r["sos"]
 
     by_league = {}
     for tid, row in collected.items():
@@ -1275,6 +1317,17 @@ def attach_standings(leagues, teams):
             }
         lg["standings"] = rows
         print(f"  · {lg['short']}: standings for {len(rows)} teams")
+
+    for lg in leagues:
+        rated = [t for t in teams if t["leagueId"] == lg["id"] and t.get("elo")]
+        if not rated:
+            continue
+        rated.sort(key=lambda t: -t["elo"])
+        lg["ratings"] = [
+            {"teamId": t["id"], "elo": t["elo"], "sos": t.get("sos", 0), "rank": i}
+            for i, t in enumerate(rated, 1)
+        ]
+        print(f"  · {lg['short']}: Elo for {len(rated)} teams")
     return leagues
 
 
