@@ -23,10 +23,12 @@ const STATS = [
 ] as const;
 
 export default function Home() {
-  const featuredLeagues = useMemo(
-    () => data.leagues.filter((l) => data.players.some((p) => p.leagueId === l.id)).slice(0, 4),
-    []
-  );
+  const featuredLeagues = useMemo(() => {
+    const live = data.leagues.filter((l) => data.players.some((p) => p.leagueId === l.id));
+    const preferred = ["ncaa-d1", "pll", "nf-nll", "nf-ojcll"];
+    const picked = preferred.map((id) => live.find((l) => l.id === id)).filter(Boolean) as typeof live;
+    return [...picked, ...live.filter((l) => !preferred.includes(l.id))].slice(0, 4);
+  }, []);
   const [league, setLeague] = useState<string>(featuredLeagues[0]?.id ?? "ncaa-d1");
   const [stat, setStat] = useState<(typeof STATS)[number]["value"]>("pts");
   const [q, setQ] = useState("");
@@ -53,8 +55,9 @@ export default function Home() {
               {PLAYER_COUNT.toLocaleString()} players. <span className="shine">One profile.</span>
             </h1>
             <p className="hero-sub reveal">
-              Real stat lines from NCAA Division I, the MCLA and the Premier Lacrosse League,
-              2021–2026. Career histories, position-aware metrics, side-by-side comparison.
+              Field and box, from NCAA Division I, the MCLA and the PLL down through 16 Canadian
+              box leagues — Junior A, Junior B, Junior C, Senior and the NLL. Career histories,
+              position-aware metrics, side-by-side comparison.
             </p>
             <form
               className="hero-search reveal"
@@ -80,6 +83,8 @@ export default function Home() {
               <Link className="chip" to="/players?pos=G">Goalie leaders</Link>
               <Link className="chip" to="/players?pos=FO">Faceoff specialists</Link>
               <Link className="chip" to="/players?league=pll">PLL players</Link>
+              <Link className="chip" to="/players?league=nf-ojcll">Junior C</Link>
+              <Link className="chip" to="/players?league=nf-nll">NLL</Link>
             </div>
           </div>
 

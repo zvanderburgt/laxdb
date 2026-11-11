@@ -83,6 +83,20 @@ def title_name(raw):
     return s
 
 
+def smart_case(raw):
+    """'CONNOR O'TOOLE' -> 'Connor O'Toole'; fixes Mc/Mac prefixes too."""
+    s = (raw or "").strip()
+    if not s:
+        return s
+    letters = [c for c in s if c.isalpha()]
+    if letters and sum(1 for c in letters if c.isupper()) / len(letters) > 0.8:
+        s = s.title()
+    s = re.sub(r"\bMc([a-z])", lambda m: "Mc" + m.group(1).upper(), s)
+    s = re.sub(r"\bMac([a-z])", lambda m: "Mac" + m.group(1).upper(), s)
+    s = re.sub(r"(['\-])([a-z])", lambda m: m.group(1) + m.group(2).upper(), s)
+    return s
+
+
 def norm_name(raw):
     """'Johnson, Leo' -> 'leo johnson'; strips suffixes and punctuation."""
     s = title_name(raw)
@@ -758,6 +772,175 @@ def build_mcla(seasons=("2026", "2025")):
     return leagues, teams, players
 
 
+
+# --------------------------------------------------------------------------- #
+# Canadian box lacrosse pyramid (stats.netfrontsports.com)
+# Jr A / Jr B / Jr B tiers / Jr C / Senior A / Senior B / NLL — server-rendered
+# --------------------------------------------------------------------------- #
+NETFRONT_LEAGUES = [
+    # (slug, display name, short, level, tier)
+    ("nll", "National Lacrosse League", "NLL", "Professional", 1),
+    ("msl", "Major Series Lacrosse", "MSL", "Senior A", 1),
+    ("wla", "Western Lacrosse Association", "WLA", "Senior A", 1),
+    ("osl", "Ontario Series Lacrosse", "OSL", "Senior B", 2),
+    ("wcsla", "West Coast Senior Lacrosse Association", "WCSLA", "Senior B", 2),
+    ("rmll-senior-b", "RMLL Senior B", "RMLL Sr B", "Senior B", 2),
+    ("bcjall", "BC Junior A Lacrosse League", "BCJALL", "Junior A", 1),
+    ("ojll", "Ontario Junior Lacrosse League", "OJLL", "Junior A", 1),
+    ("rmll-junior-a", "RMLL Junior A", "RMLL Jr A", "Junior A", 1),
+    ("ojbll", "Ontario Junior B Lacrosse League", "OJBLL", "Junior B", 2),
+    ("pnwjll", "Pacific Northwest Junior Lacrosse League", "PNWJLL", "Junior B", 2),
+    ("tojll", "Tier II Ontario Junior Lacrosse League", "TOJLL", "Junior B", 2),
+    ("wcjll", "West Coast Junior Lacrosse League", "WCJLL", "Junior B", 2),
+    ("rmll-junior-b-tier-1", "RMLL Junior B Tier I", "RMLL Jr B T1", "Junior B", 2),
+    ("rmll-junior-b-tier-2", "RMLL Junior B Tier II", "RMLL Jr B T2", "Junior C", 3),
+    ("ojcll", "Ontario Junior C Lacrosse League", "OJCL", "Junior C", 3),
+]
+
+NETFRONT_MIN_SEASON = 2021
+NETFRONT_BASE = "https://stats.netfrontsports.com"
+
+LEVEL_STRENGTH = {
+    "Professional": 1.2, "Senior A": 1.05, "Senior B": 0.92,
+    "Junior A": 0.9, "Junior B": 0.8, "Junior C": 0.7,
+}
+
+
+def parse_netfront_team(html):
+    """-> (skater season rows, goalie season rows) from a NetFront team page."""
+    skaters, goalies = [], []
+    for tb in tables(html):
+        heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                 for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+        low = [h.lower() for h in heads]
+        if not ("season" in low and "phase" in low):
+            continue
+        is_goal = "goalie" in low
+        idx = {
+            "season": find_col(heads, "season"), "phase": find_col(heads, "phase"),
+            "name": find_col(heads, "player", "goalie"),
+            "gp": find_col(heads, "gp"), "g": find_col(heads, "g"), "a": find_col(heads, "a"),
+            "pts": find_col(heads, "pts"), "pim": find_col(heads, "pim"),
+            "w": find_col(heads, "w"), "l": find_col(heads, "l"),
+            "gaa": find_col(heads, "gaa"), "svp": find_col(heads, "sv%", "sv pct"),
+            "so": find_col(heads, "so"),
+        }
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+            c = cells(tr)
+            if idx["name"] is None or idx["name"] >= len(c):
+                continue
+            name = c[idx["name"]].strip()
+            if not name or norm_name(name) in DENY_NAMES:
+                continue
+            try:
+                season = int(str(c[idx["season"]]).strip()[:4])
+            except Exception:
+                continue
+            if season < NETFRONT_MIN_SEASON:
+                continue
+            if "post" in c[idx["phase"]].lower() or "playoff" in c[idx["phase"]].lower():
+                continue
+            row = {"season": str(season), "name": smart_case(title_name(name)),
+                   "gp": int(num(c[idx["gp"]])) if idx["gp"] is not None and idx["gp"] < len(c) else 0}
+            if is_goal:
+                row.update(
+                    w=int(num(c[idx["w"]])) if idx["w"] is not None and idx["w"] < len(c) else 0,
+                    l=int(num(c[idx["l"]])) if idx["l"] is not None and idx["l"] < len(c) else 0,
+                    gaa=num(c[idx["gaa"]]) if idx["gaa"] is not None and idx["gaa"] < len(c) else 0,
+                    svp=(num(c[idx["svp"]]) / 100 if idx["svp"] is not None and idx["svp"] < len(c) and num(c[idx["svp"]]) > 1
+                         else (num(c[idx["svp"]]) if idx["svp"] is not None and idx["svp"] < len(c) else 0)),
+                )
+                goalies.append(row)
+            else:
+                row.update(
+                    g=int(num(c[idx["g"]])) if idx["g"] is not None and idx["g"] < len(c) else 0,
+                    a=int(num(c[idx["a"]])) if idx["a"] is not None and idx["a"] < len(c) else 0,
+                    pts=int(num(c[idx["pts"]])) if idx["pts"] is not None and idx["pts"] < len(c) else 0,
+                    pim=int(num(c[idx["pim"]])) if idx["pim"] is not None and idx["pim"] < len(c) else 0,
+                )
+                row["pts"] = row["pts"] or row["g"] + row["a"]
+                skaters.append(row)
+    return skaters, goalies
+
+
+def build_netfront():
+    leagues, teams, players = [], [], []
+    for slug, name, short, level, tier in NETFRONT_LEAGUES:
+        lid = f"nf-{slug}"
+        try:
+            h = get(f"{NETFRONT_BASE}/league/{slug}/")
+        except Exception as e:
+            print(f"  ! {short}: league page {e}")
+            continue
+        team_links = sorted(set(re.findall(r'href="(https://stats\.netfrontsports\.com/team/[^"]+)"', h)))
+        if not team_links:
+            print(f"  x {short}: no teams")
+            continue
+        leagues.append({
+            "id": lid, "name": name, "short": short, "level": level, "type": "box",
+            "country": "CAN" if slug != "nll" else "USA/CAN", "tier": tier,
+            "strength": LEVEL_STRENGTH.get(level, 0.8),
+        })
+        n_players = 0
+        for link in team_links:
+            tslug = link.rstrip("/").split("/")[-1]
+            tid = f"t-{tslug}"
+            try:
+                th = get(link)
+            except Exception:
+                continue
+            skaters, goalies = parse_netfront_team(th)
+            if not skaters and not goalies:
+                continue
+            m = re.search(r"<title>([^<|]+)", th)
+            pretty = (m.group(1).strip() if m else tslug.replace("-", " ").title())
+            pretty = re.sub(r"\s+Lacrosse Stats.*$", "", pretty).strip()
+            teams.append({
+                "id": tid, "name": pretty, "shortName": pretty, "slug": tslug,
+                "leagueId": lid, "city": "", "cityName": "", "region": "",
+                "conference": name, "colors": list(mcla_colors(pretty)),
+            })
+            merged = {}
+            for row in skaters:
+                p = merged.setdefault((norm_name(row["name"]), "F"), {"name": row["name"], "position": "F", "seasons": []})
+                p["seasons"].append({
+                    "season": row["season"], "teamId": tid, "leagueId": lid, "type": "regular",
+                    "gp": row["gp"], "gs": row["gp"], "g": row["g"], "a": row["a"], "pts": row["pts"],
+                    "sh": 0, "gb": 0, "to": 0, "ct": 0, "foW": 0, "foA": 0, "pen": row["pim"],
+                    "min": 0, "ga": 0, "sv": 0, "w": 0, "l": 0,
+                })
+            for row in goalies:
+                p = merged.setdefault((norm_name(row["name"]), "G"), {"name": row["name"], "position": "G", "seasons": []})
+                p["position"] = "G"
+                p["seasons"].append({
+                    "season": row["season"], "teamId": tid, "leagueId": lid, "type": "regular",
+                    "gp": row["gp"], "gs": row["gp"], "g": 0, "a": 0, "pts": 0,
+                    "sh": 0, "gb": 0, "to": 0, "ct": 0, "foW": 0, "foA": 0, "pen": 0,
+                    "min": 0, "ga": 0, "sv": 0, "w": row["w"], "l": row["l"],
+                    "gaa": row["gaa"] or None, "svp": row["svp"] or None,
+                })
+            for key, p in merged.items():
+                pid = f"p-nf-{tslug}-{slugify(p['name'])}"
+                players.append({
+                    "id": pid, "slug": slugify(p["name"]), "firstName": p["name"].split(" ")[0],
+                    "lastName": " ".join(p["name"].split(" ")[1:]), "name": p["name"],
+                    "position": p["position"],
+                    "positionName": "Goalie" if p["position"] == "G" else "Runner",
+                    "hand": "", "heightIn": 0, "weightLb": 0, "dob": "",
+                    "birthplace": {"city": "", "state": "", "country": "CAN"},
+                    "classYear": None, "gradYear": 2026, "highSchool": "",
+                    "teamId": tid, "leagueId": lid, "jersey": 0, "status": "Active",
+                    "commit": None, "draft": None, "rankings": [], "awards": [],
+                    "scouting": {"report": "", "author": "", "date": "", "grades": {}},
+                    "bio": "", "strengths": [],
+                    "seasons": sorted(p["seasons"], key=lambda s: s["season"]),
+                    "games": [],
+                })
+                n_players += 1
+        print(f"  + {short:14s} {len(team_links):3d} teams, {n_players:5d} players")
+    return leagues, teams, players
+
+
 # --------------------------------------------------------------------------- #
 # Photos
 # --------------------------------------------------------------------------- #
@@ -819,6 +1002,12 @@ def main():
     teams.extend(mcla_teams)
     players.extend(mcla_players)
 
+    print("Box lacrosse pyramid (NetFront)…")
+    nf_leagues, nf_teams, nf_players = build_netfront()
+    leagues.extend(nf_leagues)
+    teams.extend(nf_teams)
+    players.extend(nf_players)
+
     print("PLL…")
     pll_teams, pll_players = fetch_pll_years([2021, 2022, 2023, 2024, 2025, 2026])
     if pll_players and PHOTOS:
@@ -863,12 +1052,14 @@ def main():
     dataset = {
         "meta": {
             "generated": date.today().isoformat(),
-            "dataset": "Real data — NCAA Division I (2026, 2025) and PLL (2023-2026)",
+            "dataset": "Real data — NCAA Division I, MCLA, PLL, and the Canadian box pyramid (Jr A to Sr A, NLL)",
             "season": "2026",
             "sources": [
                 "NCAA.com individual statistics (goaltending)",
                 "School athletics cumulative statistics and rosters (Sidearm)",
                 "Premier Lacrosse League stats API",
+                "MCLA team statistics (mcla.us)",
+                "Canadian box leagues incl. Jr A/B/C, Senior A/B and the NLL (stats.netfrontsports.com)",
             ],
         },
         "leagues": leagues,

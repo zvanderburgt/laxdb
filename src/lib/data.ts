@@ -113,11 +113,21 @@ export function careerTotals(p: Player) {
     min,
     foW,
     foA,
-    gaa: min ? (ga * 60) / min : 0,
-    svp: sv + ga ? sv / (sv + ga) : 0,
+    w: sum("w"),
+    l: sum("l"),
+    gaa: weightedRate(p.seasons, "gaa", min ? (ga * 60) / min : 0),
+    svp: weightedRate(p.seasons, "svp", sv + ga ? sv / (sv + ga) : 0),
     fop: foW + foA ? foW / (foW + foA) : 0,
     ppg: gp ? (g + a) / gp : 0,
   };
+}
+
+/** Box-league feeds publish GAA/SV% instead of raw minutes/saves. */
+function weightedRate(rows: { gp: number; gaa?: number | null; svp?: number | null }[], key: "gaa" | "svp", fallback: number) {
+  const published = rows.filter((s) => typeof s[key] === "number" && (s[key] as number) > 0);
+  if (!published.length) return fallback;
+  const weight = published.reduce((n, s) => n + Math.max(1, s.gp || 0), 0);
+  return published.reduce((n, s) => n + (s[key] as number) * Math.max(1, s.gp || 0), 0) / weight;
 }
 
 export function seasonTotals(rows: SeasonRow[]) {
@@ -139,11 +149,14 @@ export function seasonTotals(rows: SeasonRow[]) {
     ct: sum("ct"),
     foW: sum("foW"),
     foA: sum("foA"),
+    pen: sum("pen"),
     sv,
     ga,
     min,
-    gaa: min ? (ga * 60) / min : 0,
-    svp: sv + ga ? sv / (sv + ga) : 0,
+    w: sum("w"),
+    l: sum("l"),
+    gaa: weightedRate(rows, "gaa", min ? (ga * 60) / min : 0),
+    svp: weightedRate(rows, "svp", sv + ga ? sv / (sv + ga) : 0),
     fop: sum("foW") + sum("foA") ? sum("foW") / (sum("foW") + sum("foA")) : 0,
     ppg: gp ? (g + a) / gp : 0,
   };

@@ -20,8 +20,15 @@ export function LeaguesPage() {
       arr.push(l);
       map.set(l.level, arr);
     }
-    const order = ["College", "Professional", "Junior", "College Club", "High School", "International"];
-    return [...map.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+    const order = [
+      "College", "College Club", "Professional", "Senior A", "Senior B",
+      "Junior A", "Junior B", "Junior C", "High School", "International",
+    ];
+    const rank = (lvl: string) => {
+      const i = order.indexOf(lvl);
+      return i === -1 ? 99 : i;
+    };
+    return [...map.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
   }, []);
 
   return (
@@ -99,10 +106,14 @@ export function LeaguePage() {
     .map((p) => {
       const s = currentSeason(p);
       const val =
-        stat === "svp" ? (s.sv + s.ga > 0 ? s.sv / (s.sv + s.ga) : 0) : (s[stat] as number) || 0;
+        stat === "svp"
+          ? s.sv + s.ga > 0
+            ? s.sv / (s.sv + s.ga)
+            : s.svp || 0
+          : (s[stat] as number) || 0;
       return { p, s, val };
     })
-    .filter((r) => r.s.gp >= 3 && (stat === "svp" ? r.s.sv > 15 : true))
+    .filter((r) => r.s.gp >= 3 && (stat === "svp" ? r.s.sv > 15 || (r.s.svp || 0) > 0 : true))
     .sort((a, b) => b.val - a.val)
     .slice(0, 40);
 
@@ -135,7 +146,12 @@ export function LeaguePage() {
             <Stat label="Players" value={pool.length} tone="accent" />
             <Stat label="Teams" value={teams.length} />
             <Stat label="Career goals" value={totalGoals.toLocaleString()} />
-            <Stat label="Seasons" value={`2022–${data.meta.season}`} />
+            <Stat
+              label="Seasons"
+              value={`${(
+                pool.flatMap((pl) => pl.seasons.map((s) => s.season)).sort()[0] ?? data.meta.season
+              ).slice(2)}–${data.meta.season.slice(2)}`}
+            />
           </div>
         </div>
       </div>
@@ -236,7 +252,7 @@ export function LeaguePage() {
                 .sort((a, b) => {
                   const sv = (x: typeof a) => {
                     const s = currentSeason(x);
-                    return s.sv + s.ga ? s.sv / (s.sv + s.ga) : 0;
+                    return s.sv + s.ga ? s.sv / (s.sv + s.ga) : s.svp || 0;
                   };
                   return sv(b) - sv(a);
                 })

@@ -46,6 +46,9 @@ export interface SeasonRow {
   sv: number;
   w: number;
   l: number;
+  /** published rates from the source, used when raw counts aren't available */
+  gaa?: number | null;
+  svp?: number | null;
 }
 
 export interface GameRow {

@@ -33,8 +33,10 @@ GitHub Pages, or any static host. No server, no keys.
 
 Product details:
 
-- **Position-aware columns.** Skaters show GP, G, A, PTS, SH, SH%, GB, TO, CT, FO%. Goalies swap to
-  MIN, GA, GAA, SV, SV%, W–L. Box competitions would show loose balls instead of GB/TO.
+- **Sport-aware columns.** Field skaters show GP, G, A, PTS, SH, SH%, GB, TO, CT, FO%; field goalies
+  swap to MIN, GA, GAA, SV, SV%, W–L. Box leagues show GP, G, A, PTS, PIM and, for goalies, W–L, GAA,
+  SV% — the columns their feeds actually publish (no goals-against or minutes are available, so the
+  site reads the published rates instead of computing zeros).
 - **Command palette** (⌘K / Ctrl+K) across players, teams and leagues.
 - **Compare tray** persists in `localStorage` and follows you between pages.
 - **Deep links**: filters and comparisons live in the URL hash.
@@ -43,8 +45,8 @@ Product details:
 
 ## The data
 
-**~10,000 real players, 200+ teams, ~12,000 player-seasons, 2021–2026.** No invented names or
-synthetic stat lines anywhere in the dataset.
+**17,269 real players, 427 teams, 19 competitions, 22,280 player-seasons, 2021–2026.** No invented
+names or synthetic stat lines anywhere in the dataset.
 
 | Source | What it gives | Notes |
 | --- | --- | --- |
@@ -52,10 +54,12 @@ synthetic stat lines anywhere in the dataset.
 | NCAA.com individual statistic pages | Goaltending: minutes, goals allowed, saves, save %, GAA | School pages omit the goalie table |
 | Premier Lacrosse League stats API | Per-season pro lines 2021–2026, jersey, position, experience, headshots | `stats.premierlacrosseleague.com/api/v4/players/season-stats` |
 | MCLA (mcla.us) | College club: full skater + goalie tables per team, 2025–2026 | 172 teams, 9 conferences; positions come from the stat table's prefix |
+| stats.netfrontsports.com | Canadian box pyramid: season-by-season skater and goalie tables per team, plus career aggregates | 16 leagues, 221 teams, 7,423 players — NLL, MSL, WLA, OSL, WCSLA, RMLL Sr B, BCJALL, OJLL, RMLL Jr A, OJBLL, PNWJLL, TOJLL, WCJLL, RMLL Jr B Tier I and Tier II, **OJCL (Junior C)**; 2021–2026 |
 
 Coverage gaps, stated plainly:
 
-- **NCAA D1 only** — no D2/D3, MCLA, prep or international yet.
+- **No NCAA D2/D3, prep or international yet** — the tiers below D1 are covered by MCLA and the
+  Canadian box pyramid, not by D2/D3 field programs. See `docs/deferred-sources.md`.
 - 25 of 30 attempted D1 programs; Virginia, Notre Dame, Penn State, Princeton and Harvard publish
   stats behind different URL patterns that weren't mapped.
 - Goalies are matched from NCAA leaderboards, so only goalies who qualified appear (44 of them).

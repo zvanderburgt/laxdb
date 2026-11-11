@@ -1,0 +1,65 @@
+# Deferred data sources
+
+Sources we deliberately skipped. Each entry records what failed, what was tried, and
+what would unblock it — so a future pass doesn't re-run the same dead ends.
+
+Last reviewed: 2026-11-11
+
+---
+
+## GameSheet (gamesheetstats.com)
+
+**Status:** not used. Blocked from this host by a Cloudflare Turnstile interstitial
+(`🐴 Just a moment…`), both over plain HTTP and in a real headless Chromium session.
+
+**Why it mattered:** GameSheet hosts several Canadian junior and minor box leagues.
+
+**Why it is not a blocker right now:** stats.netfrontsports.com carries the same
+ladder — BCJALL, OJLL, OJBLL, **OJCL (Junior C)**, PNWJLL, TOJLL, WCJLL, RMLL Jr A/B
+Tier I & II, Senior A/B, and the NLL — in plain server-rendered HTML. The GameSheet
+data we wanted is already in the dataset under different league IDs.
+
+**If a league turns out to be GameSheet-only, the options are:**
+- A residential/mobile proxy with a stealth browser profile (fragile, likely ToS
+  violation; only worth it for a league with real demand).
+- Manual export: open the league in Firefox, save the players page, hand the HTML over.
+- Ask the league for a data feed — junior leagues are usually happy to share.
+
+---
+
+## NCAA Division II and III full rosters
+
+**Status:** not used beyond leaderboards.
+
+**What works:** `ncaa.com/stats/lacrosse-men/d2|d3/current/individual/<cat>` — top 50
+per category per division. No rosters, no per-player season history.
+
+**Blocker:** full rosters live on ~250 individual school sites, each on Sidearm or a
+bespoke platform with its own URL pattern. D1 worked because those domains are known;
+D2/D3 needs a school → athletics-domain map built and validated first.
+
+**Unblock plan:** assemble the domain list (Wikipedia infobox athletics sites, then
+validate each by fetching `/sports/mens-lacrosse/stats/<year>`), then reuse the D1
+Sidearm parser unchanged. Estimated +12k players.
+
+---
+
+## Canadian leagues on the Digitalshift platform
+
+**Status:** superseded. `web.api.digitalshift.ca` serves Angular templates rather than
+data; the numeric endpoints are internal and the A–Z player index renders no clickable
+elements. Not worth further work while NetFront covers these leagues.
+
+---
+
+## NLL via nllstatsapp.aordev.com
+
+**Status:** superseded. The NLL is imported through NetFront (`nf-nll`, 40 teams
+including historical franchises) with season and career tables.
+
+---
+
+## Women's lacrosse
+
+**Status:** not covered. NCAA women's stats follow the same school-site pattern as the
+men's game; the same parser should work with `/sports/wlax/`. Unverified.

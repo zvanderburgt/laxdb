@@ -55,6 +55,9 @@ function Profile({ player }: { player: Player }) {
   const league = leagueById.get(player.leagueId);
   const cur = currentSeason(player);
   const career = careerTotals(player);
+  // box feeds publish rates instead of raw minutes/saves
+  const svPct = cur.sv + cur.ga ? cur.sv / (cur.sv + cur.ga) : (cur.svp || 0);
+  const gaaVal = cur.min ? (cur.ga * 60) / cur.min : (cur.gaa || 0);
   const isGoal = player.position === "G";
   const isBox = league?.type === "box";
 
@@ -138,16 +141,33 @@ function Profile({ player }: { player: Player }) {
               <div className="stat-group-grid">
                 {isGoal ? (
                   <>
-                    <Stat label="Save %" value={cur.sv + cur.ga ? (cur.sv / (cur.sv + cur.ga)).toFixed(3).replace(/^0/, "") : "—"} sub={`${cur.sv} saves`} tone="accent" />
-                    <Stat label="GAA" value={cur.min ? ((cur.ga * 60) / cur.min).toFixed(2) : "—"} sub={`${cur.min} min`} />
-                    <Stat label="Record" value={`${cur.w}–${cur.l}`} sub={`${cur.gp} games`} />
-                    <Stat label="Shots faced" value={cur.sv + cur.ga} sub={`${((cur.sv + cur.ga) / Math.max(1, cur.gp)).toFixed(1)} per game`} />
+                    <Stat
+                      label="Save %"
+                      value={svPct ? svPct.toFixed(3).replace(/^0/, "") : "—"}
+                      sub={cur.sv ? `${cur.sv} saves` : `${cur.gp} games`}
+                      tone="accent"
+                    />
+                    <Stat label="GAA" value={gaaVal ? gaaVal.toFixed(2) : "—"} sub={cur.min ? `${cur.min} min` : "goals-against avg."} />
+                    <Stat
+                      label={cur.w + cur.l ? "Record" : "Games"}
+                      value={cur.w + cur.l ? `${cur.w}–${cur.l}` : cur.gp}
+                      sub={`${cur.gp} games`}
+                    />
+                    {isBox ? (
+                      <Stat label="Career wins" value={career.w ?? 0} sub={`${career.gp} games`} />
+                    ) : (
+                      <Stat label="Shots faced" value={cur.sv + cur.ga} sub={`${((cur.sv + cur.ga) / Math.max(1, cur.gp)).toFixed(1)} per game`} />
+                    )}
                   </>
                 ) : (
                   <>
                     <Stat label="Points" value={cur.pts ?? 0} sub={`${cur.g}G · ${cur.a}A`} tone="accent" />
                     <Stat label="Points / game" value={(cur.gp ? ((cur.pts ?? 0) / cur.gp) : 0).toFixed(2)} sub={`${cur.gp} games`} />
-                    <Stat label={isBox ? "Loose balls" : "Ground balls"} value={cur.gb} sub={`${(cur.gb / Math.max(1, cur.gp)).toFixed(1)} per game`} />
+                    {isBox ? (
+                      <Stat label="Penalty minutes" value={cur.pen} sub={`${(cur.pen / Math.max(1, cur.gp)).toFixed(1)} per game`} />
+                    ) : (
+                      <Stat label="Ground balls" value={cur.gb} sub={`${(cur.gb / Math.max(1, cur.gp)).toFixed(1)} per game`} />
+                    )}
                     {player.position === "FO" ? (
                       <Stat label="Faceoff %" value={cur.foA ? (cur.foW / cur.foA).toFixed(3).replace(/^0/, "") : "—"} sub={`${cur.foW}–${cur.foA}`} />
                     ) : (
@@ -458,13 +478,29 @@ function StatsTab({ player }: { player: Player }) {
               <th className="r">GP</th>
               <th className="r">GS</th>
               {isGoal ? (
+                isBox ? (
+                  <>
+                    <th className="r">W</th>
+                    <th className="r">L</th>
+                    <th className="r">GAA</th>
+                    <th className="r">SV%</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="r">MIN</th>
+                    <th className="r">GA</th>
+                    <th className="r">GAA</th>
+                    <th className="r">SV</th>
+                    <th className="r">SV%</th>
+                    <th className="r">W–L</th>
+                  </>
+                )
+              ) : isBox ? (
                 <>
-                  <th className="r">MIN</th>
-                  <th className="r">GA</th>
-                  <th className="r">GAA</th>
-                  <th className="r">SV</th>
-                  <th className="r">SV%</th>
-                  <th className="r">W–L</th>
+                  <th className="r">G</th>
+                  <th className="r">AST</th>
+                  <th className="r">PTS</th>
+                  <th className="r">PIM</th>
                 </>
               ) : (
                 <>
@@ -473,8 +509,8 @@ function StatsTab({ player }: { player: Player }) {
                   <th className="r">PTS</th>
                   <th className="r">SH</th>
                   <th className="r">SH%</th>
-                  <th className="r">{isBox ? "LB" : "GB"}</th>
-                  {!isBox ? <th className="r">TO</th> : null}
+                  <th className="r">GB</th>
+                  <th className="r">TO</th>
                   <th className="r">CT</th>
                   <th className="r">FO%</th>
                 </>
@@ -498,13 +534,29 @@ function StatsTab({ player }: { player: Player }) {
                   <td className="r num">{s.gp}</td>
                   <td className="r num">{s.gs}</td>
                   {isGoal ? (
+                    isBoxRow ? (
+                      <>
+                        <td className="r num">{s.w}</td>
+                        <td className="r num">{s.l}</td>
+                        <td className="r num">{s.gaa ? s.gaa.toFixed(2) : "—"}</td>
+                        <td className="r num">{s.svp ? s.svp.toFixed(3).replace(/^0/, "") : "—"}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="r num">{s.min}</td>
+                        <td className="r num">{s.ga}</td>
+                        <td className="r num">{s.min ? ((s.ga * 60) / s.min).toFixed(2) : "—"}</td>
+                        <td className="r num">{s.sv}</td>
+                        <td className="r num">{s.sv + s.ga ? (s.sv / (s.sv + s.ga)).toFixed(3).replace(/^0/, "") : "—"}</td>
+                        <td className="r num">{s.w}–{s.l}</td>
+                      </>
+                    )
+                  ) : isBoxRow ? (
                     <>
-                      <td className="r num">{s.min}</td>
-                      <td className="r num">{s.ga}</td>
-                      <td className="r num">{s.min ? ((s.ga * 60) / s.min).toFixed(2) : "—"}</td>
-                      <td className="r num">{s.sv}</td>
-                      <td className="r num">{s.sv + s.ga ? (s.sv / (s.sv + s.ga)).toFixed(3).replace(/^0/, "") : "—"}</td>
-                      <td className="r num">{s.w}–{s.l}</td>
+                      <td className="r num">{s.g}</td>
+                      <td className="r num">{s.a}</td>
+                      <td className="r num strong">{s.pts ?? 0}</td>
+                      <td className="r num">{s.pen}</td>
                     </>
                   ) : (
                     <>
@@ -514,12 +566,11 @@ function StatsTab({ player }: { player: Player }) {
                       <td className="r num">{s.sh}</td>
                       <td className="r num">{s.sh ? ((s.g / s.sh) * 100).toFixed(1) : "—"}</td>
                       <td className="r num">{s.gb}</td>
-                      {!isBox ? <td className="r num">{s.to}</td> : null}
+                      <td className="r num">{s.to}</td>
                       <td className="r num">{s.ct}</td>
                       <td className="r num">{s.foA ? (s.foW / s.foA).toFixed(3).replace(/^0/, "") : "—"}</td>
                     </>
                   )}
-                  {isBoxRow ? null : null}
                 </tr>
               );
             })}
@@ -530,13 +581,29 @@ function StatsTab({ player }: { player: Player }) {
               <td className="r num strong">{totals.gp}</td>
               <td className="r num strong">{rows.reduce((n, s) => n + s.gs, 0)}</td>
               {isGoal ? (
+                isBox ? (
+                  <>
+                    <td className="r num strong">{totals.w}</td>
+                    <td className="r num strong">{totals.l}</td>
+                    <td className="r num strong">{totals.gaa ? totals.gaa.toFixed(2) : "—"}</td>
+                    <td className="r num strong">{totals.svp ? totals.svp.toFixed(3).replace(/^0/, "") : "—"}</td>
+                  </>
+                ) : (
+                  <>
+                    <td className="r num strong">{totals.min}</td>
+                    <td className="r num strong">{totals.ga}</td>
+                    <td className="r num strong">{totals.gaa.toFixed(2)}</td>
+                    <td className="r num strong">{totals.sv}</td>
+                    <td className="r num strong">{totals.svp.toFixed(3).replace(/^0/, "")}</td>
+                    <td className="r num strong">{totals.w}–{totals.l}</td>
+                  </>
+                )
+              ) : isBox ? (
                 <>
-                  <td className="r num strong">{totals.min}</td>
-                  <td className="r num strong">{totals.ga}</td>
-                  <td className="r num strong">{totals.gaa.toFixed(2)}</td>
-                  <td className="r num strong">{totals.sv}</td>
-                  <td className="r num strong">{totals.svp.toFixed(3).replace(/^0/, "")}</td>
-                  <td className="r num strong">{rows.reduce((n, s) => n + s.w, 0)}–{rows.reduce((n, s) => n + s.l, 0)}</td>
+                  <td className="r num strong">{totals.g}</td>
+                  <td className="r num strong">{totals.a}</td>
+                  <td className="r num strong">{totals.pts}</td>
+                  <td className="r num strong">{totals.pen}</td>
                 </>
               ) : (
                 <>
@@ -546,7 +613,7 @@ function StatsTab({ player }: { player: Player }) {
                   <td className="r num strong">{totals.sh}</td>
                   <td className="r num strong">{totals.sh ? ((totals.g / totals.sh) * 100).toFixed(1) : "—"}</td>
                   <td className="r num strong">{totals.gb}</td>
-                  {!isBox ? <td className="r num strong">{totals.to}</td> : null}
+                  <td className="r num strong">{totals.to}</td>
                   <td className="r num strong">{totals.ct}</td>
                   <td className="r num strong">{totals.fop ? totals.fop.toFixed(3).replace(/^0/, "") : "—"}</td>
                 </>
