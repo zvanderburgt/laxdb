@@ -13,7 +13,7 @@ Output: src/data/dataset.json  (same schema the app already consumes)
 Usage:  python3 scripts/fetch-real-data.py [--no-photos]
 """
 import hashlib, json, re, sys, time, unicodedata, urllib.request, urllib.error, os
-from datetime import date
+from datetime import date, timedelta
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
@@ -990,6 +990,294 @@ def build_netfront():
     return leagues, teams, players
 
 
+
+# --------------------------------------------------------------------------- #
+# Standings and support staff
+# --------------------------------------------------------------------------- #
+ESPN_LACROSSE = "https://site.api.espn.com/apis/site/v2/sports/lacrosse/mens-college-lacrosse/scoreboard?dates="
+D1_SEASON_START = date(2026, 2, 1)
+D1_SEASON_END = date(2026, 5, 31)
+
+
+def norm_team(raw):
+    return re.sub(r"[^a-z0-9]", "", (raw or "").lower())
+
+
+def win_pct(w, l, t=0):
+    n = w + l + t
+    return round((w + 0.5 * t) / n, 3) if n else 0.0
+
+
+def standings_pll(teams):
+    """PLL publishes a full standings payload behind the stats API."""
+    by_slug = {t["slug"].replace("pll-", ""): t["id"] for t in teams if t["leagueId"] == "pll"}
+    rows = {}
+    for year in ("2026",):
+        url = (f"https://stats.premierlacrosseleague.com/api/v4/standings"
+               f"?year={year}&seasonSegment=regular")
+        try:
+            raw = get(url, headers=PLL_HEADERS)
+            items = json.loads(raw).get("data", {}).get("items", [])
+        except Exception as e:
+            print(f"  ! PLL standings: {e}")
+            continue
+        for it in items:
+            slug = slugify(it.get("fullName") or "")
+            tid = by_slug.get(slug)
+            if not tid:
+                continue
+            rows[tid] = {
+                "teamId": tid, "w": it.get("wins", 0), "l": it.get("losses", 0),
+                "t": it.get("ties", 0), "gf": it.get("scores", 0), "ga": it.get("scoresAgainst", 0),
+                "confW": it.get("conferenceWins"), "confL": it.get("conferenceLosses"),
+                "group": "League",
+            }
+    print(f"  + PLL: {len(rows)} teams")
+    return rows
+
+
+MCLA_CONFERENCES = {
+    "alc": "ALC", "clc": "CLC", "lsa": "LSA", "pncll": "PNCLL", "rmlc": "RMLC",
+    "selc": "SELC", "slc": "SLC", "umlc": "UMLC", "wcll": "WCLL",
+}
+MCLA_ACRONYMS = {"ALC", "CLC", "LSA", "PNCLL", "RMLC", "SELC", "SLC", "UMLC", "WCLL", "D1", "D2", "D3"}
+
+
+def clean_group(conf, raw):
+    """'UMLC EAST' / 'DI' / 'Atlantic Lacrosse Conference Division I' -> 'ALC Division I'."""
+    words = re.sub(r"[^A-Za-z0-9]+", " ", raw or "").split()
+    up = [w.upper() for w in words]
+    div = None
+    for key, label in (
+        (("DI", "D1", "DIVISION", "I"), "Division I"),
+        (("DII", "D2"), "Division II"),
+        (("DIII", "D3"), "Division III"),
+    ):
+        if any(w in key for w in up):
+            if key[0] == "DIVISION":
+                if "III" in up or "3" in up:
+                    div = "Division III"
+                elif "II" in up or "2" in up:
+                    div = "Division II"
+                else:
+                    div = "Division I"
+            else:
+                div = label
+            break
+    region = next((w for w in ("Northwest", "North", "South", "East", "West", "Central")
+                   if w.upper() in up), None)
+    label = " ".join(x for x in (div, region) if x)
+    return f"{conf} {label}".strip() if label else conf
+
+
+def _wl(cell, div=False):
+    """'7 - 0' -> (7, 0)."""
+    nums = re.findall(r"\d+", cell or "")
+    if len(nums) >= 2:
+        return int(nums[0]), int(nums[1])
+    return (int(nums[0]), 0) if nums else (0, 0)
+
+
+def standings_mcla(teams):
+    """mcla.us prints one table per conference (or two divisions side by side)."""
+    by_slug = {t["slug"].replace("mcla-", ""): t["id"] for t in teams if t["leagueId"] == "mcla"}
+    rows = {}
+    pages = []
+    for slug, short in MCLA_CONFERENCES.items():
+        try:
+            pages.append((short, get(f"https://mcla.us/standings/conference/{slug}")))
+        except Exception as e:
+            print(f"  ! MCLA {slug}: {e}")
+    for conf, h in pages:
+        for tb in tables(h):
+            heads = [re.sub(r"\\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                     for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+            groups = [x for x in heads if x.upper() not in ("#", "DIV", "ALL", "GF", "GA")]
+            for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+                c = cells(tr)
+                if len(c) < 6:
+                    continue
+                href = re.search(r'href="/teams/([^/"]+)/', tr)
+                if not href:
+                    continue
+                tid = by_slug.get(href.group(1))
+                if not tid:
+                    continue
+                blocks = [(c[:6], groups[0] if groups else "")]
+                if len(c) >= 11:
+                    blocks.append((c[6:12], groups[1] if len(groups) > 1 else ""))
+                for blk, group in blocks:
+                    if len(blk) < 6:
+                        continue
+                    conf_w, conf_l = _wl(blk[2])
+                    w, l = _wl(blk[3])
+                    rows[tid] = {
+                        "teamId": tid, "w": w, "l": l, "t": 0,
+                        "gf": int(num(blk[4], int)), "ga": int(num(blk[5], int)),
+                        "confW": conf_w, "confL": conf_l, "group": clean_group(conf, group),
+                    }
+    print(f"  + MCLA: {len(rows)} teams")
+    return rows
+
+
+def standings_d1(teams):
+    """D1 publishes no table we can read, so the record comes from results.
+
+    ESPN's scoreboard carries every final for the season; a team's record is the
+    tally of those games. Games missing from ESPN mean an incomplete record, which
+    is stated in the UI rather than hidden."""
+    by_name = {norm_team(t["name"]): t["id"] for t in teams if t["leagueId"] == "ncaa-d1"}
+    rows, unmatched = {}, set()
+    day = D1_SEASON_START
+    while day <= D1_SEASON_END:
+        try:
+            raw = get(ESPN_LACROSSE + day.strftime("%Y%m%d"))
+            payload = json.loads(raw) if raw.strip().startswith("{") else {}
+        except Exception:
+            day += timedelta(days=1)
+            continue
+        for ev in payload.get("events", []):
+            comp = (ev.get("competitions") or [{}])[0]
+            if comp.get("status", {}).get("type", {}).get("name") != "STATUS_FINAL":
+                continue
+            cs = comp.get("competitors") or []
+            if len(cs) != 2:
+                continue
+            for me, opp in ((cs[0], cs[1]), (cs[1], cs[0])):
+                name = me.get("team", {}).get("displayName", "")
+                tid = by_name.get(norm_team(name))
+                if not tid:
+                    unmatched.add(name)
+                    continue
+                row = rows.setdefault(tid, {"teamId": tid, "w": 0, "l": 0, "t": 0,
+                                            "gf": 0, "ga": 0, "confW": None, "confL": None,
+                                            "group": "Division I"})
+                try:
+                    row["gf"] += int(me.get("score", 0))
+                    row["ga"] += int(opp.get("score", 0))
+                except Exception:
+                    pass
+                if me.get("winner"):
+                    row["w"] += 1
+                else:
+                    row["l"] += 1
+        day += timedelta(days=1)
+    print(f"  + D1: {len(rows)} teams from results ({len(unmatched)} ESPN names unmatched)")
+    return rows
+
+
+def staff_sidearm(teams):
+    """Coaches tables on the school sites: name, title, email, phone."""
+    domain = {name: dom for name, dom, *_ in SCHOOLS}
+    found = 0
+    for t in teams:
+        if t["leagueId"] != "ncaa-d1":
+            continue
+        dom = domain.get(t["name"])
+        if not dom:
+            continue
+        try:
+            h = get(f"https://{dom}/sports/mens-lacrosse/coaches")
+        except Exception:
+            continue
+        staff = []
+        ROLE_WORDS = ("coach", "coordinator", "director", "manager", "trainer",
+                      "assistant", "operations", "communications", "analyst", "advisor")
+        for tb in tables(h):
+            heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip().lower()
+                     for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)]
+            if "name" not in heads and "title" not in heads:
+                continue
+            for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+                ths = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                       for x in re.findall(r"<th[^>]*>(.*?)</th>", tr, re.S)]
+                if any(t.lower() in ("name", "title") for t in ths):
+                    continue                      # column header row
+                tds = cells(tr)
+                if not tds:
+                    continue
+                role = next((t for t in tds if any(w in t.lower() for w in ROLE_WORDS)), "")
+                name = ths[0] if ths else ""
+                if not name:
+                    cands = [t for t in tds if t and "@" not in t
+                             and not re.search(r"\d{3}", t)
+                             and not any(w in t.lower() for w in ROLE_WORDS)]
+                    name = cands[0] if cands else ""
+                if not name or not role:
+                    continue
+                staff.append({"name": name, "role": role})
+        if staff:
+            t["staff"] = staff
+            found += 1
+    print(f"  + staff (school sites): {found} teams")
+    return found
+
+
+def staff_mcla(teams):
+    """MCLA team pages carry the head coach in the header card."""
+    found = 0
+    for t in teams:
+        if t["leagueId"] != "mcla":
+            continue
+        slug = t["slug"].replace("mcla-", "")
+        try:
+            h = get(f"https://mcla.us/teams/{slug}/2026")
+        except Exception:
+            continue
+        pairs = re.findall(r'<p class="label">([^<]+)</p>\s*<p class="value">([^<]*)</p>', h)
+        staff = [{"name": v.strip(), "role": k.strip()} for k, v in pairs
+                 if k.strip().lower() in ("head coach", "assistant coach", "coach")]
+        if staff:
+            t["staff"] = staff
+            found += 1
+    print(f"  + staff (MCLA): {found} teams")
+    return found
+
+
+def attach_standings(leagues, teams):
+    by_id = {t["id"]: t for t in teams}
+    collected = {}
+    collected.update(standings_d1(teams))
+    collected.update(standings_mcla(teams))
+    collected.update(standings_pll(teams))
+
+    by_league = {}
+    for tid, row in collected.items():
+        t = by_id.get(tid)
+        if not t:
+            continue
+        by_league.setdefault(t["leagueId"], []).append(row)
+
+    for lg in leagues:
+        rows = by_league.get(lg["id"])
+        if not rows:
+            continue
+        rows.sort(key=lambda r: (-win_pct(r["w"], r["l"], r["t"]), -r["w"], r["ga"] - r["gf"]))
+        groups = {r.get("group", "") for r in rows}
+        bidx = {}
+        for i, row in enumerate(rows, 1):
+            row["rank"] = i
+            row["pct"] = win_pct(row["w"], row["l"], row["t"])
+            g = row.get("group", "")
+            bidx[g] = bidx.get(g, 0) + 1
+            row["groupRank"] = bidx[g]
+        size = {g: n for g, n in bidx.items()}
+        for row in rows:
+            g = row.get("group", "")
+            t = by_id[row["teamId"]]
+            t["record"] = {
+                "w": row["w"], "l": row["l"], "t": row["t"], "pct": row["pct"],
+                # inside a conference, the conference place is the one that means something
+                "rank": row["groupRank"] if len(groups) > 1 else row["rank"],
+                "teams": size.get(g, len(rows)) if len(groups) > 1 else len(rows),
+                "overallRank": row["rank"], "overallTeams": len(rows),
+                "group": g,
+            }
+        lg["standings"] = rows
+        print(f"  · {lg['short']}: standings for {len(rows)} teams")
+    return leagues
+
+
 # --------------------------------------------------------------------------- #
 # Photos
 # --------------------------------------------------------------------------- #
@@ -1081,6 +1369,13 @@ def main():
         if t["leagueId"] == "ncaa-d1" and ("," in t["city"]):
             city, _, region = t["city"].partition(",")
             t["cityName"], t["region"] = city.strip(), region.strip()
+
+    print("Standings…")
+    attach_standings(leagues, teams)
+
+    print("Support staff…")
+    staff_sidearm(teams)
+    staff_mcla(teams)
 
     used_teams = {p["teamId"] for p in players}
     teams = [t for t in teams if t["id"] in used_teams]

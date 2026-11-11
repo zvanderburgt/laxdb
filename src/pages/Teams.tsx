@@ -145,6 +145,18 @@ export function TeamPage() {
                 <Link to={`/league/${team.leagueId}`}>{league?.name}</Link>
               </div>
               <div className="profile-meta">
+                {team.record ? (
+                  <span>
+                    <b>{team.record.w}–{team.record.l}</b> record
+                    {team.record.rank ? (
+                      <>
+                        {" · "}
+                        <b>#{team.record.rank}</b> of {team.record.teams}
+                        {team.record.group && team.record.overallRank ? ` in ${team.record.group}` : ""}
+                      </>
+                    ) : null}
+                  </span>
+                ) : null}
                 <span><b>{roster.length}</b> players tracked</span>
                 <span><b>{roster.reduce((n, p) => n + p.seasons.length, 0)}</b> player-seasons</span>
                 <span><b>{roster.reduce((n, p) => n + careerTotals(p).pts, 0).toLocaleString()}</b> career points</span>
@@ -223,6 +235,19 @@ export function TeamPage() {
               })}
               {leaders.length === 0 ? <p className="muted small">No skaters indexed.</p> : null}
             </Card>
+            {team.staff && team.staff.length ? (
+              <Card>
+                <div className="eyebrow">Support staff</div>
+                <ul className="staff-list">
+                  {team.staff.map((s, i) => (
+                    <li key={`${s.name}-${i}`}>
+                      <span className="staff-role">{s.role}</span>
+                      <span className="staff-name">{s.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null}
             <Card>
               <div className="eyebrow">Program</div>
               <dl className="facts">

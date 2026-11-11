@@ -522,6 +522,18 @@ kbd {
   align-items: start;
 }
 .leader-table { overflow: hidden; }
+.staff-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 12px; }
+.staff-list li { display: grid; gap: 2px; }
+.staff-role {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-3); font-weight: 560;
+}
+.staff-name { font-size: 14px; color: var(--text); }
+.standings-card { margin-bottom: 16px; overflow: hidden; }
+.standings-card .data-table td, .standings-card .data-table th { padding-top: 9px; padding-bottom: 9px; }
+.standings-card .table-scroll { max-height: 420px; overflow-y: auto; }
+.standings-card .team-link { max-width: 100%; }
+.standings-card .team-link span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .leader-row {
   display: grid;
   grid-template-columns: 26px 38px minmax(0, 1fr) auto auto 74px;

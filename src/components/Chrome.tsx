@@ -263,14 +263,16 @@ export function Footer() {
           <div>
             <h4>Coverage</h4>
             <span>NCAA Division I</span>
+            <span>MCLA</span>
             <span>Premier Lacrosse League</span>
-            <span>2023–2026 seasons</span>
-            <span>{data.players.length} players</span>
+            <span>16 Canadian box leagues</span>
+            <span>{data.players.length.toLocaleString()} players</span>
           </div>
           <div>
             <h4>Sources</h4>
             <span>NCAA.com statistics</span>
             <span>School athletics sites</span>
+            <span>mcla.us · stats.netfrontsports.com</span>
             <span>PLL stats API</span>
             <span>Updated {data.meta.generated}</span>
           </div>

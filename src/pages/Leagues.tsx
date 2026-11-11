@@ -11,6 +11,7 @@ import {
   teamOf,
 } from "../lib/data";
 import { Avatar, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar } from "../components/ui";
+import type { League } from "../lib/types";
 
 export function LeaguesPage() {
   const groups = useMemo(() => {
@@ -85,6 +86,91 @@ const STATS = [
   { value: "svp", label: "Save %" },
 ] as const;
 
+function StandingsCard({ league }: { league: League }) {
+  const rows = (league.standings ?? []).slice();
+  if (!rows.length) return null;
+  rows.sort((a, b) => a.rank - b.rank);
+
+  const groups = [...new Set(rows.map((r) => r.group || ""))].sort();
+  const multi = groups.length > 1;
+  const hasConf = rows.some((r) => typeof r.confW === "number");
+  const hasTies = rows.some((r) => r.t > 0);
+  const cols = 6 + (hasConf ? 1 : 0) + (hasTies ? 1 : 0);
+
+  const body = (list: typeof rows) =>
+    list.map((r) => {
+      const team = teamById.get(r.teamId);
+      return (
+        <tr key={r.teamId}>
+          <td className="c num muted">{multi ? r.groupRank ?? r.rank : r.rank}</td>
+          <td>
+            <Link to={`/team/${team?.slug}`} className="team-link">
+              <span className="team-dot" style={{ background: team?.colors[0] }} />
+              {team?.shortName ?? r.teamId}
+            </Link>
+          </td>
+          <td className="r num strong">{r.w}</td>
+          <td className="r num">{r.l}</td>
+          {hasTies ? <td className="r num">{r.t}</td> : null}
+          <td className="r num">{r.pct ? r.pct.toFixed(3).replace(/^0/, "") : "—"}</td>
+          <td className="r num">{r.gf}</td>
+          <td className="r num">{r.ga}</td>
+          {hasConf ? (
+            <td className="r num">{typeof r.confW === "number" ? `${r.confW}–${r.confL ?? 0}` : "—"}</td>
+          ) : null}
+        </tr>
+      );
+    });
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Standings</h3>
+          <p className="muted small">
+            {data.meta.season} · {rows.length} teams · sorted by win percentage
+          </p>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="c">#</th>
+              <th>Team</th>
+              <th className="r">W</th>
+              <th className="r">L</th>
+              {hasTies ? <th className="r">T</th> : null}
+              <th className="r">PCT</th>
+              <th className="r">GF</th>
+              <th className="r">GA</th>
+              {hasConf ? <th className="r">CONF</th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {multi
+              ? groups.flatMap((g) => [
+                  <tr key={`g-${g}`}>
+                    <td colSpan={cols} className="muted strong" style={{ paddingTop: 14 }}>
+                      {g}
+                    </td>
+                  </tr>,
+                  ...body(rows.filter((r) => (r.group || "") === g)),
+                ])
+              : body(rows)}
+          </tbody>
+        </table>
+      </div>
+      {league.id === "ncaa-d1" ? (
+        <div className="table-note">
+          Records are tallied from game results (ESPN scoreboard), not an official standings feed —
+          a game missing upstream means a record one short.
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
 export function LeaguePage() {
   const route = useRoute();
   const id = route.path.split("/")[2] ?? "";
@@ -150,13 +236,14 @@ export function LeaguePage() {
               label="Seasons"
               value={`${(
                 pool.flatMap((pl) => pl.seasons.map((s) => s.season)).sort()[0] ?? data.meta.season
-              ).slice(2)}–${data.meta.season.slice(2)}`}
+              )}–${data.meta.season}`}
             />
           </div>
         </div>
       </div>
 
       <div className="page">
+        <StandingsCard league={league} />
         <div className="leader-grid">
           <Card padded={false} className="leader-table">
             <div className="card-toolbar">

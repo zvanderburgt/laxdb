@@ -27,8 +27,8 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/` | Hero, live leaderboard with league/stat switcher, featured profiles, competition grid |
 | `#/players` | Full database: search, position pills, league / class / region filters, sortable table + cards |
 | `#/player/:slug` | Profile: Overview, Stats, Awards (only when present); rail with vitals, draft, rankings, comparables |
-| `#/teams`, `#/team/:slug` | Team directory; team page with real roster and leaders |
-| `#/leagues`, `#/league/:id` | Competition directory; leaderboard with position filter, teams, goalie leaders |
+| `#/teams`, `#/team/:slug` | Team directory; team page with real roster, leaders, record and support staff |
+| `#/leagues`, `#/league/:id` | Competition directory; standings, leaderboard with position filter, teams, goalie leaders |
 | `#/compare` | Up to three players side by side, row-scaled bars, deep-linkable (`?ids=`) |
 
 Product details:
@@ -56,6 +56,15 @@ names or synthetic stat lines anywhere in the dataset.
 | MCLA (mcla.us) | College club: full skater + goalie tables per team, 2025–2026 | 172 teams, 9 conferences; positions come from the stat table's prefix |
 | stats.netfrontsports.com | Canadian box pyramid: season-by-season skater and goalie tables per team, plus career aggregates | 16 leagues, 221 teams, 7,423 players — NLL, MSL, WLA, OSL, WCSLA, RMLL Sr B, BCJALL, OJLL, RMLL Jr A, OJBLL, PNWJLL, TOJLL, WCJLL, RMLL Jr B Tier I and Tier II, **OJCL (Junior C)**; 2021–2026 |
 
+Standings and staff coverage:
+
+| Competition | Standings | Support staff |
+| --- | --- | --- |
+| NCAA D1 | W–L, PCT, GF/GA — tallied from ESPN game results, not an official table | Full coaching table (name, title) from the school athletics site |
+| MCLA | W–L, conference record, GF/GA per conference and division, straight from mcla.us | Head coach, from the team page header |
+| PLL | W–L, PCT, GF/GA, conference record from the league's standings API | Not published in the API |
+| Box (16 leagues) | None — NetFront publishes no standings and no schedule results | None published |
+
 Coverage gaps, stated plainly:
 
 - **No NCAA D2/D3, prep or international yet** — the tiers below D1 are covered by MCLA and the
@@ -72,6 +81,8 @@ Coverage gaps, stated plainly:
   it — labelled as such, rather than presented as a full season history.
 - Box rosters carry no F/D/T split (the feeds list skaters and goalies only), so box skaters are
   badged as runners.
+- D1 standings are derived from results, so a game ESPN doesn't carry leaves a record one short.
+  The standings card says so instead of implying an official feed.
 - A player who plays in two different leagues (say the NLL and the PLL) has one profile per league.
   Merging those would need a date of birth, which none of these feeds publish; matching on name
   alone would collapse different athletes who share one.

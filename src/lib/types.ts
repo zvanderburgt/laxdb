@@ -1,5 +1,25 @@
 export type Position = "A" | "M" | "D" | "G" | "FO" | "LSM";
 
+export interface StandingRow {
+  teamId: string;
+  rank: number;
+  groupRank?: number;
+  w: number;
+  l: number;
+  t: number;
+  pct: number;
+  gf: number;
+  ga: number;
+  confW?: number | null;
+  confL?: number | null;
+  group?: string;
+}
+
+export interface StaffMember {
+  name: string;
+  role: string;
+}
+
 export interface League {
   id: string;
   name: string;
@@ -9,6 +29,7 @@ export interface League {
   country: string;
   tier: number;
   strength: number;
+  standings?: StandingRow[];
 }
 
 export interface Team {
@@ -22,6 +43,11 @@ export interface Team {
   region: string;
   conference: string;
   colors: [string, string];
+  staff?: StaffMember[];
+  record?: {
+    w: number; l: number; t: number; pct: number; rank: number; teams: number;
+    overallRank?: number; overallTeams?: number; group?: string;
+  };
 }
 
 export interface SeasonRow {
