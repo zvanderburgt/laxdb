@@ -272,7 +272,7 @@ function Profile({ player }: { player: Player }) {
               {player.dob ? <div><dt>Born</dt><dd>{fmtDate(player.dob)}</dd></div> : null}
               {ageOf(player.dob) ? <div><dt>Age</dt><dd>{ageOf(player.dob)}</dd></div> : null}
               {player.birthplace.city ? (
-                <div><dt>Hometown</dt><dd>{player.birthplace.city}, {player.birthplace.state}</dd></div>
+                <div><dt>Hometown</dt><dd>{[player.birthplace.city, player.birthplace.state].filter(Boolean).join(", ")}</dd></div>
               ) : null}
               {player.highSchool ? <div><dt>High school</dt><dd>{player.highSchool}</dd></div> : null}
               {player.classYear ? <div><dt>Class</dt><dd>{player.classYear}</dd></div> : null}

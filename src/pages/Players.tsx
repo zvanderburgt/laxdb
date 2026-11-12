@@ -32,7 +32,10 @@ export default function Players() {
   const [hs, setHs] = useState(route.query.get("hs") ?? "");
   const [sort, setSort] = useState<SortKey>("pts");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
-  const [view, setView] = useState<"table" | "cards">("table");
+  // a 12-column table is unusable at phone width; start on cards there
+  const [view, setView] = useState<"table" | "cards">(() =>
+    typeof window !== "undefined" && window.innerWidth < 700 ? "cards" : "table",
+  );
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -273,7 +276,11 @@ export default function Players() {
                         <PlayerAvatar player={p} size={30} />
                         <span>
                           <span className="cell-name">{p.name}</span>
-                          <span className="cell-sub">{p.birthplace.city}, {p.birthplace.state}</span>
+                          {[p.birthplace.city, p.birthplace.state].filter(Boolean).length ? (
+                            <span className="cell-sub">
+                              {[p.birthplace.city, p.birthplace.state].filter(Boolean).join(", ")}
+                            </span>
+                          ) : null}
                         </span>
                       </Link>
                     </td>

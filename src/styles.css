@@ -1886,3 +1886,31 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .standings-card .data-table th:last-child,
   .standings-card .data-table td:last-child { padding-right: 16px; }
 }
+
+/* the tab strip sits outside the padded content column, so it needs the gutter
+   itself — without this the pills start at the screen edge on mobile */
+.tabs { padding-inline: 24px; }
+
+/* header controls were 32px, under a comfortable touch target */
+@media (max-width: 640px) {
+  .searchbtn, .iconbtn { width: 40px; height: 40px; }
+  .seg-item { min-height: 34px; padding-block: 6px; }
+}
+
+/* the add-to-compare "+" was a 22px target and the text link 19px; both are bare
+   icons/links sitting in dense tables, so give them real hit areas on touch */
+.cmp-btn { width: 26px; height: 26px; }
+@media (max-width: 640px) {
+  .cmp-btn { width: 34px; height: 34px; }
+  .link-arrow.small { padding-block: 7px; }
+  .data-table td .cmp-btn { margin-block: -6px; }
+}
+
+/* one mobile gutter everywhere: list pages already used 16px, the profile pages
+   were built at 24px, which made the two page families sit on different margins */
+@media (max-width: 640px) {
+  .profile-hero-inner { padding: 0 16px; }
+  .profile-body { padding-left: 16px; padding-right: 16px; }
+  .tabs { padding-inline: 16px; }
+  .profile-main { padding: 0; }
+}
