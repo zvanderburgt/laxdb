@@ -35,6 +35,13 @@ Match the feature depth; do not copy the visual style.
 Game logs, advanced stat filters, per-game averages, "coaches played for", player connections
 (teammates), export to PDF/Excel, bookmarks, my roster/lineup, generated player stats card.
 
+## Imagery
+
+Headshots are stored square (224×224 webp). Schools publish 3:4 portraits, and a non-square
+asset either stretches under `object-fit: fill` or spills out of a square avatar box, so the
+importer crop-squares each photo 30% from the top (faces sit high) before resizing. Avatars then
+clip with `overflow: hidden` and fill with `object-fit: cover; object-position: 50% 18%`.
+
 ## Visual language (ours)
 
 Apple-inspired, not EP's density: system font stack, hairline rules, frosted chrome, one accent
