@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T12:00:00Z",
+  "title": "Design System: LAXDB",
+  "extensions": {
+    "colorMeta": {
+      "varsity-blue": {
+        "role": "primary",
+        "displayName": "Varsity Blue",
+        "canonical": "#0071e3",
+        "tonalRamp": ["#000058", "#001487", "#003dac", "#0060d1", "#2283f7", "#4ba7ff", "#7cccff", "#dbedff"]
+      },
+      "varsity-blue-hover": {
+        "role": "primary",
+        "displayName": "Varsity Blue Hover",
+        "canonical": "#0077ed",
+        "tonalRamp": ["#000058", "#001487", "#003dac", "#0060d1", "#2283f7", "#4ba7ff", "#7cccff", "#dbedff"]
+      },
+      "varsity-blue-night": {
+        "role": "primary",
+        "displayName": "Night Varsity",
+        "canonical": "#0a84ff",
+        "tonalRamp": ["#000058", "#001487", "#003dac", "#0060d1", "#2283f7", "#4ba7ff", "#7cccff", "#dbedff"]
+      },
+      "varsity-blue-night-hover": {
+        "role": "primary",
+        "displayName": "Night Varsity Hover",
+        "canonical": "#3d9bff",
+        "tonalRamp": ["#000058", "#001487", "#003dac", "#0060d1", "#2283f7", "#4ba7ff", "#7cccff", "#dbedff"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1d1d1f",
+        "tonalRamp": ["#111113", "#2b2b2d", "#47474a", "#666668", "#868688", "#a7a7aa", "#cacacd", "#ebebec"]
+      },
+      "graphite": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "#5c5c62",
+        "tonalRamp": ["#111115", "#2b2b30", "#47474d", "#65656b", "#85858c", "#a7a7ae", "#cacad0", "#ebebec"]
+      },
+      "pewter": {
+        "role": "neutral",
+        "displayName": "Pewter",
+        "canonical": "#737379",
+        "tonalRamp": ["#111115", "#2b2b30", "#47474d", "#65656b", "#85858c", "#a7a7ad", "#cacad0", "#ebebec"]
+      },
+      "cool-paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "#fbfbfd",
+        "tonalRamp": ["#111113", "#2b2b2d", "#474749", "#666667", "#868688", "#a7a7a9", "#cacacc", "#ebebeb"]
+      },
+      "chalk": {
+        "role": "neutral",
+        "displayName": "Chalk",
+        "canonical": "#f5f5f7",
+        "tonalRamp": ["#111113", "#2b2b2d", "#474749", "#666667", "#868688", "#a7a7a9", "#cacacc", "#ebebeb"]
+      },
+      "sheet": {
+        "role": "neutral",
+        "displayName": "Sheet",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#121212", "#2b2b2b", "#484848", "#666666", "#868686", "#a8a8a8", "#cacaca", "#ebebeb"]
+      },
+      "night": {
+        "role": "neutral",
+        "displayName": "Night",
+        "canonical": "#000000",
+        "tonalRamp": ["#121212", "#2b2b2b", "#484848", "#666666", "#868686", "#a8a8a8", "#cacaca", "#ebebeb"]
+      },
+      "charcoal": {
+        "role": "neutral",
+        "displayName": "Charcoal",
+        "canonical": "#1c1c1e",
+        "tonalRamp": ["#111113", "#2b2b2d", "#47474a", "#666668", "#868688", "#a7a7aa", "#cacacd", "#ebebec"]
+      },
+      "win-green": {
+        "role": "secondary",
+        "displayName": "Win Green",
+        "canonical": "#1d9a55",
+        "tonalRamp": ["#001e00", "#003d00", "#005c1a", "#007d3a", "#259f59", "#51c27a", "#84e3a2", "#ddf1e2"]
+      },
+      "loss-red": {
+        "role": "secondary",
+        "displayName": "Loss Red",
+        "canonical": "#e0322c",
+        "tonalRamp": ["#450000", "#730000", "#9a0000", "#c2000a", "#ea3d35", "#ff6557", "#ff9585", "#ffe1dc"]
+      },
+      "warning-amber": {
+        "role": "secondary",
+        "displayName": "Warning Amber",
+        "canonical": "#b26a00",
+        "tonalRamp": ["#2f0000", "#541100", "#753200", "#985200", "#bc7316", "#e09543", "#ffbb76", "#f8e8d9"]
+      },
+      "goalie-violet": {
+        "role": "tertiary",
+        "displayName": "Goalie Violet",
+        "canonical": "#6a4cf0",
+        "tonalRamp": ["#1d0064", "#310096", "#4605bc", "#603ee2", "#7d64ff", "#9c89ff", "#bdb3ff", "#e7e8ff"]
+      },
+      "fogo-rose": {
+        "role": "tertiary",
+        "displayName": "FOGO Rose",
+        "canonical": "#d61f4a",
+        "tonalRamp": ["#450000", "#730000", "#9a001c", "#c1003a", "#e93859", "#ff6079", "#ff91a1", "#ffe0e1"]
+      },
+      "lsm-cyan": {
+        "role": "tertiary",
+        "displayName": "LSM Cyan",
+        "canonical": "#0071a8",
+        "tonalRamp": ["#00113a", "#002e60", "#004d81", "#006da4", "#338ec7", "#59b1ec", "#88d4ff", "#ddeefa"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The home hero only; balanced, tightly tracked, maximum ~18 characters per line."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page, profile, team and league titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section headings and card titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Interface copy, table text and long-form prose."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase eyebrows, table headers, stat and field labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ambient-sheet",
+        "value": "0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 14px -8px rgba(0, 0, 0, 0.14)",
+        "purpose": "Default for cards, tables and player cards at rest."
+      },
+      {
+        "name": "working-hover",
+        "value": "0 2px 4px rgba(0, 0, 0, 0.04), 0 18px 40px -24px rgba(0, 0, 0, 0.28)",
+        "purpose": "A card under the pointer, the hero search field, the secondary hero card."
+      },
+      {
+        "name": "lifted-overlay",
+        "value": "0 30px 70px -30px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.06)",
+        "purpose": "Hero composition, command palette and compare tray — anything floating over the page."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Default easing for state changes, lifts, palette and tray entrances."
+      },
+      {
+        "name": "duration-press",
+        "value": "0.15s",
+        "purpose": "Button press scale."
+      },
+      {
+        "name": "duration-state",
+        "value": "0.2s",
+        "purpose": "Hover color, border and background changes."
+      },
+      {
+        "name": "duration-lift",
+        "value": "0.25s",
+        "purpose": "Card lift and shadow changes."
+      },
+      {
+        "name": "duration-enter",
+        "value": "0.5s",
+        "purpose": "Hero card spotlight entrance. Reduce to 0.001ms under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      { "name": "rail-sticky", "value": "1400px (min-height)" },
+      { "name": "desktop", "value": "1000px" },
+      { "name": "nav-collapse", "value": "900px" },
+      { "name": "tablet", "value": "760px" },
+      { "name": "phone", "value": "640px" },
+      { "name": "small-phone", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The only button that carries varsity blue. Full capsule, 38px tall, soft press.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Compare 3 players</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; padding: 0 18px; border-radius: 980px; border: 1px solid transparent; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s; } .ds-btn:active { transform: scale(0.975); } .ds-btn:focus-visible { outline: 2px solid var(--accent, #0071e3); outline-offset: 2px; } .ds-btn-primary { background: var(--accent, #0071e3); color: #fff; } .ds-btn-primary:hover { background: var(--accent-hover, #0077ed); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Sheet fill with a strong hairline. Sits beside a primary action.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Add to compare</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 38px; padding: 0 18px; border-radius: 980px; border: 1px solid transparent; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; white-space: nowrap; transition: background 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s; } .ds-btn:active { transform: scale(0.975); } .ds-btn:focus-visible { outline: 2px solid var(--accent, #0071e3); outline-offset: 2px; } .ds-btn-secondary { background: var(--card, #fff); color: var(--text, #1d1d1f); border-color: var(--hairline-strong, rgba(0, 0, 0, 0.14)); } .ds-btn-secondary:hover { background: var(--hover, rgba(0, 0, 0, 0.03)); }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Quick-filter capsule in the hero and directories. Capsule, quiet, lifts 1px.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip\">NCAA Division I</button><button class=\"ds-chip\">Premier Lacrosse League</button><button class=\"ds-chip\">Canadian box</button></div>",
+      "css": ".ds-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 560px; } .ds-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 0; padding: 6px 13px; border-radius: 980px; border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); background: var(--card, #fff); color: var(--text-2, #5c5c62); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: color 0.2s, border-color 0.2s, transform 0.2s; } .ds-chip:hover { color: var(--text, #1d1d1f); border-color: var(--hairline-strong, rgba(0, 0, 0, 0.14)); transform: translateY(-1px); }"
+    },
+    {
+      "name": "Hero Search Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The 54px entry point on the home page; accent border and 4px soft ring on focus.",
+      "html": "<label class=\"ds-field\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M12.8 12.8L17 17\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/></svg><input placeholder=\"Search players, teams, leagues…\" /></label>",
+      "css": ".ds-field { display: flex; align-items: center; gap: 10px; max-width: 560px; height: 54px; padding: 0 8px 0 18px; background: var(--card, #fff); border: 1px solid var(--hairline-strong, rgba(0, 0, 0, 0.14)); border-radius: 16px; box-shadow: var(--shadow-md, 0 2px 4px rgba(0, 0, 0, 0.04), 0 18px 40px -24px rgba(0, 0, 0, 0.28)); color: var(--text-3, #737379); transition: box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s; } .ds-field:focus-within { border-color: var(--accent, #0071e3); box-shadow: 0 0 0 4px var(--accent-soft, rgba(0, 113, 227, 0.1)), var(--shadow-md, 0 2px 4px rgba(0, 0, 0, 0.04), 0 18px 40px -24px rgba(0, 0, 0, 0.28)); } .ds-field input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 15.5px; color: var(--text, #1d1d1f); } .ds-field input::placeholder { color: var(--text-3, #737379); }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Season/career, stat category and record switches. Grey track, white selected pill.",
+      "html": "<div class=\"ds-seg\" role=\"tablist\"><button class=\"ds-seg-item is-on\" role=\"tab\" aria-selected=\"true\">Season</button><button class=\"ds-seg-item\" role=\"tab\" aria-selected=\"false\">Career</button></div>",
+      "css": ".ds-seg { display: inline-flex; gap: 2px; padding: 3px; background: rgba(120, 120, 128, 0.15); border-radius: 11px; max-width: 100%; } .ds-seg-item { border: 0; background: transparent; padding: 6px 13px; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 13px; font-weight: 500; color: var(--text-2, #5c5c62); cursor: pointer; white-space: nowrap; transition: color 0.18s, background 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s; } .ds-seg-item:hover { color: var(--text, #1d1d1f); } .ds-seg-item.is-on { background: var(--card, #fff); color: var(--text, #1d1d1f); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.05); }"
+    },
+    {
+      "name": "Data Table",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The signature surface: sheet, hairline rows, uppercase headers and tabular numerics.",
+      "html": "<div class=\"ds-sheet\"><table class=\"ds-table\"><thead><tr><th>Player</th><th>Team</th><th class=\"r\">GP</th><th class=\"r\">PTS</th></tr></thead><tbody><tr><td class=\"ds-name\">Joey Spallina</td><td>Syracuse</td><td class=\"r\">19</td><td class=\"r\">87</td></tr><tr><td class=\"ds-name\">CJ Kirst</td><td>Cornell</td><td class=\"r\">18</td><td class=\"r\">74</td></tr><tr><td class=\"ds-name\">Pat Kavanagh</td><td>Notre Dame</td><td class=\"r\">17</td><td class=\"r\">69</td></tr></tbody></table></div>",
+      "css": ".ds-sheet { background: var(--card, #fff); border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); border-radius: 20px; box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 14px -8px rgba(0, 0, 0, 0.14)); overflow: hidden; } .ds-table { width: 100%; border-collapse: collapse; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 13.5px; color: var(--text, #1d1d1f); } .ds-table th { text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3, #737379); padding: 11px 14px; border-bottom: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); white-space: nowrap; } .ds-table td { padding: 10px 14px; border-bottom: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); white-space: nowrap; vertical-align: middle; } .ds-table tbody tr:last-child td { border-bottom: 0; } .ds-table tbody tr { transition: background 0.14s; } .ds-table tbody tr:hover { background: var(--hover, rgba(0, 0, 0, 0.03)); } .ds-table .r { text-align: right; font-variant-numeric: tabular-nums; } .ds-name { font-weight: 550; letter-spacing: -0.01em; }"
+    },
+    {
+      "name": "Player Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Compact identity plus four headline stats; lifts 3px on hover.",
+      "html": "<a class=\"ds-pcard\" href=\"#\"><div class=\"ds-pcard-top\"><span class=\"ds-avatar\">JS</span><span class=\"ds-pcard-id\"><span class=\"ds-pcard-name\">Joey Spallina</span><span class=\"ds-pcard-team\">Syracuse · Attack</span></span><span class=\"ds-pos\">A</span></div><div class=\"ds-pcard-stats\"><span><b>35</b><i>G</i></span><span><b>52</b><i>A</i></span><span><b>87</b><i>PTS</i></span><span><b>19</b><i>GP</i></span></div></a>",
+      "css": ".ds-pcard { display: block; background: var(--card, #fff); border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); border-radius: 20px; padding: 16px; box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 14px -8px rgba(0, 0, 0, 0.14)); transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s; text-decoration: none; color: var(--text, #1d1d1f); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; } .ds-pcard:hover { transform: translateY(-3px); box-shadow: var(--shadow-md, 0 2px 4px rgba(0, 0, 0, 0.04), 0 18px 40px -24px rgba(0, 0, 0, 0.28)); border-color: var(--hairline-strong, rgba(0, 0, 0, 0.14)); } .ds-pcard-top { display: flex; align-items: center; gap: 12px; } .ds-avatar { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 15px; color: #fff; font-size: 19px; font-weight: 600; background: linear-gradient(145deg, #0071e3, #0055b3 60%, #5ac8fa); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px -2px rgba(0, 0, 0, 0.28); flex: none; } .ds-pcard-id { min-width: 0; flex: 1; display: flex; flex-direction: column; } .ds-pcard-name { font-weight: 600; font-size: 14.5px; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-pcard-team { font-size: 12px; color: var(--text-3, #737379); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-pcard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); } .ds-pcard-stats span { display: flex; flex-direction: column; } .ds-pcard-stats b { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; } .ds-pcard-stats i { font-style: normal; font-size: 10px; letter-spacing: 0.08em; color: var(--text-3, #737379); } .ds-pos { display: inline-grid; place-items: center; min-width: 26px; height: 21px; padding: 0 6px; border-radius: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; background: rgba(0, 113, 227, 0.12); color: #0071e3; }"
+    },
+    {
+      "name": "Position Badge",
+      "kind": "chip",
+      "refersTo": "position-badge",
+      "description": "Taxonomy label; the one place several hues coexist, contained to badges.",
+      "html": "<div class=\"ds-pos-row\"><span class=\"ds-pos-badge a\">A</span><span class=\"ds-pos-badge m\">M</span><span class=\"ds-pos-badge d\">D</span><span class=\"ds-pos-badge g\">G</span><span class=\"ds-pos-badge fo\">FO</span><span class=\"ds-pos-badge lsm\">LSM</span></div>",
+      "css": ".ds-pos-row { display: flex; gap: 6px; align-items: center; } .ds-pos-badge { display: inline-grid; place-items: center; min-width: 26px; height: 21px; padding: 0 6px; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; background: var(--card-2, #f5f5f7); color: var(--text-2, #5c5c62); } .ds-pos-badge.a { background: rgba(0, 113, 227, 0.12); color: #0071e3; } .ds-pos-badge.m { background: rgba(48, 209, 88, 0.14); color: #1d9a55; } .ds-pos-badge.d { background: rgba(255, 149, 0, 0.16); color: #b26a00; } .ds-pos-badge.g { background: rgba(122, 92, 250, 0.16); color: #6a4cf0; } .ds-pos-badge.fo { background: rgba(255, 45, 85, 0.13); color: #d61f4a; } .ds-pos-badge.lsm { background: rgba(90, 200, 250, 0.18); color: #0071a8; }"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "54px frosted chrome with a hairline that appears on scroll; links collapse at 900px.",
+      "html": "<header class=\"ds-nav\"><div class=\"ds-nav-inner\"><a class=\"ds-wordmark\" href=\"#\"><span class=\"ds-mark\">L</span>LAXDB</a><nav class=\"ds-nav-links\"><a class=\"ds-nav-link is-active\" href=\"#\">Players</a><a class=\"ds-nav-link\" href=\"#\">Teams</a><a class=\"ds-nav-link\" href=\"#\">Leagues</a><a class=\"ds-nav-link\" href=\"#\">Scores</a></nav><div class=\"ds-nav-right\"><button class=\"ds-searchbtn\">Search <kbd>⌘K</kbd></button></div></div></header>",
+      "css": ".ds-nav { background: var(--nav-bg, rgba(251, 251, 253, 0.78)); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; } .ds-nav-inner { max-width: 1180px; margin: 0 auto; padding: 0 24px; height: 54px; display: flex; align-items: center; gap: 24px; } .ds-wordmark { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 700; letter-spacing: 0.02em; color: var(--text, #1d1d1f); text-decoration: none; } .ds-mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; color: #fff; font-size: 13px; background: linear-gradient(145deg, #0a84ff, #0055b3); } .ds-nav-links { display: flex; gap: 4px; margin-left: 6px; } .ds-nav-link { padding: 6px 11px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--text-2, #5c5c62); text-decoration: none; transition: color 0.2s, background 0.2s; } .ds-nav-link:hover { color: var(--text, #1d1d1f); background: var(--hover, rgba(0, 0, 0, 0.03)); } .ds-nav-link.is-active { color: var(--text, #1d1d1f); background: var(--hover, rgba(0, 0, 0, 0.03)); font-weight: 600; } .ds-nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; } .ds-searchbtn { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); border-radius: 9px; background: var(--card, #fff); color: var(--text-3, #737379); cursor: pointer; font: inherit; font-size: 13px; } .ds-searchbtn kbd { font-family: inherit; font-size: 10.5px; font-weight: 600; color: var(--text-3, #737379); background: var(--bg-soft, #f5f5f7); border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); border-radius: 5px; padding: 1px 5px; }"
+    },
+    {
+      "name": "Command Palette",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The ⌘K palette: 560px sheet, lifted shadow, tinted active row and keyboard footer.",
+      "html": "<div class=\"ds-palette\"><div class=\"ds-palette-input\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 20 20\" aria-hidden=\"true\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"/><path d=\"M12.8 12.8L17 17\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"/></svg><input placeholder=\"Search players, teams, leagues…\" /><kbd>esc</kbd></div><div class=\"ds-palette-list\"><button class=\"ds-palette-item is-active\"><span class=\"ds-glyph\">◎</span><span class=\"ds-palette-label\">Joey Spallina</span><span class=\"ds-palette-sub\">Syracuse · Attack</span><span class=\"ds-palette-kind\">Player</span></button><button class=\"ds-palette-item\"><span class=\"ds-glyph\">◆</span><span class=\"ds-palette-label\">Syracuse Orange</span><span class=\"ds-palette-sub\">Syracuse</span><span class=\"ds-palette-kind\">Team</span></button></div><div class=\"ds-palette-foot\"><span><kbd>↑</kbd><kbd>↓</kbd> to navigate</span><span><kbd>↵</kbd> to open</span></div></div>",
+      "css": ".ds-palette { width: 100%; max-width: 560px; background: var(--card, #fff); border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); border-radius: 18px; box-shadow: var(--shadow-lg, 0 30px 70px -30px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.06)); overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; } .ds-palette-input { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); color: var(--text-3, #737379); } .ds-palette-input input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--text, #1d1d1f); } .ds-palette-list { max-height: 46vh; overflow-y: auto; padding: 6px; } .ds-palette-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; text-align: left; cursor: pointer; font: inherit; color: var(--text, #1d1d1f); } .ds-palette-item.is-active { background: var(--accent-soft, rgba(0, 113, 227, 0.1)); } .ds-glyph { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--card-2, #f5f5f7); color: var(--text-2, #5c5c62); font-size: 13px; flex: none; } .ds-palette-label { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; } .ds-palette-sub { font-size: 12px; color: var(--text-3, #737379); } .ds-palette-kind { margin-left: auto; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3, #737379); } .ds-palette-foot { display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); font-size: 11.5px; color: var(--text-3, #737379); } .ds-palette-foot kbd { font-family: inherit; margin-right: 3px; font-size: 10.5px; border: 1px solid var(--hairline, rgba(0, 0, 0, 0.08)); border-radius: 5px; padding: 1px 5px; background: var(--bg-soft, #f5f5f7); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Scouting Desk",
+    "overview": "A public record laid out the way a good scout keeps a desk: everything within reach, the evidence legible, and nothing decorative competing with the number. The system is editorial at the top of a page and instrumental inside the data — a large, confident headline earns attention, then tables, stat strips and rank rows take over without asking for more. Cool paper is the desk; white sheets are the documents on it; hairlines are the only structure. One varsity blue marks what can be acted on or what ranks first.\n\nThe mood is editorial confidence, not sports-broadcast volume. Type does the expressive work through scale and tight display tracking; color stays quiet and functional. Components are tactile and confident: capsule buttons, sheets that lift 2–3px under the pointer, tinted state changes, a frosted chrome that feels part of the page rather than bolted above it. Density is high, but every cluster gets air, and tables scroll rather than compress.\n\nLight and dark are equally finished surfaces. Dark mode is true black with charcoal documents, never a washed grey inversion, and its shadows deepen instead of glowing.",
+    "keyCharacteristics": [
+      "Paper-and-ink surfaces separated by hairlines, not nested boxes.",
+      "One chromatic brand color: varsity blue. Green, red and amber appear only when they mean something.",
+      "A single system type family at editorial scale, with tabular numerals for every comparable figure.",
+      "Restrained tactile depth: flat at rest, a 2–3px lift and a soft shadow on interaction.",
+      "Data first: stat strips, sortable tables, rank rows, comparison columns, compact cards.",
+      "Light and dark designed together; dark is true black, not grey."
+    ],
+    "rules": [
+      {
+        "name": "The One Varsity Rule",
+        "body": "Varsity blue is the only chromatic brand color, and it occupies well under a tenth of any screen. If two elements on one surface are blue, one of them is probably wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper Rule",
+        "body": "A card is a white sheet on cool paper, separated by a hairline. Never stack a white card directly on another white card without a border; use Chalk for the inner surface instead.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every number that can be compared vertically is set with tabular figures (.num). Never use proportional numerals in tables, stat strips, score lines or leadership values.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "No display face, no mono face, no imported webfont. Hierarchy comes from size, weight, tracking and case — never from a second family.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Gutter Rule",
+        "body": "The header, page body, profile hero and tab strip all share the same gutter: 24px on desktop, 16px on phones. A page must never show two different left margins.",
+        "section": "layout"
+      },
+      {
+        "name": "The Lift-Only-When-Asked Rule",
+        "body": "At rest, a surface is a hairline sheet. It earns a shadow only by being interactive, floating, or deliberately staged in the hero. Never add a shadow to a static section merely to separate it.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use one 1180px column, 24px desktop gutters and 16px phone gutters; keep every page family on the same left margin.",
+      "Do use the system font stack. Create hierarchy with size, weight, tracking and case.",
+      "Do set every comparable figure in tabular numerals, right-align numeric columns and print the qualification minimum beside the number it qualifies.",
+      "Do build surfaces as a hairline sheet with the 20px radius and ambient shadow; use Chalk for any nested surface.",
+      "Do keep varsity blue for action, selection, rank and chart emphasis, and keep green, red, amber and the position hues semantic.",
+      "Do let interactive cards lift 2–3px and move to the working-hover shadow; leave static cards still.",
+      "Do grow touch targets to 34–40px on phones and hide low-value table columns instead of squeezing them.",
+      "Do use the frosted treatment only for chrome and floating controls: nav, palette overlay, compare tray.",
+      "Do use the standard ease (cubic-bezier(0.22, 1, 0.36, 1)) for state changes, keep motion in the 0.18–0.5s range, and honor prefers-reduced-motion."
+    ],
+    "donts": [
+      "Don't build dense stats-reference walls: 11px everything, underlined links, no breathing room between rows.",
+      "Don't use neon sportsbook energy: black canvas, fluorescent accents, odds-board density or aggressive motion.",
+      "Don't use generic SaaS glass: gradient blobs behind every section, floating glass cards, an interchangeable startup hero.",
+      "Don't reproduce Elite Prospects' interface density or chrome.",
+      "Don't introduce another chromatic brand color. Semantic status and position hues are not decoration.",
+      "Don't stack a shadow, a decorative gradient and a border on the same card.",
+      "Don't set display type at default tracking; large headings need roughly -0.03 to -0.042em.",
+      "Don't let a wide table widen its grid track. Give it min-width: 0 and scroll it.",
+      "Don't mix the legacy --line, --surface and --surface-2 aliases into new work; the current tokens are --hairline, --hairline-strong, --card and --card-2."
+    ]
+  }
+}
