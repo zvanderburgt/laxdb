@@ -501,6 +501,10 @@ function StatsTab({ player }: { player: Player }) {
   const isGoal = player.position === "G";
   const isBox = league?.type === "box";
 
+  // a player who appears in both field and box cannot use either column set
+  const types = new Set(player.seasons.map((s) => leagueById.get(s.leagueId)?.type ?? "field"));
+  if (types.size > 1) return <MixedStats player={player} />;
+
   const leagues = [...new Set(player.seasons.map((s) => s.leagueId))];
   const rows = player.seasons
     .filter((s) => (scope === "all" ? true : s.leagueId === scope))
@@ -739,6 +743,96 @@ function StatsTab({ player }: { player: Player }) {
           Field lacrosse counts ground balls and turnovers; box lacrosse counts loose balls and penalty minutes.
         </div>
       )}
+    </Card>
+  );
+}
+
+
+function MixedStats({ player }: { player: Player }) {
+  const [scope, setScope] = useState("all");
+  const leagues = [...new Set(player.seasons.map((s) => s.leagueId))];
+  const rows = player.seasons
+    .filter((s) => (scope === "all" ? true : s.leagueId === scope))
+    .slice()
+    .sort((a, b) => b.season.localeCompare(a.season));
+  const totals = seasonTotals(rows);
+
+  return (
+    <Card padded={false}>
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Season by season</h3>
+          <p className="muted small">
+            {rows.length} seasons across {leagues.length} competitions · field and box
+          </p>
+        </div>
+        <div className="head-controls">
+          <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Filter league">
+            <option value="all">All competitions</option>
+            {leagues.map((l) => (
+              <option key={l} value={l}>
+                {leagueById.get(l)?.name ?? l}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table className="data-table stats-table">
+          <thead>
+            <tr>
+              <th>Season</th>
+              <th>Team</th>
+              <th>League</th>
+              <th className="r">GP</th>
+              <th className="r">G</th>
+              <th className="r">AST</th>
+              <th className="r">PTS</th>
+              <th className="r">PIM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((s, i) => {
+              const l = leagueById.get(s.leagueId);
+              const team = teamById.get(s.teamId);
+              return (
+                <tr key={`${s.season}-${s.teamId}-${i}`}>
+                  <td className="num">{s.season}</td>
+                  <td>
+                    {team ? (
+                      <Link to={`/team/${team.slug}`} className="team-link">
+                        {team.shortName}
+                      </Link>
+                    ) : (
+                      s.teamId
+                    )}
+                  </td>
+                  <td className="muted small">{l?.short ?? s.leagueId}</td>
+                  <td className="r num">{s.gp}</td>
+                  <td className="r num">{s.g}</td>
+                  <td className="r num">{s.a}</td>
+                  <td className="r num strong">{s.pts ?? s.g + s.a}</td>
+                  <td className="r num">{s.pen ?? "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={3} className="strong">Career totals</td>
+              <td className="r num strong">{totals.gp}</td>
+              <td className="r num strong">{totals.g}</td>
+              <td className="r num strong">{totals.a}</td>
+              <td className="r num strong">{totals.pts}</td>
+              <td className="r num strong">{totals.pen}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div className="table-note">
+        Career spans both codebases, so the table keeps only the columns both publish. Ground
+        balls, shots and faceoffs appear on the league-specific season detail further down.
+      </div>
     </Card>
   );
 }

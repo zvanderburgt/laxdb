@@ -207,8 +207,10 @@ export function loadGames(): Promise<Record<string, GameRow[]>> {
 }
 
 export function rosterOf(teamId: string) {
+  // any season with the club counts: a player who moved keeps their history on every
+  // team they actually played for, not just the one they finished on
   return data.players
-    .filter((p) => p.teamId === teamId)
+    .filter((p) => p.teamId === teamId || p.seasons.some((s) => s.teamId === teamId))
     .sort((a, b) => (careerTotals(b).pts || 0) - (careerTotals(a).pts || 0));
 }
 

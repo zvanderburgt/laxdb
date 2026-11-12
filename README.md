@@ -64,8 +64,14 @@ Product details:
 
 ## The data
 
-**17,269 real players, 427 teams, 19 competitions, 22,280 player-seasons, 2021–2026.** No invented
+**15,748 real players, 426 teams, 19 competitions, 21,972 player-seasons, 2021–2026.** No invented
 names or synthetic stat lines anywhere in the dataset.
+
+Records are merged per person, not per source row: 1,094 players appear on more than one team and
+598 in more than one competition, so a pro's NLL and PLL seasons, or a junior's climb from B to C,
+sit on one profile with one career total. Names collide often enough — two "Aidan Smith"s at two
+MCLA schools in the same season — that a shared name is never sufficient on its own. The merge
+rules are in `docs/roadmap.md`.
 
 | Source | What it gives | Notes |
 | --- | --- | --- |

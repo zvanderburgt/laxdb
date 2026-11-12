@@ -1944,6 +1944,193 @@ def build_all_americans(teams):
     return out
 
 
+
+# --------------------------------------------------------------------------- #
+# Duplicate players: one person, many teams
+# --------------------------------------------------------------------------- #
+POS_GROUP = {"A": "attack", "F": "attack", "M": "mid", "D": "def", "LSM": "def",
+             "FO": "faceoff", "G": "goal"}
+
+LEAGUE_RANK = {"pll": 9, "ncaa-d1": 8, "nfl": 7, "nf-nll": 7, "mcla": 6}
+
+
+def name_key(name):
+    return re.sub(r"[^a-z]", "", (name or "").lower())
+
+
+def team_alias(a, b, team_names):
+    """'UC Santa Barbara' and 'Santa Barbara' are the same program."""
+    na, nb = team_names.get(a, ""), team_names.get(b, "")
+    na, nb = re.sub(r"[^a-z]", "", na.lower()), re.sub(r"[^a-z]", "", nb.lower())
+    if not na or not nb or na == nb:
+        return na == nb and bool(na)
+    return (na in nb or nb in na) and min(len(na), len(nb)) >= 6
+
+
+def _years(p):
+    return {int(s["season"]) for s in p.get("seasons", []) if str(s.get("season", "")).isdigit()}
+
+
+BOX_FAMILIES = {"rmll", "ontario", "bc", "west"}
+PRO_LEAGUES = {"pll", "nf-nll", "nf-msl"}
+
+
+def league_family(lg):
+    lg = lg or ""
+    if lg.startswith("nf-rmll"):
+        return "rmll"
+    if lg in ("nf-ojbll", "nf-ojcll", "nf-ojll"):
+        return "ontario"
+    if lg == "nf-bcjall":
+        return "bc"
+    if lg in ("nf-wcjll", "nf-pnwjll", "nf-tojll"):
+        return "west"
+    if lg == "ncaa-d1":
+        return "ncaa"
+    return lg
+
+
+def same_person(a, b, team_names, strict=False):
+    """Merge only with evidence.
+
+    Name alone is not evidence: "Aidan Smith" is two players at two MCLA schools in the
+    same season, and the box feeds carry no birthplace to tell them apart. So:
+      1. same program (or a naming variant of it) — duplicate rows
+      2. same Canadian box ladder, one year apart — Junior B to Junior C, Jr A to Jr B
+      3. pro box to pro field, one year apart — the genuine NLL/PLL/MSL crossovers
+    Field to box and school to school across leagues stay separate.
+    """
+    gpa, gpb = POS_GROUP.get(a.get("position")), POS_GROUP.get(b.get("position"))
+    if a.get("teamId") == b.get("teamId") or team_alias(a.get("teamId"), b.get("teamId"), team_names):
+        return True
+    if strict:
+        return False
+
+    ya, yb = _years(a), _years(b)
+    if not ya or not yb:
+        return False
+
+    la, lb = a.get("leagueId"), b.get("leagueId")
+    if la == lb:
+        return False                                     # same league, two schools: two people
+
+    pro_pair = la in PRO_LEAGUES and lb in PRO_LEAGUES
+    # college to the pros: the same person, a year or two apart
+    college_pro = ("ncaa-d1" in (la, lb)) and bool(({la, lb} - {"ncaa-d1"}) & PRO_LEAGUES)
+    gap = min(abs(x - y) for x in ya for y in yb)
+    # a pro career runs for a decade; the box ladder is a one-year-at-a-time move
+    if gap > (5 if pro_pair else 2 if college_pro else 1):
+        return False
+    # box prints the forward as "F" where field prints "A"/"M", so different groups are
+    # normal for one pro. A goalie is still never the same person as an attackman.
+    if gpa and gpb and gpa != gpb and not (pro_pair or college_pro):
+        return False
+    if (pro_pair or college_pro) and "goal" in (gpa, gpb) and gpa != gpb:
+        return False
+
+    fa, fb = league_family(la), league_family(lb)
+    if fa == fb and fa in BOX_FAMILIES:
+        return gpa == gpb                                # same province ladder, next rung
+    if pro_pair or college_pro:
+        # two teammates can share a name, so never fold two records on the same club
+        return a.get("teamId") != b.get("teamId")
+
+    ba, bb = a.get("birthplace") or {}, b.get("birthplace") or {}
+    return bool(ba.get("city")) and ba == bb             # only NCAA carries this today
+
+
+def combine_player(cluster, team_names):
+    """Fold a cluster of records for one person into a single profile."""
+    def score(p):
+        yrs = _years(p)
+        return (bool(p.get("photo")), len(p.get("seasons") or []), max(yrs) if yrs else 0)
+
+    primary = max(cluster, key=score)
+
+    seasons, seen, stat_keys = [], set(), {}
+    for p in sorted(cluster, key=lambda x: -len(x.get("seasons") or [])):
+        for s in p.get("seasons") or []:
+            k = (str(s.get("season")), s.get("teamId"), s.get("leagueId"), s.get("type"))
+            if k in seen:
+                continue
+            # some clubs are listed in two box leagues (Westshore in PNWJLL and WCJLL);
+            # the same games arrive twice and would double every career total
+            stats = (s.get("gp"), s.get("g"), s.get("a"), s.get("pts"))
+            twin = (str(s.get("season")), s.get("teamId"), stats)
+            if twin in stat_keys:
+                continue
+            stat_keys[twin] = 1
+            seen.add(k)
+            seasons.append(s)
+    seasons.sort(key=lambda s: (str(s.get("season")), s.get("leagueId") or ""))
+
+    # current team: newest season, then the strongest competition
+    current = max(
+        seasons,
+        key=lambda s: (int(s["season"]) if str(s.get("season", "")).isdigit() else 0,
+                       LEAGUE_RANK.get(s.get("leagueId", ""), 1)),
+        default=None,
+    )
+
+    merged = dict(primary)
+    merged["seasons"] = seasons
+    if current:
+        merged["teamId"] = current["teamId"]
+        merged["leagueId"] = current["leagueId"]
+
+    # keep the fullest name, and fill any gap from the other records
+    merged["name"] = max((p.get("name") or "" for p in cluster), key=len) or primary.get("name")
+    for p in cluster:
+        for k, v in p.items():
+            if k in ("seasons", "id", "slug", "teamId", "leagueId", "name"):
+                continue
+            if v and not merged.get(k):
+                merged[k] = v
+            elif isinstance(v, dict) and isinstance(merged.get(k), dict):
+                for kk, vv in v.items():
+                    if vv and not merged[k].get(kk):
+                        merged[k][kk] = vv
+
+    # photo: prefer one from the current team's league
+    photos = [(p.get("photo"), p.get("leagueId")) for p in cluster if p.get("photo")]
+    if photos:
+        pick = next((ph for ph, lg in photos if lg == merged.get("leagueId")), photos[0][0])
+        merged["photo"] = pick
+    return merged
+
+
+def merge_players(players, teams):
+    """Collapse records that describe the same person across teams and leagues."""
+    team_names = {t["id"]: t["name"] for t in teams}
+    groups = {}
+    for p in players:
+        groups.setdefault(name_key(p["name"]), []).append(p)
+
+    out, merged_rows = [], 0
+    for key, group in groups.items():
+        if len(group) == 1:
+            out.append(group[0])
+            continue
+        strict = len(group) > 4          # common name: demand a program match
+        clusters = []
+        for p in group:
+            for c in clusters:
+                if any(same_person(p, q, team_names, strict) for q in c):
+                    c.append(p)
+                    break
+            else:
+                clusters.append([p])
+        for c in clusters:
+            if len(c) == 1:
+                out.append(c[0])
+            else:
+                out.append(combine_player(c, team_names))
+                merged_rows += len(c) - 1
+
+    print(f"  + merged duplicates: {merged_rows} rows folded, {len(players)} -> {len(out)} players")
+    return out
+
+
 def main():
     print("College (NCAA D1)…")
     leagues, teams, players = build_college()
@@ -2019,7 +2206,12 @@ def main():
     teams.sort(key=lambda t: (t["leagueId"], t["name"]))
     players.sort(key=lambda p: (p["leagueId"], p["name"]))
 
-    # make profile URLs unique across schools / leagues
+    players = merge_players(players, teams)
+
+    # make profile URLs unique across schools / leagues.
+    # the plain slug goes to the most substantial profile: with two "Hunter Smith"s the
+    # five-season pro should own /player/hunter-smith, not the two-season club player
+    players.sort(key=lambda p: (bool(p.get("photo")), len(p.get("seasons") or [])), reverse=True)
     seen = {}
     for p in players:
         base = p["slug"] or slugify(p["name"])

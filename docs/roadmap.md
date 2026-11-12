@@ -27,6 +27,29 @@ not the UI — is what decides whether it ships.
 - 2026 USILA D1 All-Americans: 100 players across 1st/2nd/3rd/honourable mention, parsed from
   the published PDF
 
+## Duplicate players (done)
+
+One person can arrive once per source: the same pro in the NLL and the PLL, a junior moving from
+B to C, a source listing a club's career table next to its season table. `merge_players()` folds
+those records, but only with evidence:
+
+| Evidence | Merged | Example |
+| --- | --- | --- |
+| Same program, or a naming variant of it | yes | "UC Santa Barbara" and "Santa Barbara" |
+| Same Canadian box ladder, one year apart | yes | OJBLL 2025 → OJCLL 2026 |
+| Pro box ↔ pro field, ≤ 5 years apart | yes | MSL/NLL + PLL |
+| NCAA → pro, ≤ 2 years apart | yes | Cornell → PLL Waterdogs |
+| Same league, different school, same window | **no** | two "Aidan Smith"s, two MCLA schools |
+| Field ↔ box outside the pro tier | **no** | MCLA club player and a junior box club |
+
+A goalie is never merged with an attacker, two records on the same pro club are never merged (the
+rosters are small enough for genuine namesakes), and names shared by more than four records require
+a program match. Seasons that arrive twice — a club listed in both PNWJLL and WCJLL — are deduped
+on `(season, team, stats)` so career totals never double.
+
+The current team is the newest season, ranked by competition when a player finished two in the same
+year; the headshot is taken from that competition when one exists.
+
 ## Next (in progress or ready to start)
 
 ### 1. All-Americans for earlier seasons
