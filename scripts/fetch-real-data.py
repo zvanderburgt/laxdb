@@ -2188,10 +2188,12 @@ def same_person(a, b, team_names, strict=False):
         return False
 
     # a date of birth is proof either way: same person, or definitively not.
-    # GameSheet supplies them for the box leagues, so this now has teeth.
+    # GameSheet supplies them for the box leagues, so this now has teeth. Two rows
+    # with one birth date are one human even when the leagues and years are far
+    # apart — Brinley Wilson is OJBLL 2024 and RMLL Junior A 2026.
     dob_a, dob_b = a.get("dob"), b.get("dob")
-    if dob_a and dob_b and dob_a != dob_b:
-        return False
+    if dob_a and dob_b:
+        return dob_a == dob_b
 
     if a.get("teamId") == b.get("teamId") or team_alias(a.get("teamId"), b.get("teamId"), team_names):
         return True

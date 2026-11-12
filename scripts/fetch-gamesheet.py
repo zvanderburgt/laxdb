@@ -153,11 +153,17 @@ def enrich_rows(rows: list[dict], data: dict, stats: dict):
             stats["name_miss"] += 1
             continue
 
+        # squash spaces as well as punctuation: our feed says "JRA Raiders", GameSheet
+        # says "Jr. A Raiders", and neither contains the other verbatim
         club_keys = {norm(t.get("title", "")) for t in (row.get("teams") or []) if t.get("title")}
+        club_squash = {k.replace(" ", "") for k in club_keys}
         picked = None
         for cand in candidates:
             team = team_by_id.get(cand["teamId"])
-            if team and (norm(team.get("shortName", "")) in club_keys or norm(team.get("name", "")) in club_keys):
+            if not team:
+                continue
+            names = {norm(team.get("shortName", "")), norm(team.get("name", ""))}
+            if names & club_keys or {n.replace(" ", "") for n in names} & club_squash:
                 picked = cand
                 stats["club_exact"] += 1
                 break
