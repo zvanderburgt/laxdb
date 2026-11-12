@@ -21,6 +21,7 @@ import {
 import type { GameRow, Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
+import { distinctEach } from "../lib/palette";
 import { peerRanks } from "../lib/peers";
 import { splits } from "../lib/splits";
 import { adjustedRate } from "../lib/adjusted";
@@ -31,6 +32,7 @@ import {
   Empty,
   GradeBar,
   PositionBadge,
+  SeasonLines,
   Segmented,
   Sparkline,
   Stat,
@@ -436,32 +438,58 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
   // box feeds publish penalties, not ground balls, so a box-only summary ends on PIM
   const summaryBoxOnly =
     seasons.length > 0 && seasons.slice(0, 4).every((s) => leagueById.get(s.leagueId)?.type === "box");
-  // one bar per team per season: a merged career changes clubs, and the chart should show it
-  const chartGroups = (() => {
-    const order: string[] = [];
-    const bySeason = new Map<string, { value: number; color: string; label: string; slug?: string }[]>();
+  // one line per club: a merged career is several clubs and the chart should show which
+  // produced the points. A rate (save %) takes the best of a season, never a sum.
+  const chartSeries = (() => {
+    const map = new Map<
+      string,
+      { label: string; color: string; to?: string; leagueId: string; points: Record<string, number> }
+    >();
     for (const s of seasons) {
       const team = teamById.get(s.teamId);
+      if (!map.has(s.teamId)) {
+        map.set(s.teamId, {
+          label: team?.shortName ?? s.teamId,
+          color: team?.colors?.[0] ?? "var(--accent)",
+          to: team ? `/team/${team.slug}` : undefined,
+          leagueId: s.leagueId,
+          points: {},
+        });
+      }
+      const entry = map.get(s.teamId)!;
       const value = isGoal
         ? s.sv + s.ga > 0
           ? Math.round((s.sv / (s.sv + s.ga)) * 1000) / 10
           : 0
         : s.pts ?? 0;
-      if (!bySeason.has(s.season)) {
-        bySeason.set(s.season, []);
-        order.push(s.season);
-      }
-      bySeason.get(s.season)!.push({
-        value,
-        color: team?.colors?.[0] ?? "var(--accent)",
-        label: team?.shortName ?? s.teamId,
-        slug: team?.slug,
-      });
+      entry.points[s.season] = isGoal
+        ? Math.max(entry.points[s.season] ?? 0, value)
+        : (entry.points[s.season] ?? 0) + value;
     }
-    // ascending like the single-team sparkline, so the two charts read the same way
-    return order
-      .sort((a, b) => Number(a) - Number(b))
-      .map((season) => ({ season, bars: bySeason.get(season)! }));
+    // two clubs can share a name across leagues (Oakville Rock in the OSL and the MSL),
+    // so a repeated label carries its league to keep the legend unambiguous
+    const rows = [...map.values()];
+    const count = new Map<string, number>();
+    rows.forEach((r) => count.set(r.label, (count.get(r.label) ?? 0) + 1));
+    rows.forEach((r) => {
+      if ((count.get(r.label) ?? 0) > 1) {
+        const lge = leagueById.get(r.leagueId);
+        if (lge) r.label = `${r.label} · ${lge.short}`;
+      }
+    });
+    // three reds and one exact duplicate: spread them so each line is its own colour
+    distinctEach(rows.map((r) => r.color)).forEach((c, i) => (rows[i].color = c));
+    return rows;
+  })();
+  // every year in range, not just the years he played: otherwise 2020 and 2022 sit
+  // side by side and a line joins them across the missing season
+  const chartCategories = (() => {
+    const years = seasons.map((s) => Number(s.season)).filter((y) => Number.isFinite(y));
+    if (!years.length) return [];
+    const min = Math.min(...years);
+    const max = Math.max(...years);
+    if (max - min > 14) return [...new Set(seasons.map((s) => s.season))].sort((a, b) => Number(a) - Number(b));
+    return Array.from({ length: max - min + 1 }, (_, i) => String(min + i));
   })();
 
   return (
@@ -485,37 +513,11 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           <h3 className="card-title">{isGoal ? "Save percentage by season" : "Points by season"}</h3>
           <span className="muted small">{player.seasons[0]?.season}–{cur.season}</span>
         </div>
-        <Sparkline
-          values={chartGroups.map((g) =>
-            // a rate does not add up across clubs; a counting stat does
-            isGoal ? Math.max(...g.bars.map((b) => b.value)) : g.bars.reduce((n, b) => n + b.value, 0),
-          )}
-          labels={chartGroups.map((g) => g.season)}
-          valueSuffix={isGoal ? "%" : ""}
-          pointColors={chartGroups.map((g) => (g.bars.length === 1 ? g.bars[0].color : undefined))}
-          pointTitles={chartGroups.map((g) => {
-            const total = isGoal
-              ? Math.max(...g.bars.map((b) => b.value))
-              : g.bars.reduce((n, b) => n + b.value, 0);
-            const detail = g.bars.map((b) => `${b.label} ${b.value}${isGoal ? "%" : ""}`).join(" · ");
-            return g.bars.length > 1 ? `${g.season} · ${detail} · ${total}${isGoal ? "%" : ""} total` : `${g.season} · ${detail}`;
-          })}
-          legend={
-            new Set(player.seasons.map((s) => s.teamId)).size > 1
-              ? [...new Map(chartGroups.flatMap((g) => g.bars).map((b) => [b.label, b])).values()].map((b) => ({
-                  label: b.label,
-                  color: b.color,
-                  to: b.slug ? `/team/${b.slug}` : undefined,
-                }))
-              : undefined
-          }
+        <SeasonLines
+          categories={chartCategories}
+          series={chartSeries}
+          suffix={isGoal ? "%" : ""}
         />
-        {chartGroups.some((g) => g.bars.length > 1) ? (
-          <p className="muted small" style={{ marginTop: 8 }}>
-            Seasons with more than one club add their points together — hover a point for the
-            per-club figures.
-          </p>
-        ) : null}
       </Card>
 
       <Card>
@@ -524,12 +526,12 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           <button className="link-arrow small link-btn" onClick={onStats}>View full stats</button>
         </div>
         <div className="table-scroll">
-        <table className="mini-table">
+        <table className="mini-table season-summary">
           <thead>
             <tr>
               <th>Season</th>
               <th>Team</th>
-              <th>League</th>
+              <th className="col-league">League</th>
               <th className="r">GP</th>
               {isGoal ? (
                 <>
@@ -541,10 +543,10 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
                 </>
               ) : (
                 <>
-                  <th className="r">G</th>
-                  <th className="r">AST</th>
+                  <th className="r col-detail">G</th>
+                  <th className="r col-detail">AST</th>
                   <th className="r">PTS</th>
-                  <th className="r">PTS/G</th>
+                  <th className="r col-detail">PTS/G</th>
                   <th className="r">{summaryBoxOnly ? "PIM" : "GB"}</th>
                 </>
               )}
@@ -566,7 +568,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
                     );
                   })()}
                 </td>
-                <td className="muted small">
+                <td className="muted small col-league">
                   {(() => {
                     const l = leagueById.get(s.leagueId);
                     return l ? (
@@ -589,10 +591,10 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
                   </>
                 ) : (
                   <>
-                    <td className="r num">{s.g}</td>
-                    <td className="r num">{s.a}</td>
+                    <td className="r num col-detail">{s.g}</td>
+                    <td className="r num col-detail">{s.a}</td>
                     <td className="r num strong">{s.pts ?? 0}</td>
-                    <td className="r num">{(s.gp ? (s.pts ?? 0) / s.gp : 0).toFixed(2)}</td>
+                    <td className="r num col-detail">{(s.gp ? (s.pts ?? 0) / s.gp : 0).toFixed(2)}</td>
                     <td className="r num">
                       {leagueById.get(s.leagueId)?.type === "box" ? s.pen : s.gb}
                     </td>

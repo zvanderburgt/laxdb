@@ -270,7 +270,7 @@ kbd {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .card-toolbar {
   display: flex;
@@ -1086,7 +1086,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .profile-body {
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 24px 24px 88px;
+  padding: 16px 24px 88px;
   display: grid;
   grid-template-columns: minmax(0, 1.85fr) minmax(260px, 1fr);
   gap: 16px;
@@ -1094,6 +1094,9 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 }
 .profile-main { min-width: 0; }
 .tabs { margin-bottom: 16px; overflow-x: auto; }
+/* the tab strip already supplies the gap below itself; without this the body added a
+   second one and the first card sat 32px away while every later card sat 16px */
+.profile-bar + .profile-body { padding-top: 0; }
 .rail { display: flex; flex-direction: column; gap: 16px; }
 /* only stick when the column can actually fit in the viewport */
 @media (min-height: 1400px) { .rail { position: sticky; top: 74px; } }
@@ -1744,6 +1747,16 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .season-bars .bar-value { font-size: 9px; fill: var(--text-2); font-variant-numeric: tabular-nums; }
 
 .season-lines svg { width: 100%; height: auto; display: block; }
+.season-lines .bar-legend { margin-top: 10px; }
+
+/* the season summary keeps eight columns on a desktop and five on a phone: the league
+   is already implied by the club link, and it is the column that pushed PTS/G off */
+@media (max-width: 560px) {
+  .season-summary .col-league, .season-summary .col-detail { display: none; }
+  .season-summary th, .season-summary td { padding: 8px 4px; white-space: nowrap; }
+  .season-summary th:nth-child(2), .season-summary td:nth-child(2) { padding-left: 0; }
+  .season-summary th:last-child, .season-summary td:last-child { padding-right: 0; }
+}
 
 /* poll movement: quiet by default, colour only where it means something */
 .move { font-size: 10.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }

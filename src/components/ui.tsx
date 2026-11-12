@@ -323,6 +323,212 @@ export function Sparkline({
 }
 
 
+/* One line and one filled area per club. A merged career is several clubs, and a
+   single summed line hides which of them produced the points — and a rate like save
+   percentage cannot be summed at all. Gaps stay gaps: a club with no season at a
+   year simply has no point there. */
+export function SeasonLines({
+  categories,
+  series,
+  suffix = "",
+  height = 236,
+  showValues = true,
+}: {
+  categories: string[];
+  series: { label: string; color: string; to?: string; points: Record<string, number> }[];
+  suffix?: string;
+  height?: number;
+  showValues?: boolean;
+}) {
+  const uid = React.useId().replace(/:/g, "");
+  // A fixed 560-wide viewBox shrinks to a 113px-tall plot on a phone, so the box changes
+  // shape with the container it is actually in — measured, not inferred from the window,
+  // which lags behind an emulated or resized viewport.
+  const [measured, setMeasured] = React.useState(560);
+  React.useEffect(() => {
+    const read = () => {
+      const el = document.querySelector<HTMLElement>(".season-lines");
+      if (el) setMeasured((current) => {
+        const next = el.getBoundingClientRect().width;
+        return Math.abs(next - current) < 1 ? current : next;
+      });
+    };
+    read();
+    // Neither a resize listener nor a ResizeObserver sees a viewport that changed *before*
+    // the chart mounted (emulated device, restored window, a card revealed after paint), so
+    // the width is re-read on a short interval while the layout settles, then left alone.
+    const poll = window.setInterval(read, 250);
+    const settle = window.setTimeout(() => window.clearInterval(poll), 4000);
+    window.addEventListener("resize", read);
+    return () => {
+      window.clearInterval(poll);
+      window.clearTimeout(settle);
+      window.removeEventListener("resize", read);
+    };
+  }, []);
+  if (categories.length === 0 || series.length === 0) return null;
+
+  const narrow = measured < 480;
+  const pad = { l: 34, r: 14, t: 20, b: 26 };
+  const width = narrow ? 360 : 560;
+  const boxHeight = narrow ? 232 : height;
+  const w = width - pad.l - pad.r;
+  const h = boxHeight - pad.t - pad.b;
+
+  const peak = Math.max(1, ...series.flatMap((s) => categories.map((c) => s.points[c] ?? 0)));
+  const step = (() => {
+    const rough = peak / 3;
+    const mag = 10 ** Math.floor(Math.log10(Math.max(1, rough)));
+    for (const m of [1, 2, 2.5, 5, 10]) if (rough <= mag * m) return mag * m;
+    return mag * 10;
+  })();
+  const top = Math.max(step, Math.ceil(peak / step) * step);
+
+  const x = (i: number) => pad.l + (categories.length === 1 ? w / 2 : (i / (categories.length - 1)) * w);
+  const y = (v: number) => pad.t + h - (v / top) * h;
+
+  // contiguous runs: a club absent for a season must break the line, not interpolate
+  const runs = (points: Record<string, number>) => {
+    const out: { i: number; v: number }[][] = [];
+    let run: { i: number; v: number }[] = [];
+    categories.forEach((c, i) => {
+      const v = points[c];
+      if (v === undefined) {
+        if (run.length) out.push(run);
+        run = [];
+      } else {
+        run.push({ i, v });
+      }
+    });
+    if (run.length) out.push(run);
+    return out;
+  };
+  const pathOf = (run: { i: number; v: number }[]) =>
+    run.map((p, k) => `${k === 0 ? "M" : "L"}${x(p.i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const areaOf = (run: { i: number; v: number }[]) =>
+    `${pathOf(run)} L${x(run[run.length - 1].i).toFixed(1)},${(pad.t + h).toFixed(1)} L${x(run[0].i).toFixed(1)},${(
+      pad.t + h
+    ).toFixed(1)} Z`;
+
+  // two clubs in one season would stack their labels; the smaller one drops below
+  const labels = categories.flatMap((c) => {
+    const at = series
+      .map((s, si) => ({ si, v: s.points[c] }))
+      .filter((e): e is { si: number; v: number } => e.v !== undefined)
+      .sort((a, b) => b.v - a.v);
+    return at.map((e, k) => ({ c, ...e, k, total: at.length }));
+  });
+
+  return (
+    <div className="season-lines">
+      <svg viewBox={`0 0 ${width} ${boxHeight}`} role="img" aria-label="Points by season, one line per club">
+        <defs>
+          {series.map((s, i) => (
+            <linearGradient key={i} id={`${uid}-${i}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={s.color} stopOpacity="0.02" />
+            </linearGradient>
+          ))}
+        </defs>
+        {[0, 1, 2, 3].map((k) => (
+          <line
+            key={k}
+            x1={pad.l}
+            x2={width - pad.r}
+            y1={pad.t + (h * k) / 3}
+            y2={pad.t + (h * k) / 3}
+            className="grid-line"
+          />
+        ))}
+        {[0, 1, 2, 3].map((k) => (
+          <text key={k} x={pad.l - 8} y={pad.t + (h * k) / 3 + 3.5} className="axis-label" textAnchor="end">
+            {Math.round(top - (top * k) / 3)}
+          </text>
+        ))}
+
+        {series.map((s, i) =>
+          runs(s.points).map((run, k) => (
+            <path key={`a-${i}-${k}`} d={areaOf(run)} fill={`url(#${uid}-${i})`} />
+          )),
+        )}
+
+        {series.map((s, i) =>
+          runs(s.points).map((run, k) => (
+            <path
+              key={`l-${i}-${k}`}
+              d={pathOf(run)}
+              fill="none"
+              stroke={s.color}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )),
+        )}
+
+        {series.map((s, i) =>
+          categories.map((c) =>
+            s.points[c] === undefined ? null : (
+              <circle
+                key={`d-${i}-${c}`}
+                cx={x(categories.indexOf(c))}
+                cy={y(s.points[c])}
+                /* a club with one season has no line to follow: fill its marker so the
+                   colour still reads, instead of an empty ring */
+                r={Object.keys(s.points).length === 1 ? 4.6 : 3.6}
+                fill={Object.keys(s.points).length === 1 ? s.color : "var(--card)"}
+                stroke={Object.keys(s.points).length === 1 ? "var(--card)" : s.color}
+                strokeWidth="2.5"
+              >
+                <title>{`${c} · ${s.label} · ${s.points[c]}${suffix}`}</title>
+              </circle>
+            ),
+          ),
+        )}
+
+        {showValues
+          ? labels.map((l) => (
+              <text
+                key={`v-${l.c}-${l.si}`}
+                x={x(categories.indexOf(l.c))}
+                /* a point sitting on the top gridline puts its label above the plot, so it
+                   drops below the marker instead */
+                y={y(l.v) + ((l.total > 1 && l.k > 0) || y(l.v) - 12 < pad.t + 6 ? 15 : -10)}
+                className="point-label"
+                textAnchor="middle"
+              >
+                {l.v}
+                {suffix}
+              </text>
+            ))
+          : null}
+
+        {categories.map((c, i) => (
+          <text key={`x-${c}`} x={x(i)} y={boxHeight - 6} className="axis-label" textAnchor="middle">
+            {c}
+          </text>
+        ))}
+      </svg>
+      {series.length > 1 ? (
+        <ul className="bar-legend">
+          {series.map((s) => (
+            <li key={s.label}>
+              <span className="bar-swatch" style={{ background: s.color }} />
+              {s.to ? (
+                <Link to={s.to} className="cell-link">
+                  {s.label}
+                </Link>
+              ) : (
+                s.label
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export function GradeBar({ label, value, rank }: { label: string; value: number; rank?: number }) {
   return (
     <div className="grade">
