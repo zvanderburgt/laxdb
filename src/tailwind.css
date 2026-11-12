@@ -1,0 +1,36 @@
+/* Tailwind v4, theme + utilities only. Preflight is deliberately skipped: styles.css
+   already owns the base layer, and a second reset fights it. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* shadcn/ui tokens mapped onto LAXDB's own palette, so the components inherit the
+   Apple-ish surface/typography decisions instead of importing a new look. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--card);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--card-2);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--bg-soft);
+  --color-muted-foreground: var(--text-2);
+  --color-accent: var(--bg-soft);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--red);
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--hairline);
+  --color-input: var(--hairline);
+  --color-ring: var(--accent);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

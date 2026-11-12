@@ -62,6 +62,19 @@ Product details:
 - **Light + dark**, following the OS preference on first visit.
 - **Responsive** to phone widths; tables scroll rather than squeeze.
 
+## UI stack
+
+shadcn/ui on Tailwind v4. Components are copied into `src/components/shadcn/` and inherit LAXDB's
+own palette through `src/tailwind.css`, which maps `--background`, `--primary`, `--border` and
+friends onto the existing CSS variables — no second design language.
+
+- `Button`, `Input`, `Select`, `Tabs` (the segmented controls), `Card`, `Badge`, `Table`
+- `Command` + `Dialog` for the ⌘K palette, `Sheet` for the mobile menu, `DropdownMenu` for
+  appearance, `Tooltip` on icon buttons, `Sonner` for toasts
+- Tailwind is imported **theme and utilities only** (`@import "tailwindcss/theme.css"`,
+  `tailwindcss/utilities.css`); preflight is skipped because `styles.css` already owns the base
+  layer and a second reset fights it.
+
 ## The data
 
 **15,748 real players, 426 teams, 19 competitions, 21,972 player-seasons, 2021–2026.** No invented

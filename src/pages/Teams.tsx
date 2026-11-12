@@ -14,7 +14,7 @@ import {
   teamBySlug,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
+import { Avatar, Card, Empty, FilterSelect, PlayerAvatar, PositionBadge, SectionHead, Stat, TeamLogo } from "../components/ui";
 
 export function TeamsPage() {
   const [q, setQ] = useState("");
@@ -58,12 +58,15 @@ export function TeamsPage() {
           </svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search teams or cities" aria-label="Search teams" />
         </div>
-        <select value={league} onChange={(e) => setLeague(e.target.value)} aria-label="League">
-          <option value="all">All competitions</option>
-          {data.leagues.map((l) => (
-            <option key={l.id} value={l.id}>{l.name}</option>
-          ))}
-        </select>
+        <FilterSelect
+          value={league}
+          onChange={setLeague}
+          ariaLabel="League"
+          options={[
+            { value: "all", label: "All competitions" },
+            ...data.leagues.map((l) => ({ value: l.id, label: l.name })),
+          ]}
+        />
       </div>
 
       {grouped.length === 0 ? <Empty title="No teams match" /> : null}

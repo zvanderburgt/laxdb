@@ -20,19 +20,9 @@ import {
 import type { Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { toggleSaved, useRoster } from "../lib/storage";
-import {
-  Avatar,
-  Card,
-  Empty,
-  GradeBar,
-  PositionBadge,
-  Segmented,
-  Sparkline,
-  SeasonBars,
-  Stat,
-  PlayerAvatar,
-  TeamLogo,
-} from "../components/ui";
+import { Avatar, Card, Empty, FilterSelect, GradeBar, PlayerAvatar, PositionBadge, SeasonBars, Segmented, Sparkline, Stat, TeamLogo } from "../components/ui";
+import { Button } from "../components/shadcn/button";
+import { toast } from "sonner";
 
 type Tab = "overview" | "stats" | "gamelog" | "awards" | "scouting";
 
@@ -133,31 +123,40 @@ function Profile({ player }: { player: Player }) {
                 {player.experience ? <span><b>{player.experience}</b> yrs pro</span> : null}
               </div>
             </div>
-            <div className="profile-actions">
-              <button
-                className={`btn ${has(player.id) ? "btn-secondary" : "btn-primary"}`}
+            <div className="profile-actions flex flex-wrap gap-2">
+              <Button
+                variant={has(player.id) ? "secondary" : "default"}
                 onClick={() => toggle(player.id)}
+                className="rounded-full"
               >
                 {has(player.id) ? "In comparison ✓" : "Compare"}
-              </button>
-              <button className="btn btn-secondary" onClick={copy}>
+              </Button>
+              <Button variant="outline" onClick={copy} className="rounded-full">
                 {copied ? "Link copied" : "Share"}
-              </button>
-              <button
-                className={`btn ${saved ? "btn-secondary is-saved" : "btn-secondary"}`}
+              </Button>
+              <Button
+                variant={saved ? "secondary" : "outline"}
                 aria-pressed={saved}
-                onClick={() => toggleSaved(player.id)}
+                onClick={() => {
+                  toggleSaved(player.id);
+                  toast(saved ? `${player.name} removed from my roster` : `${player.name} saved to my roster`);
+                }}
                 title={saved ? "Remove from my roster" : "Save to my roster"}
+                className="rounded-full"
               >
                 {saved ? "★ Saved" : "☆ Save"}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => downloadPlayerCard(player, team, league)}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  downloadPlayerCard(player, team, league);
+                  toast("Share card downloaded");
+                }}
                 title="Download a shareable card"
+                className="rounded-full"
               >
                 Card
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -557,12 +556,15 @@ function StatsTab({ player }: { player: Player }) {
               { value: "game", label: "Per game" },
             ]}
           />
-          <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Filter league">
-            <option value="all">All competitions</option>
-            {leagues.map((l) => (
-              <option key={l} value={l}>{leagueById.get(l)?.name ?? l}</option>
-            ))}
-          </select>
+          <FilterSelect
+            value={scope}
+            onChange={setScope}
+            ariaLabel="Filter league"
+            options={[
+              { value: "all", label: "All competitions" },
+              ...leagues.map((l) => ({ value: l, label: leagueById.get(l)?.name ?? l })),
+            ]}
+          />
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => {
@@ -792,14 +794,15 @@ function MixedStats({ player }: { player: Player }) {
           </p>
         </div>
         <div className="head-controls">
-          <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Filter league">
-            <option value="all">All competitions</option>
-            {leagues.map((l) => (
-              <option key={l} value={l}>
-                {leagueById.get(l)?.name ?? l}
-              </option>
-            ))}
-          </select>
+          <FilterSelect
+            value={scope}
+            onChange={setScope}
+            ariaLabel="Filter league"
+            options={[
+              { value: "all", label: "All competitions" },
+              ...leagues.map((l) => ({ value: l, label: leagueById.get(l)?.name ?? l })),
+            ]}
+          />
         </div>
       </div>
       <div className="table-scroll">
