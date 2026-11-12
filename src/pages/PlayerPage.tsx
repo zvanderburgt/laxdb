@@ -20,6 +20,7 @@ import type { Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
 import { peerRanks } from "../lib/peers";
+import { splits } from "../lib/splits";
 import { toggleSaved, useRoster } from "../lib/storage";
 import {
   Avatar,
@@ -250,7 +251,12 @@ function Profile({ player }: { player: Player }) {
 
           {tab === "overview" && <Overview player={player} onStats={() => setTab("stats")} />}
           {tab === "stats" && <StatsTab player={player} />}
-          {tab === "gamelog" && <GameLog player={player} />}
+          {tab === "gamelog" && (
+            <>
+              <Splits player={player} />
+              <GameLog player={player} />
+            </>
+          )}
           {tab === "awards" && <AwardsTab player={player} />}
           {tab === "scouting" && <Scouting player={player} />}
         </div>
@@ -907,6 +913,58 @@ function MixedStats({ player }: { player: Player }) {
       <div className="table-note">
         Career spans both codebases, so the table keeps only the columns both publish. Ground
         balls, shots and faceoffs appear on the league-specific season detail further down.
+      </div>
+    </Card>
+  );
+}
+
+function Splits({ player }: { player: Player }) {
+  const games = usePlayerGames(player.id);
+  const groups = React.useMemo(() => (games ? splits(games, player) : []), [games, player.id]);
+  if (!groups.length) return null;
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Splits</h3>
+          <p className="muted small">
+            From this player&apos;s game log — home/away is not published in the box scores, so it is
+            not shown
+          </p>
+        </div>
+      </div>
+      <div className="splits-grid">
+        {groups.map((g) => (
+          <div key={g.label} className="splits-group">
+            <div className="eyebrow">{g.label}</div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th />
+                  <th className="r">GP</th>
+                  <th className="r">G</th>
+                  <th className="r">A</th>
+                  <th className="r">PTS</th>
+                  <th className="r">PTS/G</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.rows.map((r) => (
+                  <tr key={r.key}>
+                    <td>{r.key}</td>
+                    <td className="r num">{r.gp}</td>
+                    <td className="r num">{r.g}</td>
+                    <td className="r num">{r.a}</td>
+                    <td className="r num strong">{r.pts}</td>
+                    <td className="r num">{(r.pts / Math.max(1, r.gp)).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {g.note ? <p className="muted small split-note">{g.note}</p> : null}
+          </div>
+        ))}
       </div>
     </Card>
   );

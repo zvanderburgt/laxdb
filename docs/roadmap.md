@@ -18,6 +18,7 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 
 **Pages**
 - Player: bio, season-by-season, position-aware stats, per-game view, game log with last-5 form,
+  **situational splits (month, result, vs RPI top 25)**,
   teammates, **comparable players (1–99 similarity)**, **peer rank ("2nd of 37 attackmen in points
   per game")**
 - `#/leaders` — every stat, by competition and season **or career**, top 25, with a printed
@@ -31,8 +32,8 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 
 ## Next — small, no new feed
 
-1. **Situational splits** — home/away, month, vs ranked, win/loss, from the game logs already held
-   for 2,991 D1 players. *(Baseball-Reference splits.)*
+1. **Game highs linking to the game** — career best per category, each pointing at the date it
+   happened. *(Basketball-Reference.)*
 2. **Game highs linking to the game** — career best per category, each pointing at the date it
    happened. *(Basketball-Reference.)*
 3. **Assisted vs unassisted goals** — derivable from G/A box scores; separates creators from
