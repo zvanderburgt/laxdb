@@ -92,6 +92,23 @@ const STATS = [
 function RatingsCard({ league }: { league: League }) {
   const rows = ratedTeams(league.id);
   if (!rows.length) return null;
+
+  // consensus: average of the ranks this team holds across every poll, plus its Elo rank.
+  // The spread is shown because the algorithms disagree more than most readers expect.
+  const pollRanks = new Map<string, number[]>();
+  for (const poll of league.polls ?? []) {
+    for (const row of poll.rows) {
+      if (!row.teamId) continue;
+      pollRanks.set(row.teamId, [...(pollRanks.get(row.teamId) ?? []), row.rank]);
+    }
+  }
+  const consensus = (teamId: string, eloRank: number) => {
+    const ranks = [...(pollRanks.get(teamId) ?? []), eloRank];
+    if (ranks.length < 2) return null;
+    const mean = ranks.reduce((a, b) => a + b, 0) / ranks.length;
+    const spread = Math.max(...ranks) - Math.min(...ranks);
+    return { mean, spread, sources: ranks.length };
+  };
   return (
     <Card padded={false} className="standings-card">
       <div className="card-toolbar">
@@ -110,6 +127,7 @@ function RatingsCard({ league }: { league: League }) {
               <th>Team</th>
               <th className="r">Elo</th>
               <th className="r">SOS</th>
+              <th className="r">Consensus</th>
               <th className="r">W–L</th>
             </tr>
           </thead>
@@ -126,6 +144,18 @@ function RatingsCard({ league }: { league: League }) {
                 <td className="r num strong">{r.elo}</td>
                 <td className="r num">{r.sos}</td>
                 <td className="r num">
+                  {(() => {
+                    const c = consensus(r.teamId, r.rank);
+                    if (!c) return <span className="muted">—</span>;
+                    return (
+                      <span title={`${c.sources} rankings`}>
+                        {c.mean.toFixed(1)}
+                        <span className="muted small"> ±{c.spread}</span>
+                      </span>
+                    );
+                  })()}
+                </td>
+                <td className="r num">
                   {r.team?.record ? `${r.team.record.w}–${r.team.record.l}` : "—"}
                 </td>
               </tr>
@@ -135,7 +165,8 @@ function RatingsCard({ league }: { league: League }) {
       </div>
       <div className="table-note">
         Every team starts at 1500, so ratings describe this season only — they are not a
-        cross-era ranking.
+        cross-era ranking. Consensus averages a team&apos;s Elo rank with its rank in each poll;
+        the ± figure is how far apart those sources sit.
       </div>
     </Card>
   );
