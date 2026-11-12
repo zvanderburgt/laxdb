@@ -19,6 +19,48 @@ import {
 import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 import type { Team } from "../lib/types";
 
+function HonoursCard({ team }: { team: Team }) {
+  const picks = React.useMemo(() => {
+    const out: { year: number; tier: string; name: string; slug?: string }[] = [];
+    for (const block of data.history?.allAmericans ?? []) {
+      for (const group of block.teams) {
+        for (const sel of group.players) {
+          if (sel.teamId !== team.id) continue;
+          const player = data.players.find(
+            (p) => p.name.toLowerCase().replace(/[^a-z]/g, "") === sel.name.toLowerCase().replace(/[^a-z]/g, ""),
+          );
+          out.push({ year: block.year, tier: group.team, name: sel.name, slug: player?.slug });
+        }
+      }
+    }
+    return out.sort((a, b) => b.year - a.year || a.tier.localeCompare(b.tier));
+  }, [team.id]);
+
+  if (!picks.length) return null;
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">All-Americans</h3>
+          <p className="muted small">USILA selections 2023–2026 · {picks.length} honours</p>
+        </div>
+      </div>
+      <ul className="honour-list">
+        {picks.map((p, i) => (
+          <li key={`${p.year}-${p.name}-${i}`}>
+            <span className="num muted small">{p.year}</span>
+            <span>
+              {p.slug ? <Link to={`/player/${p.slug}`}>{p.name}</Link> : p.name}
+            </span>
+            <span className="muted small">{p.tier}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function SeriesCard({ team }: { team: Team }) {
   const [result, setResult] = React.useState<{ season: string; rows: import("../lib/series").Series[] } | null>(null);
   React.useEffect(() => {
@@ -234,6 +276,7 @@ export function TeamPage() {
       </div>
 
       <div className="page">
+        <HonoursCard team={team} />
         <SeriesCard team={team} />
 
         {team.history && team.history.length ? (

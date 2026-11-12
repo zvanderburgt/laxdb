@@ -68,6 +68,30 @@ export default function Origins() {
   const sorted = [...rows].sort((a, b) => (metric === "players" ? b.players - a.players : b.per100k - a.per100k));
   const max = Math.max(...sorted.map((r) => (metric === "players" ? r.players : r.per100k)));
   const byRate = [...rows].sort((a, b) => b.per100k - a.per100k);
+  const schools = (() => {
+    const d1 = data.players.filter((p) => p.leagueId === "ncaa-d1" && p.highSchool);
+    const map = new Map<string, { name: string; players: number; programs: Map<string, number>; states: Map<string, number> }>();
+    for (const p of d1) {
+      const name = (p.highSchool ?? "").trim();
+      if (!name || name.length < 3) continue;
+      const key = name.toLowerCase();
+      const entry = map.get(key) ?? { name, players: 0, programs: new Map(), states: new Map() };
+      entry.players += 1;
+      entry.programs.set(p.teamId, (entry.programs.get(p.teamId) ?? 0) + 1);
+      const st = regionCode(p.birthplace?.state);
+      if (st) entry.states.set(st, (entry.states.get(st) ?? 0) + 1);
+      map.set(key, entry);
+    }
+    return [...map.values()]
+      .filter((r) => r.players >= 2)
+      .sort((a, b) => b.players - a.players)
+      .slice(0, 40)
+      .map((r) => ({
+        ...r,
+        state: [...r.states.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "",
+        programs: [...r.programs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3),
+      }));
+  })();
   const usTotal = rows.filter((r) => r.country === "US").reduce((n, r) => n + r.players, 0);
   const caTotal = rows.filter((r) => r.country === "CA").reduce((n, r) => n + r.players, 0);
 
@@ -153,6 +177,58 @@ export default function Origins() {
           birthplace on file.
         </div>
       </Card>
+
+      {schools.length ? (
+        <Card padded={false} className="standings-card">
+          <div className="card-toolbar">
+            <div>
+              <h3 className="card-title">Top high schools</h3>
+              <p className="muted small">
+                Schools feeding the most Division I rosters · {schools.length} with two or more
+                players
+              </p>
+            </div>
+          </div>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="c">#</th>
+                  <th>High school</th>
+                  <th className="r">Players</th>
+                  <th className="col-programs">Top programs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {schools.map((r, i) => (
+                  <tr key={r.name}>
+                    <td className="c num muted">{i + 1}</td>
+                    <td>
+                      <span className="strong">{r.name}</span>
+                      {r.state ? <span className="muted small"> {r.state}</span> : null}
+                    </td>
+                    <td className="r num strong">{r.players}</td>
+                    <td className="col-programs">
+                      <span className="origin-programs">
+                        {r.programs.map(([id, n]) => {
+                          const team = teamById.get(id);
+                          return team ? (
+                            <Link key={id} to={`/team/${team.slug}`} className="team-link">
+                              <TeamLogo team={team} size={16} />
+                              {team.shortName}
+                              <span className="muted small"> {n}</span>
+                            </Link>
+                          ) : null;
+                        })}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }
