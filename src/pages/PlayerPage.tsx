@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, useCompare, useRoute } from "../lib/app";
 import {
   ageOf,
+  allAmericansFor,
   careerTotals,
   currentSeason,
   data,
@@ -239,7 +240,8 @@ function Profile({ player }: { player: Player }) {
                 { value: "overview", label: "Overview" },
                 { value: "stats", label: "Stats" },
                 ...(player.leagueId === "ncaa-d1" ? [{ value: "gamelog" as Tab, label: "Game log" }] : []),
-                ...(player.awards.length || player.draft || player.rankings.length
+                ...(player.awards.length || player.draft || player.rankings.length ||
+                allAmericansFor(player).length
                   ? [{ value: "awards" as Tab, label: "Awards" }]
                   : []),
                 ...(player.scouting.report || Object.keys(player.scouting.grades).length
@@ -1208,13 +1210,29 @@ function GameLog({ player }: { player: Player }) {
 
 function AwardsTab({ player }: { player: Player }) {
   const awards = [...player.awards].sort((a, b) => b.year - a.year);
+  const allAmerica = allAmericansFor(player).sort((a, b) => b.year - a.year);
   return (
     <>
       <Card>
         <h3 className="card-title">Honors &amp; awards</h3>
-        {awards.length === 0 ? (
+        {allAmerica.length ? (
+          <div className="timeline">
+            {allAmerica.map((a) => (
+              <div className="tl-row" key={`${a.year}-${a.tier}`}>
+                <div className="tl-year num">{a.year}</div>
+                <div className="tl-dot" />
+                <div className="tl-body">
+                  <div className="tl-title">USILA {a.tier} All-American</div>
+                  <div className="muted small">{a.division} · from the published selection sheet</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {awards.length === 0 && !allAmerica.length ? (
           <p className="muted">No individual honors recorded yet.</p>
-        ) : (
+        ) : null}
+        {awards.length === 0 ? null : (
           <div className="timeline">
             {awards.map((a, i) => (
               <div className="tl-row" key={`${a.title}-${a.year}-${i}`}>

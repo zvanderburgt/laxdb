@@ -46,6 +46,8 @@ Product details:
   rebuilt from the box scores (which opponents, how many times, and the last result).
 - **Conference breakdown** on the D1 league page: every conference, ordered by Elo, with records.
 - **Teammates** on every profile — who shared a roster, ranked by career points.
+- **All-America honours** on the profile itself when the published selection sheet names that
+  player (2026 is the year the archive and the roster data overlap most).
 - **Comparable players** — a 1–99 similarity score built from per-game rates z-scored inside each
   position group, so a defender is compared with defenders and a goalie with goalies.
 - **Peer rank** — "2nd of 37 attackmen in points per game" for his competition and season.

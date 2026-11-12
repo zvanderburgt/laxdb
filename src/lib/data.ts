@@ -271,6 +271,39 @@ export function similarPlayers(p: Player, n = 4): Player[] {
     .map((r) => r.o);
 }
 
+/** All-America selections from the USILA archive, matched on name plus program. */
+type AaSel = { year: number; tier: string; division: string; teamId?: string | null; school: string };
+let aaIndex: Map<string, AaSel[]> | null = null;
+
+export function allAmericansFor(player: Player): { year: number; tier: string; division: string }[] {
+  if (!aaIndex) {
+    aaIndex = new Map();
+    for (const block of data.history?.allAmericans ?? []) {
+      for (const group of block.teams) {
+        for (const sel of group.players) {
+          const key = sel.name.toLowerCase().replace(/[^a-z]/g, "");
+          const list = aaIndex.get(key) ?? [];
+          list.push({ year: block.year, tier: group.team, division: block.division, teamId: sel.teamId, school: sel.school });
+          aaIndex.set(key, list);
+        }
+      }
+    }
+  }
+  const key = player.name.toLowerCase().replace(/[^a-z]/g, "");
+  const team = teamById.get(player.teamId);
+  const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  const mine = [norm(team?.name), norm(team?.shortName)].filter(Boolean);
+
+  return (aaIndex.get(key) ?? [])
+    .filter((sel) => {
+      if (sel.teamId) return sel.teamId === player.teamId;
+      // selections the PDF could not link to a program: require the school text to agree
+      const school = norm(sel.school);
+      return Boolean(school) && mine.some((t) => school.includes(t) || t.includes(school));
+    })
+    .map(({ year, tier, division }) => ({ year, tier, division }));
+}
+
 export function pctRank(value: number, pool: number[]): number {
   if (!pool.length) return 0;
   const below = pool.filter((v) => v < value).length;
