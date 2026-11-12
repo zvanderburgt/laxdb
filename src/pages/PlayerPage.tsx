@@ -230,24 +230,26 @@ function Profile({ player }: { player: Player }) {
         </div>
       </div>
 
-      <div className="tabs">
-        <Segmented
-          ariaLabel="Profile sections"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "overview", label: "Overview" },
-            { value: "stats", label: "Stats" },
-            ...(player.leagueId === "ncaa-d1" ? [{ value: "gamelog" as Tab, label: "Game log" }] : []),
-            ...(player.awards.length || player.draft || player.rankings.length ||
-            allAmericansFor(player).length
-              ? [{ value: "awards" as Tab, label: "Awards" }]
-              : []),
-            ...(player.scouting.report || Object.keys(player.scouting.grades).length
-              ? [{ value: "scouting" as Tab, label: "Scouting" }]
-              : []),
-          ]}
-        />
+      <div className="profile-bar">
+        <div className="tabs">
+          <Segmented
+            ariaLabel="Profile sections"
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "overview", label: "Overview" },
+              { value: "stats", label: "Stats" },
+              ...(player.leagueId === "ncaa-d1" ? [{ value: "gamelog" as Tab, label: "Game log" }] : []),
+              ...(player.awards.length || player.draft || player.rankings.length ||
+              allAmericansFor(player).length
+                ? [{ value: "awards" as Tab, label: "Awards" }]
+                : []),
+              ...(player.scouting.report || Object.keys(player.scouting.grades).length
+                ? [{ value: "scouting" as Tab, label: "Scouting" }]
+                : []),
+            ]}
+          />
+        </div>
       </div>
 
       <div className="profile-body">

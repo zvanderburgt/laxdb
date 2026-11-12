@@ -1914,3 +1914,13 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .tabs { padding-inline: 16px; }
   .profile-main { padding: 0; }
 }
+
+/* the tab strip needs the same centred column as the content it sits above */
+.profile-bar { max-width: var(--maxw); margin: 0 auto; }
+
+/* the 180px min-width on filter fields pushed 2px past a 360px viewport */
+@media (max-width: 700px) {
+  .leaders-controls { gap: 10px; }
+  .leaders-controls .field { min-width: 0; flex: 1 1 100%; }
+  .leaders-controls .input { width: 100%; max-width: none; }
+}
