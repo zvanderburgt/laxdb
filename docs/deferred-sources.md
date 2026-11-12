@@ -3,7 +3,7 @@
 Sources we deliberately skipped. Each entry records what failed, what was tried, and
 what would unblock it — so a future pass doesn't re-run the same dead ends.
 
-Last reviewed: 2026-11-11
+Last reviewed: 2026-11-12
 
 ---
 
@@ -24,6 +24,23 @@ data we wanted is already in the dataset under different league IDs.
   violation; only worth it for a league with real demand).
 - Manual export: open the league in Firefox, save the players page, hand the HTML over.
 - Ask the league for a data feed — junior leagues are usually happy to share.
+
+---
+
+## Four D1 athletics sites with a different stats URL
+
+**Status:** configured but not imported — the season segment is not `/sports/mens-lacrosse/stats/<year>`.
+
+| School | Domain | What the site does |
+| --- | --- | --- |
+| Notre Dame | und.com | sport slug is `/sports/mlax/`, stats path 404s for `/stats/2026` |
+| Virginia | virginiasports.com | same `/sports/mlax/` slug |
+| Penn State | gopsusports.com | `/sports/mens-lacrosse/stats` exists, 404s with the season appended |
+| VMI | vmisports.com | sport page 404s; the athletics site may live on another host |
+
+**What would unblock it:** read the season links off each site's `/stats` index (they use a
+`2025-26` style segment) and add a per-school URL template. The parser itself already handles
+their tables — this is a URL-mapping job, not a parsing one.
 
 ---
 

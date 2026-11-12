@@ -115,8 +115,8 @@ function AllAmericans() {
         <div>
           <h3 className="card-title">All-Americans</h3>
           <p className="muted small">
-            {block.year} USILA {block.division} ·{" "}
-            {block.teams.reduce((n, t) => n + t.players.length, 0)} players
+            USILA {block.division} · {block.teams.reduce((n, t) => n + t.players.length, 0)}{" "}
+            players
           </p>
         </div>
         {blocks.length > 1 ? (
@@ -129,7 +129,8 @@ function AllAmericans() {
           />
         ) : null}
       </div>
-      <div className="record-metrics">
+      <div className="record-metrics aa-teams">
+        <span className="aa-label">Team</span>
         <Segmented
           size="sm"
           ariaLabel="Team"

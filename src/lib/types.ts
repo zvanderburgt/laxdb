@@ -22,6 +22,8 @@ export interface StaffMember {
 
 export interface PollRow {
   rank: number;
+  /** rank in the previous snapshot, null/absent when new to the poll */
+  prev?: number | null;
   name: string;
   record: string;
   extra: string;
@@ -65,6 +67,8 @@ export interface Team {
   pollRanks?: Record<string, number>;
   elo?: number;
   sos?: number;
+  /** final regular-season records for earlier campaigns (ESPN results) */
+  history?: { season: string; w: number; l: number; gf: number; ga: number }[];
   record?: {
     w: number; l: number; t: number; pct: number; rank: number; teams: number;
     overallRank?: number; overallTeams?: number; group?: string;

@@ -178,6 +178,46 @@ export function TeamPage() {
       </div>
 
       <div className="page">
+        {team.history && team.history.length ? (
+          <Card padded={false} className="standings-card">
+            <div className="card-toolbar">
+              <div>
+                <h3 className="card-title">Recent seasons</h3>
+                <p className="muted small">Final regular-season record, from ESPN results</p>
+              </div>
+            </div>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Season</th>
+                    <th className="r">W</th>
+                    <th className="r">L</th>
+                    <th className="r">GF</th>
+                    <th className="r">GA</th>
+                    <th className="r">Diff</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {team.history.map((h) => (
+                    <tr key={h.season}>
+                      <td className="num strong">{h.season}</td>
+                      <td className="r num">{h.w}</td>
+                      <td className="r num">{h.l}</td>
+                      <td className="r num">{h.gf}</td>
+                      <td className="r num">{h.ga}</td>
+                      <td className={`r num ${h.gf - h.ga >= 0 ? "" : "muted"}`}>
+                        {h.gf - h.ga > 0 ? "+" : ""}
+                        {h.gf - h.ga}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        ) : null}
+
         <Card>
           <div className="card-toolbar">
             <div>

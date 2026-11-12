@@ -141,6 +141,22 @@ function RatingsCard({ league }: { league: League }) {
   );
 }
 
+/** Rank movement against the previous snapshot in rankings-history.json. */
+function Move({ prev, rank }: { prev?: number | null; rank: number }) {
+  if (prev == null) return <span className="move" title="First snapshot for this team">•</span>;
+  const delta = prev - rank; // positive means climbed
+  if (delta === 0) return <span className="move" title={`Held at #${prev}`}>–</span>;
+  return (
+    <span
+      className={`move ${delta > 0 ? "up" : "down"}`}
+      title={`${delta > 0 ? "Up" : "Down"} ${Math.abs(delta)} since the previous snapshot`}
+    >
+      {delta > 0 ? "▲" : "▼"}
+      {Math.abs(delta)}
+    </span>
+  );
+}
+
 function PollCard({ league }: { league: League }) {
   const polls = league.polls ?? [];
   const [key, setKey] = useState(polls[0]?.key ?? "");
@@ -171,6 +187,7 @@ function PollCard({ league }: { league: League }) {
           <thead>
             <tr>
               <th className="c">#</th>
+              <th aria-label="Movement" />
               <th>Team</th>
               <th className="r">{hasRecord ? "Record" : "Points"}</th>
             </tr>
@@ -181,6 +198,9 @@ function PollCard({ league }: { league: League }) {
               return (
                 <tr key={`${r.rank}-${r.name}`}>
                   <td className="c num muted">{r.rank}</td>
+                  <td className="c">
+                    <Move prev={r.prev} rank={r.rank} />
+                  </td>
                   <td>
                     {team ? (
                       <Link to={`/team/${team.slug}`} className="team-link">

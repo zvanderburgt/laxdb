@@ -151,6 +151,52 @@ SCHOOLS = [
     ("Hofstra Pride", "gohofstra.com", "CAA", "Hempstead, NY", "Hofstra", "#003591", "#FFC72C"),
     ("Massachusetts Minutemen", "umassathletics.com", "Atlantic 10", "Amherst, MA", "UMass", "#881C1C", "#000000"),
     ("High Point Panthers", "highpointpanthers.com", "Big South", "High Point, NC", "High Point", "#6F2C91", "#FFFFFF"),
+    ("Air Force Falcons", "goairforcefalcons.com", "ASUN", "USAF Academy, CO", "Air Force", "#003087", "#B1B3B3"),
+    ("Albany Great Danes", "ualbanysports.com", "America East", "Albany, NY", "Albany", "#46166B", "#FFC72C"),
+    ("Bellarmine Knights", "athletics.bellarmine.edu", "ASUN", "Louisville, KY", "Bellarmine", "#00205B", "#B31942"),
+    ("Binghamton Bearcats", "binghamtonbearcats.com", "America East", "Vestal, NY", "Binghamton", "#005A43", "#FFFFFF"),
+    ("Boston University Terriers", "goterriers.com", "Patriot", "Boston, MA", "Boston U", "#CC0000", "#FFFFFF"),
+    ("Brown Bears", "brownbears.com", "Ivy League", "Providence, RI", "Brown", "#4E3629", "#FFFFFF"),
+    ("Bryant Bulldogs", "bryantbulldogs.com", "America East", "Smithfield, RI", "Bryant", "#B3975A", "#000000"),
+    ("Bucknell Bison", "bucknellbison.com", "Patriot", "Lewisburg, PA", "Bucknell", "#003865", "#FF7300"),
+    ("Canisius Golden Griffins", "gogriffs.com", "MAAC", "Buffalo, NY", "Canisius", "#002144", "#C5A253"),
+    ("Cleveland State Vikings", "csuvikings.com", "NEC", "Cleveland, OH", "Cleveland State", "#006747", "#FFFFFF"),
+    ("Colgate Raiders", "colgateathletics.com", "Patriot", "Hamilton, NY", "Colgate", "#862633", "#FFFFFF"),
+    ("Dartmouth Big Green", "dartmouthsports.com", "Ivy League", "Hanover, NH", "Dartmouth", "#00693E", "#FFFFFF"),
+    ("Detroit Mercy Titans", "detroittitans.com", "NEC", "Detroit, MI", "Detroit Mercy", "#002C76", "#C8102E"),
+    ("Fairfield Stags", "fairfieldstags.com", "CAA", "Fairfield, CT", "Fairfield", "#C8102E", "#FFFFFF"),
+    ("Hampton Pirates", "hamptonpirates.com", "CAA", "Hampton, VA", "Hampton", "#003DA5", "#FFFFFF"),
+    ("Hobart Statesmen", "hwsathletics.com", "Atlantic 10", "Geneva, NY", "Hobart", "#F47920", "#00447C"),
+    ("Holy Cross Crusaders", "goholycross.com", "Patriot", "Worcester, MA", "Holy Cross", "#582C83", "#FFFFFF"),
+    ("Iona Gaels", "ionagaels.com", "MAAC", "New Rochelle, NY", "Iona", "#661E2B", "#B39D69"),
+    ("Jacksonville Dolphins", "judolphins.com", "ASUN", "Jacksonville, FL", "Jacksonville", "#006747", "#FFFFFF"),
+    ("LIU Sharks", "liuathletics.com", "NEC", "Brookville, NY", "LIU", "#00A3E0", "#041E42"),
+    ("Lafayette Leopards", "goleopards.com", "Patriot", "Easton, PA", "Lafayette", "#990033", "#FFFFFF"),
+    ("Le Moyne Dolphins", "lemoynedolphins.com", "NEC", "Syracuse, NY", "Le Moyne", "#006747", "#FFC72C"),
+    ("Lehigh Mountain Hawks", "lehighsports.com", "Patriot", "Bethlehem, PA", "Lehigh", "#6C2D2A", "#FFFFFF"),
+    ("Manhattan Jaspers", "gojaspers.com", "MAAC", "Riverdale, NY", "Manhattan", "#046A38", "#FFFFFF"),
+    ("Marist Red Foxes", "goredfoxes.com", "MAAC", "Poughkeepsie, NY", "Marist", "#C8102E", "#FFFFFF"),
+    ("Marquette Golden Eagles", "gomarquette.com", "Big East", "Milwaukee, WI", "Marquette", "#003366", "#FFCC00"),
+    ("Mercer Bears", "mercerbears.com", "ASUN", "Macon, GA", "Mercer", "#E04E00", "#000000"),
+    ("Mercyhurst Lakers", "hurstathletics.com", "NEC", "Erie, PA", "Mercyhurst", "#1C4037", "#C5A253"),
+    ("Merrimack Warriors", "merrimackathletics.com", "MAAC", "North Andover, MA", "Merrimack", "#003057", "#B3A369"),
+    ("Monmouth Hawks", "monmouthhawks.com", "CAA", "West Long Branch, NJ", "Monmouth", "#0F1D41", "#FFFFFF"),
+    ("Mount St. Mary's Mountaineers", "mountathletics.com", "MAAC", "Emmitsburg, MD", "Mount St. Mary's", "#002855", "#FFFFFF"),
+    ("NJIT Highlanders", "njithighlanders.com", "America East", "Newark, NJ", "NJIT", "#D22630", "#002D72"),
+    ("Providence Friars", "friars.com", "Big East", "Providence, RI", "Providence", "#231F20", "#FFFFFF"),
+    ("Queens Royals", "queensathletics.com", "ASUN", "Charlotte, NC", "Queens", "#00539B", "#FFFFFF"),
+    ("Quinnipiac Bobcats", "gobobcats.com", "MAAC", "Hamden, CT", "Quinnipiac", "#003366", "#FFB81C"),
+    ("Robert Morris Colonials", "rmucolonials.com", "NEC", "Moon Township, PA", "Robert Morris", "#002E62", "#C8102E"),
+    ("Sacred Heart Pioneers", "sacredheartpioneers.com", "MAAC", "Fairfield, CT", "Sacred Heart", "#C8102E", "#FFFFFF"),
+    ("Saint Joseph's Hawks", "sjuhawks.com", "Atlantic 10", "Philadelphia, PA", "Saint Joseph's", "#9E1B32", "#FFFFFF"),
+    ("Siena Saints", "sienasaints.com", "MAAC", "Loudonville, NY", "Siena", "#006747", "#FFFFFF"),
+    ("St. Bonaventure Bonnies", "gobonnies.com", "Atlantic 10", "Olean, NY", "St. Bonaventure", "#4E3629", "#FFFFFF"),
+    ("St. John's Red Storm", "redstormsports.com", "Big East", "Queens, NY", "St. John's", "#C8102E", "#FFFFFF"),
+    ("Stony Brook Seawolves", "stonybrookathletics.com", "CAA", "Stony Brook, NY", "Stony Brook", "#990000", "#FFFFFF"),
+    ("UMBC Retrievers", "umbcretrievers.com", "America East", "Baltimore, MD", "UMBC", "#000000", "#FDB515"),
+    ("UMass Lowell River Hawks", "goriverhawks.com", "America East", "Lowell, MA", "UMass Lowell", "#00559B", "#FFFFFF"),
+    ("Vermont Catamounts", "uvmathletics.com", "America East", "Burlington, VT", "Vermont", "#005710", "#FFD100"),
+    ("Wagner Seahawks", "wagnerathletics.com", "NEC", "Staten Island, NY", "Wagner", "#003726", "#FFFFFF"),
 ]
 
 DENY_NAMES = {
@@ -1661,6 +1707,22 @@ def attach_poll(leagues, teams):
     if not polls:
         return
     by_key = {norm_team(t["name"]): t for t in teams if t["leagueId"] == "ncaa-d1"}
+
+    # movement: compare each poll with the previous snapshot in rankings-history.json
+    previous = {}
+    hist_path = os.path.join(ROOT, "public", "rankings-history.json")
+    try:
+        history = json.load(open(hist_path)) if os.path.exists(hist_path) else []
+    except Exception:
+        history = []
+    for poll in polls:
+        earlier = [h for h in history if h.get("key") == poll["key"] and h.get("fetched", "") < poll.get("fetched", "")]
+        if earlier:
+            latest = max(earlier, key=lambda h: h.get("fetched", ""))
+            previous[poll["key"]] = {
+                norm_team(r.get("team", "")): r.get("rank") for r in latest.get("rows", [])
+            }
+
     out = []
     for poll in polls:
         rows, matched = [], 0
@@ -1670,15 +1732,18 @@ def attach_poll(leagues, teams):
             if team:
                 team.setdefault("pollRanks", {})[poll["key"]] = r["rank"]
                 matched += 1
+            prev_rank = previous.get(poll["key"], {}).get(key)
             rows.append({
                 "rank": r["rank"], "name": r.get("team", ""), "record": r.get("record", ""),
                 "extra": r.get("extra", ""), "teamId": team["id"] if team else None,
+                "prev": prev_rank,
             })
         out.append({
             "key": poll["key"], "source": poll.get("source", poll["key"]),
             "fetched": poll.get("fetched", ""), "rows": rows,
         })
-        print(f"  + poll {poll['key']}: {len(rows)} ranked ({matched} matched)")
+        moves = sum(1 for r in rows if r.get("prev") not in (None, r["rank"]))
+        print(f"  + poll {poll['key']}: {len(rows)} ranked ({matched} matched, {moves} moved)")
     league = next((l for l in leagues if l["id"] == "ncaa-d1"), None)
     if league:
         league["polls"] = out
@@ -1806,6 +1871,12 @@ RECORDS_URL = "https://en.wikipedia.org/wiki/NCAA_Division_I_men%27s_lacrosse_re
 AA_PDFS = {
     ("D1", 2026): ("https://s3.amazonaws.com/sidearm.sites/usila.sidearmsports.com/documents/"
                    "2026/5/21/2026_USILA_Division_I_All_American_Teams_and_Award_Winners_Sheet1.pdf"),
+    ("D1", 2025): ("https://s3.amazonaws.com/sidearm.sites/usila.sidearmsports.com/documents/"
+                   "2025/5/22/USILADIAllAmericanTeamsAwards2025.pdf"),
+    ("D1", 2024): ("https://s3.amazonaws.com/sidearm.sites/usila.sidearmsports.com/documents/"
+                   "2024/5/23/updated2024_USILA_Division_I_All_Americans.pdf"),
+    ("D1", 2023): ("http://collegelacrossenews.com/wp-content/uploads/2026/06/"
+                   "2023_USILA_Division_I_All_Americans_Updated.pdf"),
 }
 
 AA_POS = ("ATT", "MID", "DEF", "GOAL", "GK", "FO", "SSDM", "LSM", "D", "A", "M", "G")
@@ -1871,31 +1942,94 @@ def _aa_text(url):
     return "\n".join((p.extract_text() or "") for p in reader.pages)
 
 
-AA_ROW = re.compile(
-    r"^(?P<name>.+?)\s+(?P<school>.+?)\s+(?P<cls>Freshman|Sophomore|Junior|Senior|Grad|Graduate)\s+"
-    r"(?P<pos>ATT|MID|DEF|GOAL|GK|FO|SSDM|LSM)$"
+# the sheet's layout changed year to year; normalise the trailing tokens instead of the line
+AA_TEAM = re.compile(
+    r"^(First|Second|Third|Fourth|1st|2nd|3rd|4th)\s*Team(\s+All[\s-]*Americans?)?$"
+    r"|^Honorable\s+Mention(\s+All[\s-]*Americans?)?$"
+    r"|^Honorable\s+Mention\s+Team$",
+    re.I,
 )
-AA_TEAM = re.compile(r"^(1st|2nd|3rd|Fourth|Honorable Mention)\s*(Team)?$", re.I)
+AA_CLASSES = ("Freshman", "Sophomore", "Junior", "Senior", "Grad", "Graduate", "Soph", "Junior.", "R-Senior")
+AA_POSITIONS = ("ATT", "MID", "DEF", "GOAL", "GK", "FO", "SSDM", "LSM", "D", "G", "A", "M")
+AA_LEAD_POS = {
+    "Attack": "ATT", "Midfield": "MID", "Defense": "DEF", "Defence": "DEF",
+    "Goalie": "GOAL", "LSM": "LSM", "SSDM": "SSDM", "Faceoff": "FO", "FO": "FO",
+}
+
+
+# sheets print institutions, not team names: "Cornell University", "U.S. Military Academy"
+SCHOOL_NOISE = ("university", "college", "institute", "academy", "of", "the", "at", "us", "usa")
+SCHOOL_ALIAS = {
+    "usmilitary": "army", "usnaval": "navy", "usairforce": "airforce",
+    "militaryacademy": "army", "navalacademy": "navy", "airforceacademy": "airforce",
+    "military": "army", "naval": "navy", "airforce": "airforce",
+    "unc": "northcarolina", "uncch": "northcarolina", "pennstate": "pennstate",
+    "umbc": "umbc", "liu": "liu", "njit": "njit", "vmi": "vmi",
+}
+
+
+def school_key(raw):
+    key = norm_team(raw)
+    for noise in SCHOOL_NOISE:
+        key = key.replace(noise, "")
+    return SCHOOL_ALIAS.get(key, key)
 
 
 def split_name_school(body, known):
     """PDF text collapses the columns, so split from the right against known schools.
 
-    Program names carry mascots in our dataset ("Notre Dame Fighting Irish"), the sheet
-    prints "Notre Dame", so a prefix match counts as a hit.
+    Program names carry mascots in our dataset ("Notre Dame Fighting Irish"), while the
+    sheet prints "Notre Dame" or "Notre Dame University" — so compare the institution part
+    with noise words removed, and accept a prefix of a known program.
     """
     tokens = body.split()
     # longest school first: "Owen Duffy North Carolina" must not split at "Carolina"
     for i in range(2, len(tokens)):
         candidate = " ".join(tokens[i:])
-        key = norm_team(candidate)
-        # norm_team strips spaces, so compare without one: "northcarolina" prefixes
-        # "northcarolinatarheels"
-        if key in known or any(k.startswith(key) for k in known):
-            return " ".join(tokens[:i]), candidate
+        key = school_key(candidate)
+        if len(key) < 3:
+            continue
+        if key in known or any(school_key(k) == key or k.startswith(key) for k in known):
+            # "Cornell University" reads better as "Cornell"
+            display = " ".join(w for w in candidate.split()
+                               if w.lower().strip(".,") not in SCHOOL_NOISE) or candidate
+            display = {"Army": "Army", "Navy": "Navy", "Air Force": "Air Force"}.get(
+                SCHOOL_ALIAS.get(key, key).title(), display
+            )
+            return " ".join(tokens[:i]), display
     if len(tokens) >= 3:
         return " ".join(tokens[:-1]), tokens[-1]
     return body, ""
+
+
+def parse_aa_line(line, by_name):
+    """-> (player dict) or None. Handles the three layouts USILA has used since 2023."""
+    tokens = line.split()
+    if len(tokens) < 3:
+        return None
+    pos = cls = None
+
+    # layout A/B: position and class trail the name (order varies by year)
+    if tokens[-1] in AA_POSITIONS and len(tokens) > 3:
+        pos = tokens.pop()
+        if tokens[-1].rstrip(".") in [c.rstrip(".") for c in AA_CLASSES]:
+            cls = tokens.pop()
+    elif tokens[-1] in AA_CLASSES:
+        cls = tokens.pop()
+        if tokens and tokens[-1] in AA_POSITIONS:
+            pos = tokens.pop()
+
+    # layout C (2023): the position leads and there is no class column
+    if pos is None and tokens and tokens[0] in AA_LEAD_POS:
+        pos = AA_LEAD_POS[tokens.pop(0)]
+
+    if pos is None:
+        return None
+    body = " ".join(tokens)
+    name, school = split_name_school(body, by_name)
+    if not name or not school:
+        return None
+    return {"name": name, "school": school, "class": cls or "", "position": pos}
 
 
 def build_all_americans(teams):
@@ -1913,29 +2047,30 @@ def build_all_americans(teams):
         except Exception as e:
             print(f"  ! all-americans {division} {year}: {e}")
             continue
-        groups, current, awards = [], None, []
+        groups, current = [], None
         for line in (l.strip() for l in text.splitlines()):
             if not line or line.startswith(str(year)) or line.lower().startswith(("player school", "award name")):
                 continue
-            m = AA_TEAM.match(line)
-            if m:
-                current = {"team": line.replace("Team", "").strip(), "players": []}
+            # award-winner preamble ("Lt. Col. ... Outstanding Attackman – X – Sr – Attack – Duke")
+            if re.search(r"Player of the Year|Outstanding|Award Name|Ensign|^Lt\.|^Lt\s|^\s*Co ", line, re.I):
+                continue
+            if AA_TEAM.match(line):
+                label = re.sub(r"\s*All[\s-]*Americans?$", "", line, flags=re.I).strip()
+                # sheets alternate between "First Team" and "1st Team"
+                label = re.sub(r"^(First|Second|Third|Fourth)\b", lambda m: {
+                    "First": "1st", "Second": "2nd", "Third": "3rd", "Fourth": "4th",
+                }[m.group(1)], label, flags=re.I)
+                current = {"team": label, "players": []}
                 groups.append(current)
                 continue
-            pm = AA_ROW.match(line)
-            if pm and current is not None:
-                body = line[: pm.start("cls")].strip()
-                name, school = split_name_school(body, by_name)
-                current["players"].append({
-                    "name": name, "school": school,
-                    "class": pm.group("cls"), "position": pm.group("pos"),
-                    "teamId": team_id(school),
-                })
+            parsed = parse_aa_line(line, by_name)
+            if not parsed:
                 continue
-            if current is None and re.search(r"\b(ATT|MID|DEF|GOAL|FO|SSDM|LSM)\b\s+(Freshman|Sophomore|Junior|Senior|Grad)", line):
-                parts = line.split()
-                if len(parts) >= 4:
-                    awards.append({"award": " ".join(parts[:-4]), "name": " ".join(parts[-4:-3])})
+            if current is None:
+                # the 2023 sheet opens straight into the first team, with no heading
+                current = {"team": "1st Team", "players": []}
+                groups.append(current)
+            current["players"].append({**parsed, "teamId": team_id(parsed["school"])})
         groups = [g for g in groups if g["players"]]
         total = sum(len(g["players"]) for g in groups)
         print(f"  + all-americans {division} {year}: {total} players in {len(groups)} teams")
