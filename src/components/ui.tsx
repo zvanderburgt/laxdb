@@ -231,7 +231,7 @@ export function Sparkline({
   valueSuffix?: string;
   /** one colour per point — a merged career colours the marker by club */
   pointColors?: (string | undefined)[];
-  legend?: { label: string; color: string }[];
+  legend?: { label: string; color: string; to?: string }[];
   /** hover text per point, e.g. the per-club split of a combined season */
   pointTitles?: string[];
 }) {
@@ -307,7 +307,13 @@ export function Sparkline({
           {legend.map((l) => (
             <li key={l.label}>
               <span className="bar-swatch" style={{ background: l.color }} />
-              {l.label}
+              {l.to ? (
+                <Link to={l.to} className="cell-link">
+                  {l.label}
+                </Link>
+              ) : (
+                l.label
+              )}
             </li>
           ))}
         </ul>

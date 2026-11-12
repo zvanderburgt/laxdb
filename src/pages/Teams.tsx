@@ -14,6 +14,7 @@ import {
   teamOrigins,
   teamSeasonStats,
   teamById,
+  teamByName,
   teamBySlug,
   teamOf,
 } from "../lib/data";
@@ -162,7 +163,18 @@ function SeriesCard({ team }: { team: Team }) {
           <tbody>
             {result.rows.map((r) => (
               <tr key={r.opponent}>
-                <td>{r.opponent}</td>
+                <td>
+                  {(() => {
+                    const opp = teamByName(r.opponent);
+                    return opp ? (
+                      <Link to={`/team/${opp.slug}`} className="cell-link">
+                        {opp.shortName}
+                      </Link>
+                    ) : (
+                      r.opponent
+                    );
+                  })()}
+                </td>
                 <td className="r num strong">
                   {r.w}–{r.l}
                 </td>
@@ -530,7 +542,18 @@ export function TeamPage() {
               <dl className="facts">
                 <div><dt>Conference</dt><dd>{team.conference}</dd></div>
                 <div><dt>City</dt><dd>{team.city}</dd></div>
-                <div><dt>Competition</dt><dd>{league?.name}</dd></div>
+                <div>
+                  <dt>Competition</dt>
+                  <dd>
+                    {league ? (
+                      <Link to={`/league/${league.id}`} className="cell-link">
+                        {league.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </dd>
+                </div>
                 {team.elo ? <div><dt>Elo rating</dt><dd>{team.elo}{team.sos ? ` · SOS ${team.sos}` : ""}</dd></div> : null}
                 {team.pollRanks && Object.keys(team.pollRanks).length ? (
                   <div>

@@ -36,6 +36,33 @@ export function teamByName(name: string): Team | undefined {
   }
   return undefined;
 }
+/**
+ * Loose player lookup by printed name ("CJ Kirst" ⇄ "C.J. Kirst"). Record books,
+ * All-America lists and Tewaaraton winners carry names, not ids.
+ */
+let playerNameIndex: Map<string, Player> | null = null;
+export function playerByName(name: string): Player | undefined {
+  if (!playerNameIndex) {
+    playerNameIndex = new Map();
+    const rank = (p: Player) => (p.photo ? 1000 : 0) + p.seasons.length;
+    for (const p of data.players) {
+      const key = nameKey(p.name);
+      const cur = playerNameIndex.get(key);
+      if (!cur || rank(p) > rank(cur)) playerNameIndex.set(key, p);
+    }
+  }
+  const key = nameKey(name);
+  if (!key) return undefined;
+  const direct = playerNameIndex.get(key);
+  if (direct) return direct;
+  // one-token difference ("Kirst" vs "CJ Kirst") only when the token is distinctive
+  if (key.length < 6) return undefined;
+  for (const [k, p] of playerNameIndex) {
+    if (k.length >= 6 && (k.endsWith(key) || key.endsWith(k))) return p;
+  }
+  return undefined;
+}
+
 export const leagueById = new Map<string, League>();
 
 export let PLAYER_COUNT = 0;

@@ -9,6 +9,7 @@ import {
   fmtDate,
   fmtHeight,
   leagueById,
+  teamByName,
   playerBySlug,
   seasonTotals,
   teamById,
@@ -435,7 +436,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
   // one bar per team per season: a merged career changes clubs, and the chart should show it
   const chartGroups = (() => {
     const order: string[] = [];
-    const bySeason = new Map<string, { value: number; color: string; label: string }[]>();
+    const bySeason = new Map<string, { value: number; color: string; label: string; slug?: string }[]>();
     for (const s of seasons) {
       const team = teamById.get(s.teamId);
       const value = isGoal
@@ -451,6 +452,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
         value,
         color: team?.colors?.[0] ?? "var(--accent)",
         label: team?.shortName ?? s.teamId,
+        slug: team?.slug,
       });
     }
     // ascending like the single-team sparkline, so the two charts read the same way
@@ -500,6 +502,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
               ? [...new Map(chartGroups.flatMap((g) => g.bars).map((b) => [b.label, b])).values()].map((b) => ({
                   label: b.label,
                   color: b.color,
+                  to: b.slug ? `/team/${b.slug}` : undefined,
                 }))
               : undefined
           }
@@ -548,8 +551,30 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
             {seasons.slice(0, 4).map((s, i) => (
               <tr key={`${s.season}-${s.teamId}-${i}`}>
                 <td className="num">{s.season}</td>
-                <td>{teamById.get(s.teamId)?.shortName}</td>
-                <td className="muted small">{leagueById.get(s.leagueId)?.short}</td>
+                <td>
+                  {(() => {
+                    const t = teamById.get(s.teamId);
+                    return t ? (
+                      <Link to={`/team/${t.slug}`} className="cell-link">
+                        {t.shortName}
+                      </Link>
+                    ) : (
+                      "—"
+                    );
+                  })()}
+                </td>
+                <td className="muted small">
+                  {(() => {
+                    const l = leagueById.get(s.leagueId);
+                    return l ? (
+                      <Link to={`/league/${l.id}`} className="cell-link">
+                        {l.short}
+                      </Link>
+                    ) : (
+                      "—"
+                    );
+                  })()}
+                </td>
                 <td className="r num">{s.gp}</td>
                 {isGoal ? (
                   <>
@@ -574,7 +599,20 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
         </table>
         </div>
         <div className="table-note">
-          {team?.name} · {league?.name} · {player.positionName}
+          {team ? (
+            <Link to={`/team/${team.slug}`} className="cell-link">
+              {team.name}
+            </Link>
+          ) : null}
+          {league ? (
+            <>
+              {" · "}
+              <Link to={`/league/${league.id}`} className="cell-link">
+                {league.name}
+              </Link>
+            </>
+          ) : null}
+          {` · ${player.positionName}`}
         </div>
       </Card>
     </>
@@ -1184,7 +1222,18 @@ function GameLog({ player }: { player: Player }) {
             {games.map((g, i) => (
               <tr key={i} className={best && g === best ? "is-best" : undefined}>
                 <td className="num">{fmtDate(g.date)}</td>
-                <td>{g.opponent}</td>
+                <td>
+                  {(() => {
+                    const opp = g.opponent ? teamByName(g.opponent) : undefined;
+                    return opp ? (
+                      <Link to={`/team/${opp.slug}`} className="cell-link">
+                        {opp.shortName}
+                      </Link>
+                    ) : (
+                      g.opponent
+                    );
+                  })()}
+                </td>
                 <td className="c">
                   <span className={`result ${g.result === "W" ? "win" : g.result === "L" ? "loss" : ""}`}>
                     {g.result}

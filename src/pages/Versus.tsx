@@ -82,17 +82,17 @@ export default function Versus() {
         <div>
           <div className="eyebrow">Head to head</div>
           <h1 className="vs-title">
-            <span className="vs-team">
+            <Link to={`/team/${teamA.slug}`} className="vs-team">
               <TeamLogo team={teamA} size={34} />
               {teamA.shortName}
-            </span>
+            </Link>
             <span className="vs-record num">
               {wins}–{losses}
             </span>
-            <span className="vs-team">
+            <Link to={`/team/${teamB.slug}`} className="vs-team">
               <TeamLogo team={teamB} size={34} />
               {teamB.shortName}
-            </span>
+            </Link>
           </h1>
           <p className="muted">
             {meetings.length

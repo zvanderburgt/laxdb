@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "../lib/app";
-import { data, leagueById, teamById } from "../lib/data";
+import { data, leagueById, teamById, teamByName } from "../lib/data";
 import { Card, PlayerAvatar, Segmented } from "../components/ui";
 import type { Player } from "../lib/types";
 
@@ -63,6 +63,17 @@ function indexCat(leaguePpg: number): Cat | null {
     value: (r) => (r.gp ? ((r.pts / r.gp) / leaguePpg) * 100 : null),
     format: (n) => n.toFixed(0),
   };
+}
+
+/** every club name on the site should reach that club's page */
+function linkTeam(name: string) {
+  const t = teamByName(name);
+  if (!t) return name;
+  return (
+    <Link to={`/team/${t.slug}`} className="cell-link">
+      {t.shortName}
+    </Link>
+  );
 }
 
 export default function Leaders() {
@@ -267,7 +278,7 @@ export default function Leaders() {
                       <span>{r.player.name}</span>
                     </Link>
                   </td>
-                  <td className="muted small">{r.team}</td>
+                  <td className="muted small">{linkTeam(r.team)}</td>
                   <td className="r num">{r.gp}</td>
                   <td className="r num strong">{cat.format(v)}</td>
                   <td className="r num">{r.g}</td>

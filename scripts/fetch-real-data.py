@@ -1858,6 +1858,9 @@ def build_history(teams):
                     continue
                 school = cells[i_school] if i_school is not None and i_school < len(cells) else ""
                 pos = cells[i_pos] if i_pos is not None and i_pos < len(cells) else ""
+                # 2020's row reads "No Awards Due to COVID-19" in the winner column
+                if re.search(r"no award|covid|cancell?ed|not awarded", cells[i_winner] or "", re.I):
+                    continue
                 history["tewaaraton"].append({
                     "year": int(cells[i_year]),
                     "player": cells[i_winner].replace("\u00a0", " ").strip(),

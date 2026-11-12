@@ -130,14 +130,14 @@ export default function Home() {
           </div>
 
           {current ? (
-            <div className="hero-visual reveal" aria-hidden="true">
+            <div className="hero-visual reveal">
               <div
                 className="hv-rotate"
                 onMouseEnter={() => setPaused(true)}
                 onMouseLeave={() => setPaused(false)}
               >
                 {current ? <HeroCard key={current.id} player={current} /> : null}
-                <div className="hv-dots">
+                <div className="hv-dots" aria-hidden="true">
                   {spotlight.map((p, i) => (
                     <span key={p.id} className={"hv-dot" + (i === spot ? " on" : "")} />
                   ))}
@@ -151,8 +151,21 @@ export default function Home() {
                 {leaderboard("ncaa-d1", "pts", 3).map((r, i) => (
                   <div className="hv-mini-row" key={r.player.id}>
                     <span className="num muted">{i + 1}</span>
-                    <span className="hv-mini-name">{r.player.name}</span>
-                    <span className="hv-mini-team muted">{teamById.get(r.player.teamId)?.shortName}</span>
+                    <span className="hv-mini-name">
+                      <Link to={`/player/${r.player.slug}`} className="cell-link">
+                        {r.player.name}
+                      </Link>
+                    </span>
+                    <span className="hv-mini-team muted">
+                      {(() => {
+                        const t = teamById.get(r.player.teamId);
+                        return t ? (
+                          <Link to={`/team/${t.slug}`} className="cell-link">
+                            {t.shortName}
+                          </Link>
+                        ) : null;
+                      })()}
+                    </span>
                     <span className="num">{r.season.pts}</span>
                   </div>
                 ))}
@@ -336,7 +349,11 @@ export default function Home() {
               <div className="feature-row" key={p.id}>
                 <PositionBadge pos={p.position} />
                 <PlayerAvatar player={p} size={34} />
-                <span className="feature-name">{p.name}</span>
+                <span className="feature-name">
+                  <Link to={`/player/${p.slug}`} className="cell-link">
+                    {p.name}
+                  </Link>
+                </span>
                 <span className="num muted">{currentSeason(p).pts} PTS</span>
               </div>
             ))}
@@ -361,8 +378,19 @@ function HeroCard({ player }: { player: Player }) {
       <div className="hv-top">
         <PlayerAvatar player={p} size={54} radius={16} />
         <div className="hv-id">
-          <div className="hv-name">{p.name}</div>
-          <div className="hv-team">{team?.shortName} · {p.positionName}</div>
+          <div className="hv-name">
+            <Link to={`/player/${p.slug}`} className="cell-link">
+              {p.name}
+            </Link>
+          </div>
+          <div className="hv-team">
+            {team ? (
+              <Link to={`/team/${team.slug}`} className="cell-link">
+                {team.shortName}
+              </Link>
+            ) : null}
+            {` · ${p.positionName}`}
+          </div>
         </div>
       </div>
       <div className="hv-tags">

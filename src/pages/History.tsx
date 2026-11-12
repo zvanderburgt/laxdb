@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "../lib/app";
-import { data, teamById } from "../lib/data";
+import { data, teamById, teamByName, playerByName } from "../lib/data";
 import { Card, Empty, Segmented, TeamLogo } from "../components/ui";
 
 const METRICS = [
@@ -76,11 +76,32 @@ function RecordBook() {
             </tr>
           </thead>
           <tbody>
-            {section.rows.slice(0, 12).map((r, i) => (
-              <tr key={`${r.Player ?? r.University}-${i}`}>
+            {section.rows.slice(0, 12).map((r, i) => {
+              const nameText = r.Player ?? r.University ?? "";
+              const teamText = r.Team ?? r["Initial Season"] ?? "";
+              const player = r.Player ? playerByName(r.Player) : undefined;
+              const club = r.Team ? teamByName(r.Team) : undefined;
+              return (
+              <tr key={`${nameText}-${i}`}>
                 <td className="c num muted">{i + 1}</td>
-                <td className="strong">{r.Player ?? r.University}</td>
-                <td className="muted">{r.Team ?? r["Initial Season"]}</td>
+                <td className="strong">
+                  {player ? (
+                    <Link to={`/player/${player.slug}`} className="cell-link">
+                      {nameText}
+                    </Link>
+                  ) : (
+                    nameText
+                  )}
+                </td>
+                <td className="muted">
+                  {club ? (
+                    <Link to={`/team/${club.slug}`} className="cell-link">
+                      {club.shortName}
+                    </Link>
+                  ) : (
+                    teamText
+                  )}
+                </td>
                 <td className="r num muted">{r.Year ?? r.Years ?? "—"}</td>
                 {statCols.map((c) => (
                   <td key={c} className="r num">
@@ -88,13 +109,14 @@ function RecordBook() {
                   </td>
                 ))}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
       <div className="table-note">
-        These lists reach back to the 1970s, so the players are not linked — most predate the
-        seasons we index. Source: NCAA record book via Wikipedia.
+        These lists reach back to the 1970s. Anyone we hold a profile for is linked; the rest
+        predate the seasons we index. Source: NCAA record book via Wikipedia.
       </div>
     </Card>
   );
@@ -178,10 +200,19 @@ function AllAmericans() {
       </div>
       <ul className="aa-list">
         {list.map((p) => {
-          const team = p.teamId ? teamById.get(p.teamId) : undefined;
+          const team = (p.teamId ? teamById.get(p.teamId) : undefined) ?? teamByName(p.school);
+          const profile = playerByName(p.name);
           return (
             <li key={`${p.name}-${p.school}`}>
-              <span className="aa-name">{p.name}</span>
+              <span className="aa-name">
+                {profile ? (
+                  <Link to={`/player/${profile.slug}`} className="cell-link">
+                    {p.name}
+                  </Link>
+                ) : (
+                  p.name
+                )}
+              </span>
               <span className="aa-school">
                 {team ? (
                   <Link to={`/team/${team.slug}`} className="team-link">
@@ -290,7 +321,7 @@ export default function History() {
               </thead>
               <tbody>
                 {champions.map((c) => {
-                  const team = c.teamId ? teamById.get(c.teamId) : undefined;
+                  const team = (c.teamId ? teamById.get(c.teamId) : undefined) ?? teamByName(c.team);
                   return (
                     <tr key={`${c.year}-${c.team}`}>
                       <td className="c num strong">{c.year}</td>
@@ -321,7 +352,7 @@ export default function History() {
           </div>
           <div className="table-note">
             Counts include pre-NCAA national titles, which is why the totals run higher than NCAA
-            championships alone. Programs we carry rosters for are linked.
+            championships alone. Every program we hold is linked to its page.
           </div>
         </Card>
 
@@ -332,10 +363,18 @@ export default function History() {
             </div>
             <ul className="origin-list title-list">
               {programs.map((p) => {
-                const team = p.teamId ? teamById.get(p.teamId) : undefined;
+                const team = (p.teamId ? teamById.get(p.teamId) : undefined) ?? teamByName(p.team);
                 return (
                   <li key={p.team}>
-                    <span>{team?.shortName ?? p.team}</span>
+                    <span>
+                      {team ? (
+                        <Link to={`/team/${team.slug}`} className="cell-link">
+                          {team.shortName}
+                        </Link>
+                      ) : (
+                        p.team
+                      )}
+                    </span>
                     <span className="num muted">{p.titles}</span>
                   </li>
                 );
@@ -352,9 +391,30 @@ export default function History() {
               {history.tewaaraton.slice(0, 10).map((w) => (
                 <li key={w.year}>
                   <span>
-                    <b className="num">{w.year}</b> {w.player}
+                    <b className="num">{w.year}</b>{" "}
+                    {(() => {
+                      const who = playerByName(w.player);
+                      return who ? (
+                        <Link to={`/player/${who.slug}`} className="cell-link">
+                          {w.player}
+                        </Link>
+                      ) : (
+                        w.player
+                      );
+                    })()}
                   </span>
-                  <span className="muted small">{w.school}</span>
+                  <span className="muted small">
+                    {(() => {
+                      const t = teamByName(w.school);
+                      return t ? (
+                        <Link to={`/team/${t.slug}`} className="cell-link">
+                          {t.shortName}
+                        </Link>
+                      ) : (
+                        w.school
+                      );
+                    })()}
+                  </span>
                 </li>
               ))}
             </ul>

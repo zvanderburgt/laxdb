@@ -94,15 +94,15 @@ export default function Game() {
         <div>
           <div className="eyebrow">{game?.venue || "Game"}</div>
           <h1 className="vs-title">
-            <span className="vs-team">
+            <Link to={`/team/${away.slug}`} className="vs-team">
               <TeamLogo team={away} size={30} />
               {away.shortName}
-            </span>
+            </Link>
             <span className="vs-record num">{game ? `${game.as}–${game.hs}` : "—"}</span>
-            <span className="vs-team">
+            <Link to={`/team/${home.slug}`} className="vs-team">
               <TeamLogo team={home} size={30} />
               {home.shortName}
-            </span>
+            </Link>
           </h1>
           <p className="muted">
             {date} · {game ? (homeWon ? `${home.shortName} won` : `${away.shortName} won`) : "no score on file"}
