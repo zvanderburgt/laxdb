@@ -63,11 +63,33 @@ function HonoursCard({ team }: { team: Team }) {
 
 function SeriesCard({ team }: { team: Team }) {
   const [result, setResult] = React.useState<{ season: string; rows: import("../lib/series").Series[] } | null>(null);
+  const [scores, setScores] = React.useState<Map<string, { us: number; them: number }>>(new Map());
+
   React.useEffect(() => {
     let alive = true;
     loadGames().then((all) => {
       if (alive) setResult(seriesFor(team, all));
     });
+    // final scores for the same fixtures, keyed by opponent name
+    fetch(`${import.meta.env.BASE_URL}scores.json`)
+      .then((r) => r.json())
+      .then((payload: { d1?: { date: string; home: string; away: string; hs: number; as: number }[] }) => {
+        if (!alive || !payload.d1) return;
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
+        const mine = [norm(team.name), norm(team.shortName), norm(team.slug.replace(/-/g, " "))];
+        const out = new Map<string, { us: number; them: number; date: string }>();
+        for (const g of payload.d1) {
+          const isHome = mine.some((m) => norm(g.home).startsWith(m) || m.startsWith(norm(g.home)));
+          const isAway = mine.some((m) => norm(g.away).startsWith(m) || m.startsWith(norm(g.away)));
+          if (!isHome && !isAway) continue;
+          const key = isHome ? g.away : g.home;
+          const row = { us: isHome ? g.hs : g.as, them: isHome ? g.as : g.hs, date: g.date };
+          const prev = out.get(key);
+          if (!prev || row.date > prev.date) out.set(key, row);
+        }
+        setScores(out);
+      })
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
@@ -93,7 +115,7 @@ function SeriesCard({ team }: { team: Team }) {
               <th>Opponent</th>
               <th className="r">W–L</th>
               <th className="r">Last meeting</th>
-              <th className="r">Result</th>
+              <th className="r">Score</th>
             </tr>
           </thead>
           <tbody>
@@ -104,7 +126,23 @@ function SeriesCard({ team }: { team: Team }) {
                   {r.w}–{r.l}
                 </td>
                 <td className="r num muted">{r.last}</td>
-                <td className="r num">{r.result}</td>
+                <td className="r num">
+                  {(() => {
+                    const key = [...scores.keys()].find((k) =>
+                      k.toLowerCase().replace(/[^a-z]/g, "").startsWith(r.opponent.toLowerCase().replace(/[^a-z]/g, "")) ||
+                      r.opponent.toLowerCase().replace(/[^a-z]/g, "").startsWith(k.toLowerCase().replace(/[^a-z]/g, "")),
+                    );
+                    const s = key ? scores.get(key) : undefined;
+                    if (s) {
+                      return (
+                        <span className={s.us > s.them ? "strong" : ""}>
+                          {s.us}–{s.them}
+                        </span>
+                      );
+                    }
+                    return r.result;
+                  })()}
+                </td>
               </tr>
             ))}
           </tbody>
