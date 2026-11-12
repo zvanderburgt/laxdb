@@ -14,6 +14,7 @@ import Origins from "./pages/Origins";
 import Leaders from "./pages/Leaders";
 import Scores from "./pages/Scores";
 import Versus from "./pages/Versus";
+import Game from "./pages/Game";
 import { Empty } from "./components/ui";
 
 function titleFor(path: string) {
@@ -24,7 +25,7 @@ function titleFor(path: string) {
   if (seg[0] === "league") return `${leagueById.get(seg[1] ?? "")?.name ?? "League"} · LAXDB`;
   const label = {
     players: "Players", teams: "Teams", leagues: "Leagues", compare: "Compare",
-    "my-roster": "My roster", history: "History", origins: "Origins", leaders: "Leaders", scores: "Scores", vs: "Head to head",
+    "my-roster": "My roster", history: "History", origins: "Origins", leaders: "Leaders", scores: "Scores", vs: "Head to head", game: "Game",
   }[seg[0]];
   return label ? `${label} · LAXDB` : "LAXDB";
 }
@@ -52,6 +53,7 @@ function Routes() {
   else if (seg[0] === "leaders") page = <Leaders />;
   else if (seg[0] === "scores") page = <Scores />;
   else if (seg[0] === "vs") page = <Versus />;
+  else if (seg[0] === "game") page = <Game />;
   else
     page = (
       <div className="page">

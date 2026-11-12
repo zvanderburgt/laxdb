@@ -53,7 +53,7 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 3. **Head-to-head series** — shipped as `#/vs/:a/:b` over the 2025–26 results; an all-time
     version still needs seasons before 2025 in the scores feed.
 4. **Scores by date** — shipped for D1 and the PLL; MCLA and box leagues still need a feed.
-5. **Game pages** — one page per game with both teams' lines from the box scores.
+5. **Game pages** — shipped as `#/game/:date/:home/:away`, assembled from the player logs.
 6. **Championship detail** — final score, site, OT flag, winning coach, MVP.
 7. **All-time team encyclopedia** — every season we hold on one page with record, GF/GA,
     conference, Elo. *(Basketball-Reference franchise page.)*

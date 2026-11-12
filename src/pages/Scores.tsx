@@ -129,11 +129,19 @@ export default function Scores() {
                       g.away
                     )}
                   </span>
-                  <span className="num score-line">
-                    <span className={awayTeam && !homeWon ? "strong" : ""}>{g.as}</span>
-                    <span className="muted"> – </span>
-                    <span className={homeWon ? "strong" : ""}>{g.hs}</span>
-                  </span>
+                  {homeTeam && awayTeam ? (
+                    <Link to={`/game/${g.date}/${homeTeam.slug}/${awayTeam.slug}`} className="num score-line score-link">
+                      <span className={awayTeam && !homeWon ? "strong" : ""}>{g.as}</span>
+                      <span className="muted"> – </span>
+                      <span className={homeWon ? "strong" : ""}>{g.hs}</span>
+                    </Link>
+                  ) : (
+                    <span className="num score-line">
+                      <span className={awayTeam && !homeWon ? "strong" : ""}>{g.as}</span>
+                      <span className="muted"> – </span>
+                      <span className={homeWon ? "strong" : ""}>{g.hs}</span>
+                    </span>
+                  )}
                   <span className={homeWon ? "strong" : "muted"}>
                     {homeTeam ? <Link to={`/team/${homeTeam.slug}`}>{homeTeam.shortName}</Link> : g.home}
                   </span>

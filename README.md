@@ -36,6 +36,7 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/leaders` | Every stat category, by competition and season or career, with a qualification minimum |
 | `#/scores` | Final scores by date: 1,146 NCAA D1 games (2025–26) and 101 PLL games, linked to team pages |
 | `#/vs/:a/:b` | Head to head: record between two programs and every meeting in the scores feed |
+| `#/game/:date/:home/:away` | One game: the score plus both sides' lines, assembled from the player logs |
 
 Product details:
 
