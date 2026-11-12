@@ -1,0 +1,30 @@
+# Netlify honours these rules for direct (API/CLI) deploys, where netlify.toml
+# header rules do not always apply.
+
+/assets/*
+  cache-control: public, max-age=31536000, immutable
+
+/data.json
+  cache-control: public, max-age=300
+  content-type: application/json; charset=utf-8
+
+/games.json
+  cache-control: public, max-age=300
+
+/rankings.json
+  cache-control: public, max-age=300
+
+/rankings-history.json
+  cache-control: public, max-age=300
+
+/history-results.json
+  cache-control: public, max-age=3600
+
+/logos/*
+  cache-control: public, max-age=604800
+
+/players/*
+  cache-control: public, max-age=604800
+
+/index.html
+  cache-control: public, max-age=0, must-revalidate
