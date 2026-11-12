@@ -3,6 +3,7 @@
  "groups": [
   {
    "id": "f-elora-hawks",
+   "source": "wiki",
    "page": "Elora Hawks",
    "names": [
     {
@@ -16,6 +17,436 @@
      "from": 2025,
      "to": null,
      "teamId": "t-ojbll-elora-hawks"
+    }
+   ]
+  },
+  {
+   "id": "f-kelowna-kodiaks",
+   "source": "alias",
+   "evidence": "7 shared players",
+   "names": [
+    {
+     "name": "Kelowna Kodiaks",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-tojll-kelowna-kodiaks"
+    },
+    {
+     "name": "Kelowna",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-tojll-kelowna"
+    },
+    {
+     "name": "Kodiaks",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-tojll-kodiaks"
+    }
+   ]
+  },
+  {
+   "id": "f-vernon-tigers",
+   "source": "alias",
+   "evidence": "2 shared players",
+   "names": [
+    {
+     "name": "Vernon Tigers",
+     "from": 2024,
+     "to": null,
+     "teamId": "t-tojll-vernon-tigers"
+    },
+    {
+     "name": "Vernon",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-tojll-vernon"
+    },
+    {
+     "name": "Tigers",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-tojll-tigers"
+    }
+   ]
+  },
+  {
+   "id": "f-coquitlam-adanacs",
+   "source": "alias",
+   "evidence": "6 shared players",
+   "names": [
+    {
+     "name": "Coquitlam Adanacs",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-coquitlam-adanacs"
+    },
+    {
+     "name": "Adanacs",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-adanacs"
+    }
+   ]
+  },
+  {
+   "id": "f-burnaby-lakers",
+   "source": "alias",
+   "evidence": "3 shared players",
+   "names": [
+    {
+     "name": "Burnaby Lakers",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-burnaby-lakers"
+    },
+    {
+     "name": "Lakers",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-lakers"
+    }
+   ]
+  },
+  {
+   "id": "f-delta-islanders",
+   "source": "alias",
+   "evidence": "2 shared players",
+   "names": [
+    {
+     "name": "Delta Islanders",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-delta-islanders"
+    },
+    {
+     "name": "Islanders",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-islanders"
+    }
+   ]
+  },
+  {
+   "id": "f-langley-thunder",
+   "source": "alias",
+   "evidence": "4 shared players",
+   "names": [
+    {
+     "name": "Langley Thunder",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-langley-thunder"
+    },
+    {
+     "name": "Thunder",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-thunder"
+    }
+   ]
+  },
+  {
+   "id": "f-nanaimo-timbermen",
+   "source": "alias",
+   "evidence": "2 shared players",
+   "names": [
+    {
+     "name": "Nanaimo Timbermen",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-nanaimo-timbermen"
+    },
+    {
+     "name": "Timbermen",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-timbermen"
+    }
+   ]
+  },
+  {
+   "id": "f-new-westminster-salmonbellies",
+   "source": "alias",
+   "evidence": "6 shared players",
+   "names": [
+    {
+     "name": "New Westminster Salmonbellies",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-new-westminster-salmonbellies"
+    },
+    {
+     "name": "Salmonbellies",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-salmonbellies"
+    }
+   ]
+  },
+  {
+   "id": "f-port-coquitlam-saints",
+   "source": "alias",
+   "evidence": "6 shared players",
+   "names": [
+    {
+     "name": "Port Coquitlam Saints",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-port-coquitlam-saints"
+    },
+    {
+     "name": "Saints",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-saints"
+    }
+   ]
+  },
+  {
+   "id": "f-victoria-shamrocks",
+   "source": "alias",
+   "evidence": "3 shared players",
+   "names": [
+    {
+     "name": "Victoria Shamrocks",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-bcjall-victoria-shamrocks"
+    },
+    {
+     "name": "Shamrocks",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-bcjall-shamrocks"
+    }
+   ]
+  },
+  {
+   "id": "f-brooklin-l-c",
+   "source": "alias",
+   "evidence": "9 shared players",
+   "names": [
+    {
+     "name": "Brooklin L.C.",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-msl-brooklin-l-c"
+    },
+    {
+     "name": "Brooklin",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-msl-brooklin"
+    }
+   ]
+  },
+  {
+   "id": "f-cobourg-kodiaks",
+   "source": "alias",
+   "evidence": "7 shared players",
+   "names": [
+    {
+     "name": "Cobourg Kodiaks",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-msl-cobourg-kodiaks"
+    },
+    {
+     "name": "Cobourg",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-msl-cobourg"
+    }
+   ]
+  },
+  {
+   "id": "f-oakville-rock",
+   "source": "alias",
+   "evidence": "6 shared players",
+   "names": [
+    {
+     "name": "Oakville Rock",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-msl-oakville-rock"
+    },
+    {
+     "name": "Oakville",
+     "from": 2021,
+     "to": 2021,
+     "teamId": "t-msl-oakville"
+    }
+   ]
+  },
+  {
+   "id": "f-owen-sound-north-stars",
+   "source": "alias",
+   "evidence": "3 shared players",
+   "names": [
+    {
+     "name": "Owen Sound North Stars",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-msl-owen-sound-north-stars"
+    },
+    {
+     "name": "Owen Sound",
+     "from": 2021,
+     "to": 2021,
+     "teamId": "t-msl-owen-sound"
+    }
+   ]
+  },
+  {
+   "id": "f-peterborough-lakers",
+   "source": "alias",
+   "evidence": "13 shared players",
+   "names": [
+    {
+     "name": "Peterborough Lakers",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-msl-peterborough-lakers"
+    },
+    {
+     "name": "Peterborough",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-msl-peterborough"
+    }
+   ]
+  },
+  {
+   "id": "f-six-nations-chiefs",
+   "source": "alias",
+   "evidence": "10 shared players",
+   "names": [
+    {
+     "name": "Six Nations Chiefs",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-msl-six-nations-chiefs"
+    },
+    {
+     "name": "Six Nations",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-msl-six-nations"
+    }
+   ]
+  },
+  {
+   "id": "f-mimico-mountaineers",
+   "source": "alias",
+   "evidence": "14 shared players",
+   "names": [
+    {
+     "name": "Mimico Mountaineers",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-ojbll-mimico-mountaineers"
+    },
+    {
+     "name": "Mountaineers",
+     "from": 2025,
+     "to": 2025,
+     "teamId": "t-ojbll-mountaineers"
+    }
+   ]
+  },
+  {
+   "id": "f-brampton-excelsiors",
+   "source": "alias",
+   "evidence": "identical name",
+   "names": [
+    {
+     "name": "Brampton Excelsiors",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-brampton-excelsiors-junior-a"
+    },
+    {
+     "name": "Brampton Excelsiors",
+     "from": 2022,
+     "to": 2022,
+     "teamId": "t-ojll-brampton-excelsiors"
+    }
+   ]
+  },
+  {
+   "id": "f-mounties",
+   "source": "alias",
+   "evidence": "12 shared players",
+   "names": [
+    {
+     "name": "Mounties",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-rmll-junior-b-tier-1-mounties"
+    },
+    {
+     "name": "J Mounties",
+     "from": 2024,
+     "to": 2024,
+     "teamId": "t-rmll-junior-b-tier-1-j-mounties"
+    }
+   ]
+  },
+  {
+   "id": "f-axemen",
+   "source": "alias",
+   "evidence": "6 shared players",
+   "names": [
+    {
+     "name": "Axemen",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-rmll-junior-b-tier-2-axemen"
+    },
+    {
+     "name": "Axemen T2",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-rmll-junior-b-tier-2-axemen-t2"
+    }
+   ]
+  },
+  {
+   "id": "f-kamloops-venom",
+   "source": "alias",
+   "evidence": "4 shared players",
+   "names": [
+    {
+     "name": "Kamloops Venom",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-tojll-kamloops-venom"
+    },
+    {
+     "name": "Kamloops",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-tojll-kamloops"
+    }
+   ]
+  },
+  {
+   "id": "f-south-okanagan-flames",
+   "source": "alias",
+   "evidence": "2 shared players",
+   "names": [
+    {
+     "name": "South Okanagan Flames",
+     "from": 2026,
+     "to": null,
+     "teamId": "t-tojll-south-okanagan-flames"
+    },
+    {
+     "name": "South Okanagan",
+     "from": 2023,
+     "to": 2023,
+     "teamId": "t-tojll-south-okanagan"
     }
    ]
   }

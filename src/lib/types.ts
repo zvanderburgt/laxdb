@@ -72,6 +72,8 @@ export interface Team {
   /** clubs that were renamed: one franchise, several names (Wikipedia lineage) */
   franchise?: {
     id: string;
+    /** where the grouping came from: a documented rename, or two feed names for one club */
+    source?: "wiki" | "alias";
     names: { name: string; from: number | null; to: number | null; teamId?: string | null }[];
   };
   record?: {

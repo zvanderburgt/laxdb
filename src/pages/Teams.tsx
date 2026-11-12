@@ -428,8 +428,9 @@ export function TeamPage() {
           <Card className="franchise-card">
             <div className="eyebrow">Franchise</div>
             <p className="muted small">
-              This club has been renamed. Seasons under each name stay with that name and are
-              linked here.
+              {team.franchise.source === "alias"
+                ? "Our sources record this club under more than one name. Each name keeps its own seasons and is linked here."
+                : "This club has been renamed. Seasons under each name stay with that name and are linked here."}
             </p>
             <ul className="franchise-list">
               {team.franchise.names.map((n) => {
