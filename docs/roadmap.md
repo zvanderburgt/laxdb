@@ -50,9 +50,9 @@ on `(season, team, stats)` so career totals never double.
 The current team is the newest season, ranked by competition when a player finished two in the same
 year; the headshot is taken from that competition when one exists.
 
-Charts follow the same rule: once a career spans clubs, the season chart becomes grouped bars — one
-bar per team, in that team's colour, with a legend and a value per bar. A single-club player keeps
-the original area line.
+Charts: one line per career, as before. Team identity is carried by the markers (stroked in the
+club colour) and a legend, and a season that spans two clubs plots their sum with a per-point
+tooltip showing the split.
 
 ## Next (in progress or ready to start)
 
@@ -67,19 +67,11 @@ the previous snapshot) is pure presentation once there are two snapshots.
 
 ## Later (needs a new source)
 
-### 5. Rankings — scrape
-USILA coaches poll, NCAA RPI, Inside Lacrosse media poll, by week and division. Both College
-Lacrosse News and LaxGrid publish these; we would parse rather than compute.
-
-### 6. Awards and record books — scrape
-All-American teams, Tewaaraton history, all-time individual and team records, champions by year.
-Static pages, low refresh rate, high reference value.
-
-### 7. Transfer portal and commitments — scrape + name matching
+### 3. Transfer portal and commitments — scrape + name matching
 Highest-risk item: portal entries are name + school + class, and matching them to our profiles
 without a DOB will produce false positives. Ship only with a confidence flag on each match.
 
-### 8. Historical depth — new source
+### 4. Historical depth — new source
 LaxGrid goes back to 2000. ESPN's scoreboard only gives us the current season, so multi-season
 Elo and any "who would win" simulation wait on a historical results source.
 
@@ -94,8 +86,7 @@ See `docs/deferred-sources.md` for the sources that are blocked and what would u
 
 ## Known data issues
 
-- Field-league penalty minutes were stored in seconds while box PIM is minutes — fixed in the
-  importer; existing rows need a rebuild to pick it up.
 - Box leagues publish one season of detail per team page; career totals come from their own
   aggregate table, labelled as such.
-- A player in two leagues (NLL and PLL) has one profile per league — merging needs a DOB.
+- The merge policy resolves most cross-league duplicates, but two genuinely different players who
+  share a name inside one league stay separate by design — a DOB feed is the only real fix.
