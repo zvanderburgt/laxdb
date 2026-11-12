@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, navigate } from "../lib/app";
 import {
   careerTotals,
@@ -44,6 +44,47 @@ export default function Home() {
     []
   );
 
+  // Hero card: the leading scorer of each competition we cover, so the rotation
+  // shows one player from field, pro field and box rather than six attackers.
+  const spotlight = useMemo(() => {
+    // one or two headline names per competition, weighted to the leagues the site
+    // covers deepest — a Junior C scorer is not a "notable player" for the hero
+    const plan: [string, number][] = [
+      ["ncaa-d1", 2],
+      ["pll", 2],
+      ["nf-nll", 1],
+      ["mcla", 1],
+    ];
+    const picks: Player[] = [];
+    for (const [leagueId, want] of plan) {
+      // peak season, not career: several older D1 seasons carry no stat rows, so a
+      // career sum ranks a recent sophomore above a four-year starter
+      const peak = (p: Player) => p.seasons.reduce((best, s) => Math.max(best, s.pts ?? 0), 0);
+      const pool = data.players
+        .filter((p) => p.leagueId === leagueId && p.seasons.reduce((t, s) => t + (s.gp ?? 0), 0) >= 12)
+        .sort((a, b) => peak(b) - peak(a))
+        .filter((p) => peak(p) > 0)
+        .slice(0, 8);
+      if (!pool.length) continue;
+      const withPhoto = pool.filter((p) => p.photo);
+      const chosen = (withPhoto.length >= want ? withPhoto : pool).slice(0, want);
+      picks.push(...chosen);
+    }
+    return picks;
+  }, []);
+
+  const [spot, setSpot] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused || spotlight.length < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => setSpot((i) => (i + 1) % spotlight.length), 6500);
+    return () => window.clearInterval(id);
+  }, [paused, spotlight.length]);
+
+  const current = spotlight[spot % Math.max(spotlight.length, 1)];
+
   return (
     <div className="home">
       <section className="hero">
@@ -88,9 +129,20 @@ export default function Home() {
             </div>
           </div>
 
-          {featured[0] ? (
+          {current ? (
             <div className="hero-visual reveal" aria-hidden="true">
-              <HeroCard player={featured[0]} />
+              <div
+                className="hv-rotate"
+                onMouseEnter={() => setPaused(true)}
+                onMouseLeave={() => setPaused(false)}
+              >
+                {current ? <HeroCard key={current.id} player={current} /> : null}
+                <div className="hv-dots">
+                  {spotlight.map((p, i) => (
+                    <span key={p.id} className={"hv-dot" + (i === spot ? " on" : "")} />
+                  ))}
+                </div>
+              </div>
               <div className="hv-mini">
                 <div className="hv-mini-head">
                   <span>D1 scoring leaders</span>
@@ -315,7 +367,13 @@ function HeroCard({ player }: { player: Player }) {
       </div>
       <div className="hv-tags">
         <span className="tag tag-accent">
-          {p.rankings[0] ? `${p.rankings[0].source} #${p.rankings[0].rank}` : `${p.positionName} · ${team?.conference ?? leagueById.get(p.leagueId)?.short ?? ""}`}
+          {p.rankings[0]
+            ? `${p.rankings[0].source} #${p.rankings[0].rank}`
+            : `${p.positionName} · ${
+                p.leagueId === "ncaa-d1"
+                  ? team?.conference ?? "Division I"
+                  : leagueById.get(p.leagueId)?.short ?? ""
+              }`}
         </span>
         {p.heightIn > 0 ? (
           <span className="tag">
@@ -328,7 +386,11 @@ function HeroCard({ player }: { player: Player }) {
         <div><span className="hv-num num">{s.pts}</span><span className="hv-lbl">PTS</span></div>
         <div><span className="hv-num num">{s.g}</span><span className="hv-lbl">G</span></div>
         <div><span className="hv-num num">{s.a}</span><span className="hv-lbl">A</span></div>
-        <div><span className="hv-num num">{s.gb}</span><span className="hv-lbl">GB</span></div>
+        {s.gb > 0 ? (
+          <div><span className="hv-num num">{s.gb}</span><span className="hv-lbl">GB</span></div>
+        ) : (s.min ?? 0) > 0 ? (
+          <div><span className="hv-num num">{s.min}</span><span className="hv-lbl">PIM</span></div>
+        ) : null}
       </div>
       {(() => {
         const bySeason = new Map<string, number>();
