@@ -1014,14 +1014,19 @@ def fetch_bytes(url, timeout=30):
         return r.read()
 
 
-def save_image(data, rel_path, size=(160, 160)):
-    """Downscale to a small webp so a thousand headshots stay a few megabytes."""
+def save_image(data, rel_path, size=(224, 224), bias=0.3):
+    """Square-crop then downscale to webp: schools serve 3:4 portraits and a
+    non-square asset renders stretched or spills out of a square avatar."""
     try:
         from PIL import Image
         import io as _io
-        im = Image.open(_io.BytesIO(data))
-        im = im.convert("RGBA")
-        im.thumbnail(size, Image.LANCZOS)
+        im = Image.open(_io.BytesIO(data)).convert("RGBA")
+        w, h = im.size
+        side = min(w, h)
+        left = (w - side) // 2
+        top = int((h - side) * bias)          # bias upward — faces sit high in portraits
+        im = im.crop((left, top, left + side, top + side))
+        im = im.resize(size, Image.LANCZOS)
         out = os.path.join(ASSET_DIR, rel_path)
         os.makedirs(os.path.dirname(out), exist_ok=True)
         im.save(out, "WEBP", quality=82, method=4)
@@ -1030,7 +1035,7 @@ def save_image(data, rel_path, size=(160, 160)):
         return False
 
 
-def grab(url, rel_path, size=(160, 160)):
+def grab(url, rel_path, size=(224, 224)):
     """Download once; skip when the file is already on disk."""
     out = os.path.join(ASSET_DIR, rel_path)
     if os.path.exists(out) and os.path.getsize(out) > 200:
@@ -1586,8 +1591,11 @@ def download_photos(players):
                 f.write(raw)
             if have_pil:
                 im = Image.open(tmp).convert("RGB")
-                im.thumbnail((320, 320))
-                im.save(path, "WEBP", quality=82, method=4)
+                w, h = im.size
+                side = min(w, h)
+                left, top = (w - side) // 2, int((h - side) * 0.3)
+                im = im.crop((left, top, left + side, top + side)).resize((224, 224), Image.LANCZOS)
+                im.save(path, "WEBP", quality=84, method=4)
                 os.remove(tmp)
             else:
                 os.replace(tmp, path)
@@ -1632,7 +1640,7 @@ def materialise_assets(teams, players):
         if not remote:
             continue
         fname = re.sub(r"[^a-z0-9-]", "", p["id"].lower())
-        if grab(remote, f"players/ncaa/{fname}.webp", (200, 200)):
+        if grab(remote, f"players/ncaa/{fname}.webp", (224, 224)):
             p["photo"] = f"players/ncaa/{fname}.webp"
             photos += 1
     print(f"  + logos: {logos} teams · headshots: {photos} players")

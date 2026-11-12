@@ -430,6 +430,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           <h3 className="card-title">Season summary</h3>
           <button className="link-arrow small link-btn" onClick={onStats}>View full stats</button>
         </div>
+        <div className="table-scroll">
         <table className="mini-table">
           <thead>
             <tr>
@@ -484,6 +485,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
             ))}
           </tbody>
         </table>
+        </div>
         <div className="table-note">
           {team?.name} · {league?.name} · {player.positionName}
         </div>

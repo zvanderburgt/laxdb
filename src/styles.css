@@ -631,12 +631,22 @@ kbd {
 .avatar {
   display: inline-grid;
   place-items: center;
+  overflow: hidden;
   color: #fff;
   font-weight: 600;
   letter-spacing: 0.01em;
   flex: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 2px 8px -2px rgba(0, 0, 0, 0.28);
   user-select: none;
+}
+
+.avatar > img {
+  width: 100%;
+  height: 100%;
+  /* headshots are square after import; cover keeps any legacy portrait honest */
+  object-fit: cover;
+  object-position: 50% 18%;
+  display: block;
 }
 
 /* --------------------------------- badges -------------------------------- */
@@ -1576,3 +1586,75 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 
 /* history page: keep the long champions list from towering over the rail */
 .history-scroll { max-height: 520px; overflow-y: auto; }
+
+/* ------------------------------ small phones ------------------------------ */
+/* At 390px the home hero ran 1,394px: the featured-player card and the 2x2
+   stat strip pushed the first real card ~1.7 screens down. Compress both. */
+@media (max-width: 640px) {
+  .hero { padding: 24px 16px 0; }
+  .hero-inner { gap: 22px; }
+  .hero-sub { font-size: 13.6px; line-height: 1.45; max-width: none; }
+
+  /* grid children default to min-width:auto — without this the nowrap chip row
+     stretches the whole column to 502px and everything clips at the right edge */
+  .hero-inner > * { min-width: 0; }
+  .chips { max-width: 100%; }
+
+  /* chips: one scrollable row instead of three wrapped ones */
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    margin-top: 14px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; }
+
+  /* featured card: identity + the three headline numbers, no decoration */
+  .hero-visual { max-width: none; padding-bottom: 0; }
+  .hero-visual > svg, .hv-card > svg { display: none; }
+  .hv-mini { display: none; }
+  .hv-card { padding: 14px 16px; border-radius: 18px; }
+  .hv-tags { margin-top: 2px; }
+  .hv-foot { display: none; }
+  .hv-stats { padding: 10px 0 0; }
+
+  /* stats: four across, smaller, so one row replaces the 2x2 block */
+  .hero-strip {
+    grid-template-columns: repeat(4, 1fr);
+    margin-top: 16px;
+    border-radius: 16px;
+  }
+  .hero-stat { padding: 11px 6px; }
+  .hero-stat-value { font-size: 15px; }
+  .hero-stat-label { font-size: 9.5px; letter-spacing: 0.02em; }
+
+  .hero-coverage { font-size: 10.5px; line-height: 1.5; margin-top: 8px; }
+
+  /* page chrome */
+  .mini-table { font-size: 12.2px; }
+  .mini-table th, .mini-table td { padding: 8px 4px; }
+  .data-table.mini-table th:first-child, .mini-table td:first-child { padding-left: 0; }
+
+  /* Netlify injects <iframe class="nl-badge-frame"> fixed at 211x64 bottom-right;
+     on a phone it covers whatever is at the end of the page */
+  iframe#nl-badge-frame { display: none !important; }
+
+  /* the action grid lives inside .profile-id, so a single row squeezes the name
+     between photo and buttons. Keep the stack, but shrink the pieces. */
+  .profile-head { gap: 12px; }
+  .profile-id { min-width: 0; }
+  .profile-id h1 { font-size: 30px; }
+  .hero-avatar { width: 72px !important; height: 72px !important; font-size: 26px !important; }
+  .profile-tags { margin-bottom: 6px; }
+
+  /* four actions in a 2x2 instead of a ragged 3 + 1 */
+  .profile-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .profile-actions .btn { width: 100%; }
+
+  .page { padding: 22px 16px 56px; }
+  .page-head { margin-bottom: 18px; }
+  .card-toolbar { padding: 14px 16px; }
+  .feature-band { padding: 22px 18px; }
+}
