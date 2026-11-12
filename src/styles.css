@@ -1743,3 +1743,5 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .season-bars .axis-label { font-size: 10px; }
 
 .season-bars .bar-value { font-size: 9px; fill: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.season-lines svg { width: 100%; height: auto; display: block; }

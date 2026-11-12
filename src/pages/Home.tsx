@@ -12,7 +12,7 @@ import {
   SEASON_COUNT,
   teamOf,
 } from "../lib/data";
-import { Avatar, PlayerCard, PositionBadge, SectionHead, Segmented, SeasonBars, Sparkline, PlayerAvatar } from "../components/ui";
+import { Avatar, PlayerCard, PositionBadge, SectionHead, Segmented, Sparkline, PlayerAvatar } from "../components/ui";
 import type { Player } from "../lib/types";
 
 const STATS = [
@@ -329,39 +329,13 @@ function HeroCard({ player }: { player: Player }) {
         <div><span className="hv-num num">{s.a}</span><span className="hv-lbl">A</span></div>
         <div><span className="hv-num num">{s.gb}</span><span className="hv-lbl">GB</span></div>
       </div>
-      {new Set(p.seasons.map((x) => x.teamId)).size > 1 ? (
-        <SeasonBars
-          groups={(() => {
-            const order: string[] = [];
-            const bySeason = new Map<string, { value: number; color: string; label: string }[]>();
-            for (const x of p.seasons) {
-              const t = teamById.get(x.teamId);
-              if (!bySeason.has(x.season)) {
-                bySeason.set(x.season, []);
-                order.push(x.season);
-              }
-              bySeason.get(x.season)!.push({
-                value: x.pts ?? 0,
-                color: t?.colors?.[0] ?? "var(--accent)",
-                label: t?.shortName ?? x.teamId,
-              });
-            }
-            return order.map((season) => ({ season, bars: bySeason.get(season)! }));
-          })()}
-          width={330}
-          height={116}
-          legend={false}
-          showValues={false}
-        />
-      ) : (
-        <Sparkline
-          values={seasons.map((x) => x.pts ?? 0)}
-          labels={seasons.map((x) => x.season)}
-          width={330}
-          height={104}
-          showValues={false}
-        />
-      )}
+      <Sparkline
+        values={p.seasons.map((x) => x.pts ?? 0)}
+        labels={p.seasons.map((x) => x.season)}
+        width={330}
+        height={104}
+        showValues={false}
+      />
       <div className="hv-foot">
         <span>Points by season</span>
         <span className="num">{s.season} · {s.gp} GP</span>

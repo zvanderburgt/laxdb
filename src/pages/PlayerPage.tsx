@@ -28,7 +28,6 @@ import {
   PositionBadge,
   Segmented,
   Sparkline,
-  SeasonBars,
   Stat,
   PlayerAvatar,
   TeamLogo,
@@ -415,7 +414,10 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
         label: team?.shortName ?? s.teamId,
       });
     }
-    return order.map((season) => ({ season, bars: bySeason.get(season)! }));
+    // ascending like the single-team sparkline, so the two charts read the same way
+    return order
+      .sort((a, b) => Number(a) - Number(b))
+      .map((season) => ({ season, bars: bySeason.get(season)! }));
   })();
 
   return (
@@ -439,15 +441,36 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           <h3 className="card-title">{isGoal ? "Save percentage by season" : "Points by season"}</h3>
           <span className="muted small">{player.seasons[0]?.season}–{cur.season}</span>
         </div>
-        {chartGroups.length > 1 && new Set(player.seasons.map((s) => s.teamId)).size > 1 ? (
-          <SeasonBars groups={chartGroups} valueSuffix={isGoal ? "%" : ""} />
-        ) : (
-          <Sparkline
-            values={chartGroups.map((g) => g.bars.reduce((n, b) => n + b.value, 0))}
-            labels={chartGroups.map((g) => g.season)}
-            valueSuffix={isGoal ? "%" : ""}
-          />
-        )}
+        <Sparkline
+          values={chartGroups.map((g) =>
+            // a rate does not add up across clubs; a counting stat does
+            isGoal ? Math.max(...g.bars.map((b) => b.value)) : g.bars.reduce((n, b) => n + b.value, 0),
+          )}
+          labels={chartGroups.map((g) => g.season)}
+          valueSuffix={isGoal ? "%" : ""}
+          pointColors={chartGroups.map((g) => (g.bars.length === 1 ? g.bars[0].color : undefined))}
+          pointTitles={chartGroups.map((g) => {
+            const total = isGoal
+              ? Math.max(...g.bars.map((b) => b.value))
+              : g.bars.reduce((n, b) => n + b.value, 0);
+            const detail = g.bars.map((b) => `${b.label} ${b.value}${isGoal ? "%" : ""}`).join(" · ");
+            return g.bars.length > 1 ? `${g.season} · ${detail} · ${total}${isGoal ? "%" : ""} total` : `${g.season} · ${detail}`;
+          })}
+          legend={
+            new Set(player.seasons.map((s) => s.teamId)).size > 1
+              ? [...new Map(chartGroups.flatMap((g) => g.bars).map((b) => [b.label, b])).values()].map((b) => ({
+                  label: b.label,
+                  color: b.color,
+                }))
+              : undefined
+          }
+        />
+        {chartGroups.some((g) => g.bars.length > 1) ? (
+          <p className="muted small" style={{ marginTop: 8 }}>
+            Seasons with more than one club add their points together — hover a point for the
+            per-club figures.
+          </p>
+        ) : null}
       </Card>
 
       <Card>
