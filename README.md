@@ -63,9 +63,9 @@ Product details:
   Home/away is not published in the box scores, so it is left out rather than guessed.
 - **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
   They ship as a second file (`games.json`, 1.3 MB) fetched the first time you open a log.
-- **Team logos** for 251 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
-- **Headshots** for 3,442 players — every PLL player plus 99 % of Division I (2,989 of 3,025),
-  square-cropped from the rosters the schools publish.
+- **Team logos** for 252 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
+- **Headshots** for 3,615 players — every PLL player plus every current Division I player
+  (3,163 of 7,166; the remainder graduated before the roster pages we can reach), square-cropped.
 - **Where they come from** (`#/origins`) — every D1 player's home state ranked by headcount and by
   players per 100,000 residents (2020 census), with the three programs each state feeds most.
 - **Team season summaries** — goals/game, goals against/game, shooting %, save %, faceoff %.
@@ -86,11 +86,11 @@ Product details:
 
 ## The data
 
-**17,685 real players, 472 teams, 19 competitions, 26,164 player-seasons, 2021–2026.** No invented
+**21,798 real players, 471 teams, 19 competitions, 34,943 player-seasons, 2021–2026.** No invented
 names or synthetic stat lines anywhere in the dataset.
 
-Records are merged per person, not per source row: 1,118 players appear on more than one team and
-623 in more than one competition, so a pro's NLL and PLL seasons, or a junior's climb from B to C,
+Records are merged per person, not per source row: 1,253 players appear on more than one team and
+792 in more than one competition, so a pro's NLL and PLL seasons, or a junior's climb from B to C,
 sit on one profile with one career total. Names collide often enough — two "Aidan Smith"s at two
 MCLA schools in the same season — that a shared name is never sufficient on its own. The merge
 rules are in `docs/roadmap.md`.

@@ -496,17 +496,31 @@ def build_college():
 
         cur = stats_by_season.get(SEASONS[0], {})
         players_here = []
-        all_names = set(cur) | set(roster)
+
+        # every season's stat page, not just this year's roster: otherwise a player who
+        # graduated in 2023 never enters the database and his seasons vanish with him
+        all_names = set(roster)
+        for st in stats_by_season.values():
+            all_names |= set(st)
+
+        def any_row(nk):
+            for season in SEASONS:
+                row = stats_by_season.get(season, {}).get(nk)
+                if row:
+                    return row
+            return None
+
         for nk in all_names:
             bio = roster.get(nk, {})
             s0 = cur.get(nk)
-            if not s0 and not bio:
+            first = any_row(nk)
+            if not first and not bio:
                 continue
             # skip roster-only players who never recorded a stat line (deep bench / redshirts)
-            if not s0 and bio and bio.get("position") != "G":
+            if not first and bio and bio.get("position") != "G":
                 continue
             pending_goalie = bool(not s0 and bio and bio.get("position") == "G")
-            name_disp = (s0 or bio)["name"]
+            name_disp = (s0 or first or bio)["name"]
             pid = f"p-ncaa-{slugify(name_disp)}-{slug[:10]}"
             seasons = {}
             for season in SEASONS:
