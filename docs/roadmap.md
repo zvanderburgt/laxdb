@@ -37,8 +37,8 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
    project seasons-to-pass. *(Hockey-Reference "Active" tabs.)*
 2. **All-time team encyclopedia** — stack every season we hold on one page: record, GF/GA,
    conference, peak Elo, leading scorer. *(Basketball-Reference franchise pages.)*
-3. **Roster composition** — class mix, returning production, departed points, so "what does this
-   team lose next year" is answered above the roster table. *(On3 roster header.)*
+3. ~~Roster composition~~ — shipped as **returning production** on team pages; a class-by-class
+   breakdown still needs a trustworthy class field (`gradYear` is the season year for 5,390 players).
 4. **Eligibility clock** — a "Class of 2027" view with years-remaining badges, from `gradYear`.
    *(Transfermarkt contract expiry, translated to eligibility.)*
 5. **Provenance stamps** — "last updated" and the feed behind every board. *(MaxPreps.)*

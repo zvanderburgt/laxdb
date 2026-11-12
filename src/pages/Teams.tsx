@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link, useRoute } from "../lib/app";
 import { seriesFor } from "../lib/series";
+import { returningProduction } from "../lib/returning";
 import {
   careerTotals,
   loadGames,
@@ -18,6 +19,46 @@ import {
 } from "../lib/data";
 import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 import type { Team } from "../lib/types";
+
+function ReturningCard({ team }: { team: Team }) {
+  const r = React.useMemo(() => returningProduction(team), [team.id]);
+  if (!r) return null;
+  const pct = Math.round(r.share * 100);
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Returning production</h3>
+          <p className="muted small">
+            Share of {r.from} points from players who also appear on the {r.to} roster
+          </p>
+        </div>
+        <span className="num strong returning-pct">{pct}%</span>
+      </div>
+      <div className="returning-bar" aria-hidden="true">
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      <div className="returning-body">
+        <span className="muted small">
+          {r.returningPoints} of {r.totalPoints} points · {r.kept} players back
+        </span>
+        {r.lost.length ? (
+          <span className="muted small">
+            Biggest departures:{" "}
+            {r.lost.map((l, i) => (
+              <React.Fragment key={l.slug}>
+                {i ? " · " : ""}
+                <Link to={`/player/${l.slug}`}>
+                  {l.name} ({l.pts})
+                </Link>
+              </React.Fragment>
+            ))}
+          </span>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
 
 function HonoursCard({ team }: { team: Team }) {
   const picks = React.useMemo(() => {
@@ -314,6 +355,7 @@ export function TeamPage() {
       </div>
 
       <div className="page">
+        <ReturningCard team={team} />
         <HonoursCard team={team} />
         <SeriesCard team={team} />
 

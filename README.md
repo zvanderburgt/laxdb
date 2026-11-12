@@ -48,6 +48,8 @@ Product details:
   **Recent seasons** table built from the previous campaign's results and a **Season series** table
   rebuilt from the box scores (which opponents, how many times, and the last result).
 - **Conference breakdown** on the D1 league page: every conference, ordered by Elo, with records.
+- **Returning production** on team pages — the share of last season's points from players who are
+  back, with the biggest departures named and linked.
 - **Teammates** on every profile — who shared a roster, ranked by career points.
 - **All-America honours** on the profile itself when the published selection sheet names that
   player (2026 is the year the archive and the roster data overlap most).
