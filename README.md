@@ -31,7 +31,8 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/leagues`, `#/league/:id` | Competition directory; standings, leaderboard with position filter, teams, goalie leaders |
 | `#/compare` | Up to three players side by side, row-scaled bars, deep-linkable (`?ids=`) |
 | `#/my-roster` | Players saved in this browser, with CSV export |
-| `#/history` | Records: national champions by year, titles by program, Tewaaraton winners, NCAA record book, USILA All-Americans |
+| `#/history` | Records: national champions by year, titles by program, Tewaaraton winners, NCAA record book, USILA All-Americans 2023–2026 |
+| `#/origins` | Where Division I players come from: players by state, share, per-100k rate, top feeder programs |
 
 Product details:
 
@@ -39,13 +40,16 @@ Product details:
   swap to MIN, GA, GAA, SV, SV%, W–L. Box leagues show GP, G, A, PTS, PIM and, for goalies, W–L, GAA,
   SV% — the columns their feeds actually publish (no goals-against or minutes are available, so the
   site reads the published rates instead of computing zeros).
-- **Team Elo + strength of schedule** for D1 (from ESPN results), on league and team pages.
+- **Team Elo + strength of schedule** for D1 (from ESPN results), on league and team pages, plus a
+  **Recent seasons** table built from the previous campaign's results.
 - **Teammates** on every profile — who shared a roster, ranked by career points.
-- **Where they come from** — top high schools and hometowns per program and per league.
+- **High school pipelines** — top high schools per program and per league.
 - **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
   They ship as a second file (`games.json`, 1.3 MB) fetched the first time you open a log.
-- **Team logos** for 194 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
-- **Headshots** for 1,060 players — 453 PLL plus 607 parsed from school rosters.
+- **Team logos** for 209 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
+- **Headshots** for 1,261 players — 409 PLL plus 852 parsed from school rosters.
+- **Where they come from** (`#/origins`) — every D1 player's home state ranked by headcount and by
+  players per 100,000 residents (2020 census), with the three programs each state feeds most.
 - **Team season summaries** — goals/game, goals against/game, shooting %, save %, faceoff %.
 - **Advanced search** — league, class, region, high school, minimum games, and sorting by shooting %,
   faceoff % or save %; every filter mirrors into the URL so results are shareable.
@@ -64,11 +68,11 @@ Product details:
 
 ## The data
 
-**15,748 real players, 426 teams, 19 competitions, 21,972 player-seasons, 2021–2026.** No invented
+**17,685 real players, 472 teams, 19 competitions, 26,164 player-seasons, 2021–2026.** No invented
 names or synthetic stat lines anywhere in the dataset.
 
-Records are merged per person, not per source row: 1,094 players appear on more than one team and
-598 in more than one competition, so a pro's NLL and PLL seasons, or a junior's climb from B to C,
+Records are merged per person, not per source row: 1,118 players appear on more than one team and
+623 in more than one competition, so a pro's NLL and PLL seasons, or a junior's climb from B to C,
 sit on one profile with one career total. Names collide often enough — two "Aidan Smith"s at two
 MCLA schools in the same season — that a shared name is never sufficient on its own. The merge
 rules are in `docs/roadmap.md`.

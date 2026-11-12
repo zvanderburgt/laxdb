@@ -1,0 +1,158 @@
+import React, { useMemo, useState } from "react";
+import { Link } from "../lib/app";
+import { data, teamById } from "../lib/data";
+import { region, regionCode } from "../lib/geo";
+import { Card, Empty, Segmented, TeamLogo } from "../components/ui";
+
+type Row = {
+  code: string;
+  name: string;
+  country: "US" | "CA";
+  players: number;
+  share: number;
+  per100k: number;
+  programs: { id: string; n: number }[];
+};
+
+export default function Origins() {
+  const [metric, setMetric] = useState<"players" | "rate">("players");
+
+  const rows = useMemo<Row[]>(() => {
+    const d1 = data.players.filter((p) => p.leagueId === "ncaa-d1");
+    const total = d1.length || 1;
+    const byState = new Map<string, { players: number; programs: Map<string, number> }>();
+
+    for (const p of d1) {
+      const code = regionCode(p.birthplace?.state);
+      if (!code) continue;
+      const entry = byState.get(code) ?? { players: 0, programs: new Map() };
+      entry.players += 1;
+      entry.programs.set(p.teamId, (entry.programs.get(p.teamId) ?? 0) + 1);
+      byState.set(code, entry);
+    }
+
+    const out: Row[] = [];
+    for (const [code, v] of byState) {
+      const meta = region(code);
+      if (!meta) continue;
+      out.push({
+        code,
+        name: meta.name,
+        country: meta.country,
+        players: v.players,
+        share: (v.players / total) * 100,
+        per100k: (v.players / meta.pop) * 100000,
+        programs: [...v.programs]
+          .map(([id, n]) => ({ id, n }))
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 3),
+      });
+    }
+    return out.sort((a, b) => b.players - a.players);
+  }, []);
+
+  if (!rows.length) {
+    return (
+      <div className="page">
+        <div className="page-head">
+          <div>
+            <div className="eyebrow">Origins</div>
+            <h1>Where players come from</h1>
+          </div>
+        </div>
+        <Empty title="No hometown data yet" body="Run the importer to populate player birthplaces." />
+      </div>
+    );
+  }
+
+  const sorted = [...rows].sort((a, b) => (metric === "players" ? b.players - a.players : b.per100k - a.per100k));
+  const max = Math.max(...sorted.map((r) => (metric === "players" ? r.players : r.per100k)));
+  const byRate = [...rows].sort((a, b) => b.per100k - a.per100k);
+  const usTotal = rows.filter((r) => r.country === "US").reduce((n, r) => n + r.players, 0);
+  const caTotal = rows.filter((r) => r.country === "CA").reduce((n, r) => n + r.players, 0);
+
+  return (
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Origins</div>
+          <h1>Where players come from</h1>
+          <p className="muted">
+            {usTotal.toLocaleString()} from the United States · {caTotal.toLocaleString()} from
+            Canada · {rows.length} states and provinces feed Division I lacrosse
+          </p>
+        </div>
+        <Segmented
+          ariaLabel="Rank by"
+          value={metric}
+          onChange={setMetric}
+          options={[
+            { value: "players", label: "Players" },
+            { value: "rate", label: "Per 100k" },
+          ]}
+        />
+      </div>
+
+      <Card padded={false} className="standings-card">
+        <div className="card-toolbar">
+          <div>
+            <h3 className="card-title">
+              {metric === "players" ? "Players by state" : "Players per 100,000 residents"}
+            </h3>
+            <p className="muted small">
+              Birthplace as published by each school · population from the 2020 census
+            </p>
+          </div>
+        </div>
+        <div className="table-scroll origins-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th className="c">#</th>
+                <th>State</th>
+                <th className="r">Players</th>
+                <th className="r col-share">Share</th>
+                <th className="r">Per 100k</th>
+                <th className="col-programs">Top programs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r, i) => (
+                <tr key={r.code}>
+                  <td className="c num muted">{i + 1}</td>
+                  <td>
+                    <span className="strong">{r.name}</span>
+                    <span className="muted small"> {r.code}</span>
+                  </td>
+                  <td className="r num strong">{r.players}</td>
+                  <td className="r num muted col-share">{r.share.toFixed(1)}%</td>
+                  <td className="r num">{r.per100k.toFixed(1)}</td>
+                  <td className="col-programs">
+                    <span className="origin-programs">
+                      {r.programs.map((pr) => {
+                        const team = teamById.get(pr.id);
+                        return team ? (
+                          <Link key={pr.id} to={`/team/${team.slug}`} className="team-link">
+                            <TeamLogo team={team} size={16} />
+                            {team.shortName}
+                          </Link>
+                        ) : null;
+                      })}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="table-note">
+          {metric === "players"
+            ? `${rows[0].name} alone supplies ${rows[0].share.toFixed(0)}% of Division I players.`
+            : `${byRate[0].name} produces ${byRate[0].per100k.toFixed(1)} players per 100,000 residents — the densest lacrosse state per capita.`}{" "}
+          Share is of all {rows.reduce((n, r) => n + r.players, 0).toLocaleString()} players with a
+          birthplace on file.
+        </div>
+      </Card>
+    </div>
+  );
+}
