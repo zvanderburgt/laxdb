@@ -33,6 +33,7 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/my-roster` | Players saved in this browser, with CSV export |
 | `#/history` | Records: national champions by year, titles by program, Tewaaraton winners, NCAA record book, USILA All-Americans 2023–2026 |
 | `#/origins` | Where Division I players come from: players by state, share, per-100k rate, top feeder programs |
+| `#/leaders` | Every stat category, by competition and season or career, with a qualification minimum |
 
 Product details:
 
@@ -43,6 +44,11 @@ Product details:
 - **Team Elo + strength of schedule** for D1 (from ESPN results), on league and team pages, plus a
   **Recent seasons** table built from the previous campaign's results.
 - **Teammates** on every profile — who shared a roster, ranked by career points.
+- **Comparable players** — a 1–99 similarity score built from per-game rates z-scored inside each
+  position group, so a defender is compared with defenders and a goalie with goalies.
+- **Peer rank** — "2nd of 37 attackmen in points per game" for his competition and season.
+- **Stat leaders** (`#/leaders`) — every category, single season or career, non-goalie and goalie
+  boards, with the qualification minimum printed on the page.
 - **High school pipelines** — top high schools per program and per league.
 - **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
   They ship as a second file (`games.json`, 1.3 MB) fetched the first time you open a log.
