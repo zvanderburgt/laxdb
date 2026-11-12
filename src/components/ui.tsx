@@ -410,7 +410,15 @@ export function SeasonLines({
       pad.t + h
     ).toFixed(1)} Z`;
 
-  // two clubs in one season would stack their labels; the smaller one drops below
+  // a point on the top gridline or on the baseline sends its label the other way, and two
+  // clubs in one season stagger so their labels do not stack
+  const labelOffset = (l: { k: number; total: number; v: number }, top: number, bottom: number) => {
+    let dy = l.total > 1 && l.k > 0 ? 15 : -10;
+    if (y(l.v) - 12 < top + 6) dy = 15;
+    if (y(l.v) + 15 > bottom - 2) dy = -10;
+    return dy;
+  };
+
   const labels = categories.flatMap((c) => {
     const at = series
       .map((s, si) => ({ si, v: s.points[c] }))
@@ -491,9 +499,9 @@ export function SeasonLines({
               <text
                 key={`v-${l.c}-${l.si}`}
                 x={x(categories.indexOf(l.c))}
-                /* a point sitting on the top gridline puts its label above the plot, so it
-                   drops below the marker instead */
-                y={y(l.v) + ((l.total > 1 && l.k > 0) || y(l.v) - 12 < pad.t + 6 ? 15 : -10)}
+                /* above the marker by default; a point on the top gridline or on the
+                   baseline sends its label the other way so it never lands on the axis */
+                y={y(l.v) + labelOffset(l, pad.t, pad.t + h)}
                 className="point-label"
                 textAnchor="middle"
               >
