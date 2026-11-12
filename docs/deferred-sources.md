@@ -33,10 +33,13 @@ data we wanted is already in the dataset under different league IDs.
 
 | School | Domain | What the site does |
 | --- | --- | --- |
-| Notre Dame | und.com | sport slug is `/sports/mlax/`, stats path 404s for `/stats/2026` |
-| Virginia | virginiasports.com | same `/sports/mlax/` slug |
-| Penn State | gopsusports.com | `/sports/mens-lacrosse/stats` exists, 404s with the season appended |
+| Notre Dame | und.com → fightingirish.com | `und.com` now 404s and redirects to `fightingirish.com`; that host also 404s `/sports/mens-lacrosse` and `/stats/2026` |
+| Virginia | virginiasports.com | `/sports/mlax/` and `/sports/mens-lacrosse/stats/<year>` both 404 |
+| Penn State | gopsusports.com | `/sports/mens-lacrosse` loads, `/sports/mens-lacrosse/stats` returns a JS shell with zero tables |
 | VMI | vmisports.com | sport page 404s; the athletics site may live on another host |
+
+**Fixed:** Princeton was listed as `goprinceton.com`, which does not exist. The real host is
+`goprincetontigers.com`, and its stats page parses normally (51 players, full stat lines).
 
 **What would unblock it:** read the season links off each site's `/stats` index (they use a
 `2025-26` style segment) and add a per-school URL template. The parser itself already handles

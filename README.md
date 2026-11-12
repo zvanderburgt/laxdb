@@ -34,6 +34,7 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/history` | Records: national champions by year, titles by program, Tewaaraton winners, NCAA record book, USILA All-Americans 2023–2026 |
 | `#/origins` | Where Division I players come from: players by state, share, per-100k rate, top feeder programs |
 | `#/leaders` | Every stat category, by competition and season or career, with a qualification minimum |
+| `#/scores` | Final scores by date: 1,146 NCAA D1 games (2025–26) and 101 PLL games, linked to team pages |
 
 Product details:
 
@@ -52,7 +53,9 @@ Product details:
   position group, so a defender is compared with defenders and a goalie with goalies.
 - **Peer rank** — "2nd of 37 attackmen in points per game" for his competition and season.
 - **Stat leaders** (`#/leaders`) — every category, single season or career, non-goalie and goalie
-  boards, with the qualification minimum printed on the page.
+  boards, with a position filter and the qualification minimum printed on the page.
+- **Scores** (`#/scores`) — day-by-day finals, D1 from ESPN's scoreboard and the PLL from the
+  league's own games API, each linked to the team page.
 - **High school pipelines** — top high schools per program and per league.
 - **Splits** — by month, by result, and versus RPI top-25 opponents, computed from the game log.
   Home/away is not published in the box scores, so it is left out rather than guessed.

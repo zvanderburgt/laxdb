@@ -13,6 +13,29 @@ export const playerById = new Map<string, Player>();
 export const playerBySlug = new Map<string, Player>();
 export const teamById = new Map<string, Team>();
 export const teamBySlug = new Map<string, Team>();
+
+/** Loose team lookup for feed names ("North Carolina Tar Heels" ⇄ "North Carolina"). */
+let teamNameIndex: Map<string, Team> | null = null;
+const nameKey = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
+
+export function teamByName(name: string): Team | undefined {
+  if (!teamNameIndex) {
+    teamNameIndex = new Map();
+    for (const t of data.teams) {
+      for (const n of [t.name, t.shortName, t.slug.replace(/-/g, " ")]) {
+        if (!n) continue;
+        teamNameIndex.set(nameKey(n), t);
+      }
+    }
+  }
+  const key = nameKey(name);
+  const direct = teamNameIndex.get(key);
+  if (direct) return direct;
+  for (const [k, t] of teamNameIndex) {
+    if (k.startsWith(key) || key.startsWith(k)) return t;
+  }
+  return undefined;
+}
 export const leagueById = new Map<string, League>();
 
 export let PLAYER_COUNT = 0;
