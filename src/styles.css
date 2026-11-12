@@ -400,7 +400,12 @@ kbd {
 }
 .hero-search input::placeholder { color: var(--text-3); }
 
-.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
 .chip {
   font-size: 13px;
   font-weight: 500;
@@ -1603,15 +1608,7 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .chips { max-width: 100%; }
 
   /* chips: one scrollable row instead of three wrapped ones */
-  .chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 4px;
-    margin-top: 16px;
-  }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: none; }
+  .chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   /* featured card: identity + the three headline numbers, no decoration */
   .hero-visual { max-width: none; padding-bottom: 0; }
@@ -1952,3 +1949,34 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .hv-card .spark-wrap { margin-top: 12px; }
 /* 46px between the chip row and the card was the hero copy's own bottom pad plus this */
 .hero-visual { margin-top: 10px; }
+
+/* the chip row is a grid now, so each chip fills its cell: centre the label and
+   keep a long one from spilling out of the pill */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 899px) {
+  .chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* the search field is capped at 560px, so the chip grid has to use the same
+   measure or it runs past the field's right edge */
+.chips { max-width: 560px; }
+
+/* at tablet widths the two hero columns must be able to shrink; their min-content
+   (the search field and the chip grid) was forcing the page 36px wider */
+.hero-inner > * { min-width: 0; }
+
+/* the nav only collapsed at 760px, but nine links plus the search field stop
+   fitting around 860 — 768 to 860 overflowed the viewport by ~21px */
+@media (max-width: 900px) {
+  .nav-links { display: none; }
+  .searchbtn-text, .searchbtn kbd { display: none; }
+  .searchbtn { padding: 0 9px; }
+}

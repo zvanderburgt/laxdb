@@ -83,8 +83,8 @@ export default function Home() {
               <Link className="chip" to="/players?pos=G">Goalie leaders</Link>
               <Link className="chip" to="/players?pos=FO">Faceoff specialists</Link>
               <Link className="chip" to="/players?league=pll">PLL players</Link>
-              <Link className="chip" to="/players?league=nf-ojcll">Junior C</Link>
-              <Link className="chip" to="/players?league=nf-nll">NLL</Link>
+              <Link className="chip" to="/players?league=nf-ojcll">Junior C players</Link>
+              <Link className="chip" to="/players?league=nf-nll">NLL players</Link>
             </div>
           </div>
 
