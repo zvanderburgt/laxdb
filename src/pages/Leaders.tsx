@@ -72,6 +72,7 @@ export default function Leaders() {
   }, [leagueId]);
 
   const [season, setSeason] = useState<string | null>(null);
+  const [scope, setScope] = useState<"season" | "career">("season");
   const activeSeason = season && seasons.includes(season) ? season : seasons[0];
   const cat = CATS.find((c) => c.key === catKey) ?? CATS[0];
 
@@ -80,8 +81,8 @@ export default function Leaders() {
     const out: Row[] = [];
     for (const p of data.players) {
       if (p.leagueId !== leagueId) continue;
-      const s = p.seasons.find((x) => x.season === activeSeason);
-      if (!s) continue;
+      const s = scope === "career" ? careerRow(p, leagueId) : p.seasons.find((x) => x.season === activeSeason);
+      if (!s || !s.gp) continue;
       out.push({
         player: p,
         gp: s.gp || 0,
@@ -101,7 +102,7 @@ export default function Leaders() {
       });
     }
     return out;
-  }, [leagueId, activeSeason]);
+  }, [leagueId, activeSeason, scope]);
 
   const board = useMemo(() => {
     const eligible = rows.filter((r) => {
@@ -134,7 +135,7 @@ export default function Leaders() {
           <h1>Stat leaders</h1>
           <p className="muted">
             {league?.name}
-            {activeSeason ? ` · ${activeSeason}` : ""}
+            {scope === "career" ? " · career" : activeSeason ? ` · ${activeSeason}` : ""}
             {board.minGames ? ` · minimum ${board.minGames} games played to qualify` : ""}
           </p>
         </div>
@@ -161,8 +162,24 @@ export default function Leaders() {
             </select>
           </label>
           <label className="field">
+            <span className="field-label">Scope</span>
+            <select
+              className="input"
+              value={scope}
+              onChange={(e) => setScope(e.target.value as "season" | "career")}
+            >
+              <option value="season">Single season</option>
+              <option value="career">Career (all seasons held)</option>
+            </select>
+          </label>
+          <label className="field">
             <span className="field-label">Season</span>
-            <select className="input" value={activeSeason ?? ""} onChange={(e) => setSeason(e.target.value)}>
+            <select
+              className="input"
+              value={activeSeason ?? ""}
+              onChange={(e) => setSeason(e.target.value)}
+              disabled={scope === "career"}
+            >
               {seasons.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -225,4 +242,26 @@ export default function Leaders() {
       </Card>
     </div>
   );
+}
+
+/** Sum a player's seasons inside one competition, for the career view. */
+function careerRow(p: Player, leagueId: string) {
+  const acc = { gp: 0, g: 0, a: 0, pts: 0, sh: 0, gb: 0, ct: 0, foW: 0, foA: 0, sv: 0, ga: 0, w: 0, l: 0, teamId: p.teamId };
+  for (const x of p.seasons) {
+    if (x.leagueId !== leagueId) continue;
+    acc.gp += x.gp || 0;
+    acc.g += x.g || 0;
+    acc.a += x.a || 0;
+    acc.pts += x.pts || 0;
+    acc.sh += x.sh || 0;
+    acc.gb += x.gb || 0;
+    acc.ct += x.ct || 0;
+    acc.foW += x.foW || 0;
+    acc.foA += x.foA || 0;
+    acc.sv += x.sv || 0;
+    acc.ga += x.ga || 0;
+    acc.w += x.w || 0;
+    acc.l += x.l || 0;
+  }
+  return acc;
 }
