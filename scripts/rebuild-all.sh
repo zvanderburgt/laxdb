@@ -20,6 +20,9 @@ python3 scripts/fetch-logos.py
 echo "── headshots (both Sidearm roster card templates)"
 python3 scripts/fetch-headshots.py
 
+echo "── repair (negatives, duplicate clubs, orphan teams)"
+python3 scripts/repair-data.py
+
 echo "── previous-season records"
 python3 scripts/fetch-historical-results.py 2026 2025 2024 2023 || true
 python3 scripts/attach-history.py
@@ -29,6 +32,9 @@ python3 scripts/update-rankings.py || true
 
 echo "── scores"
 python3 scripts/fetch-scores.py 2026 2025 || true
+
+echo "── integrity check"
+python3 scripts/check-data.py
 
 echo "── build"
 npm run build

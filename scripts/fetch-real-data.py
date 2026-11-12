@@ -2389,6 +2389,16 @@ def main():
         "players": players,
         "history": dataset_history,
     }
+    # final sanity pass: no negative stat cells, and college points equal goals + assists
+    for p in players:
+        for s in p["seasons"]:
+            for k in ("gp", "g", "a", "pts", "sh", "gb", "to", "ct", "foW", "foA", "pen", "min", "ga", "sv", "w", "l"):
+                v = s.get(k)
+                if isinstance(v, (int, float)) and v < 0:
+                    s[k] = 0
+            if s.get("leagueId") in ("ncaa-d1", "mcla"):
+                s["pts"] = (s.get("g") or 0) + (s.get("a") or 0)
+
     out = os.path.join(ROOT, "public", "data.json")
     with open(out, "w") as f:
         json.dump(dataset, f, separators=(",", ":"))
