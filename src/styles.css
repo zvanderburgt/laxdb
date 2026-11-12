@@ -1924,3 +1924,9 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .leaders-controls .field { min-width: 0; flex: 1 1 100%; }
   .leaders-controls .input { width: 100%; max-width: none; }
 }
+
+/* the header kept a 24px gutter while body content dropped to 16px on phones */
+@media (max-width: 640px) {
+  .nav-inner { padding: 0 16px; }
+  .profile-hero-inner { padding: 0 16px; }
+}
