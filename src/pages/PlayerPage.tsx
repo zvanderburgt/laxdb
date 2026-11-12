@@ -10,7 +10,6 @@ import {
   leagueById,
   playerBySlug,
   seasonTotals,
-  similarPlayers,
   teamById,
   gameSummary,
   teamOf,
@@ -19,6 +18,7 @@ import {
 } from "../lib/data";
 import type { Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
+import { similarTo } from "../lib/similar";
 import { toggleSaved, useRoster } from "../lib/storage";
 import {
   Avatar,
@@ -70,6 +70,7 @@ function Profile({ player }: { player: Player }) {
   const roster = useRoster();
   const saved = roster.some((p) => p.id === player.id);
   const mates = useMemo(() => teammatesOf(player), [player.id]);
+  const similar = useMemo(() => similarTo(player, 6), [player.id]);
 
   const copy = async () => {
     try {
@@ -364,9 +365,9 @@ function Profile({ player }: { player: Player }) {
           ) : null}
 
           <Card>
-            <div className="eyebrow">Similar players</div>
+            <div className="eyebrow">Comparable players</div>
             <div className="similar">
-              {similarPlayers(player, 4).map((s) => (
+              {similar.map(({ player: s, score }) => (
                 <Link key={s.id} to={`/player/${s.slug}`} className="similar-row">
                   <PlayerAvatar player={s} size={32} />
                   <span className="similar-id">
@@ -374,12 +375,16 @@ function Profile({ player }: { player: Player }) {
                     <span className="muted small">{teamById.get(s.teamId)?.shortName} · {s.position}</span>
                   </span>
                   <span className="similar-pts">
-                    <span className="num small">{careerTotals(s).pts}</span>
-                    <span className="similar-lbl">PTS</span>
+                    <span className="num small">{score}</span>
+                    <span className="similar-lbl">match</span>
                   </span>
                 </Link>
               ))}
+              {!similar.length ? <p className="muted small">Not enough games to compare yet.</p> : null}
             </div>
+            <p className="muted small similar-note">
+              Rate similarity within the same position group, shown 1–99.
+            </p>
           </Card>
         </aside>
       </div>

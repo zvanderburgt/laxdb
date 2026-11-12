@@ -1767,3 +1767,5 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 @media (max-width: 700px) {
   .col-share, .col-programs { display: none; }
 }
+
+.similar-note { margin: 10px 0 0; line-height: 1.4; }
