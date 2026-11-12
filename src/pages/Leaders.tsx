@@ -54,6 +54,17 @@ const CATS: Cat[] = [
   { key: "gaa", label: "GAA", value: (r) => (r.gp >= 5 && r.ga >= 10 ? r.ga / r.gp : null), format: (n) => n.toFixed(2), goalie: true, asc: true },
 ];
 
+/** index each competition-season to 100 = that league's own scoring level */
+function indexCat(leaguePpg: number): Cat | null {
+  if (!leaguePpg) return null;
+  return {
+    key: "idx",
+    label: "Pts index",
+    value: (r) => (r.gp ? ((r.pts / r.gp) / leaguePpg) * 100 : null),
+    format: (n) => n.toFixed(0),
+  };
+}
+
 export default function Leaders() {
   const leagues = useMemo(
     () => data.leagues.filter((l) => data.players.some((p) => p.leagueId === l.id)),
@@ -75,8 +86,6 @@ export default function Leaders() {
   const [scope, setScope] = useState<"season" | "career">("season");
   const [pos, setPos] = useState<"all" | "A" | "M" | "D" | "G">("all");
   const activeSeason = season && seasons.includes(season) ? season : seasons[0];
-  const cat = CATS.find((c) => c.key === catKey) ?? CATS[0];
-
   const rows = useMemo<Row[]>(() => {
     if (!activeSeason) return [];
     const out: Row[] = [];
@@ -104,6 +113,17 @@ export default function Leaders() {
     }
     return out;
   }, [leagueId, activeSeason, scope]);
+
+  const leaguePpg = useMemo(() => {
+    const gp = rows.reduce((n, r) => n + r.gp, 0);
+    const pts = rows.reduce((n, r) => n + r.pts, 0);
+    return gp ? pts / gp : 0;
+  }, [rows]);
+  const cats = useMemo(() => {
+    const idx = indexCat(leaguePpg);
+    return idx ? [...CATS, idx] : CATS;
+  }, [leaguePpg]);
+  const cat = cats.find((c) => c.key === catKey) ?? cats[0];
 
   const board = useMemo(() => {
     const inGroup = (position: string) => {
@@ -146,6 +166,9 @@ export default function Leaders() {
             {league?.name}
             {scope === "career" ? " · career" : activeSeason ? ` · ${activeSeason}` : ""}
             {board.minGames ? ` · minimum ${board.minGames} games played to qualify` : ""}
+            {cat.key === "idx" && leaguePpg
+              ? ` · 100 = this competition's ${leaguePpg.toFixed(2)} points per game`
+              : ""}
           </p>
         </div>
       </div>
@@ -214,7 +237,7 @@ export default function Leaders() {
             ariaLabel="Stat"
             value={catKey}
             onChange={setCatKey}
-            options={CATS.map((c) => ({ value: c.key, label: c.label }))}
+            options={cats.map((c) => ({ value: c.key, label: c.label }))}
           />
         </div>
       </Card>

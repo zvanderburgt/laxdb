@@ -52,9 +52,8 @@ this is a static site).
 
 1. **Opponent-adjusted scoring** — divide per-game output by opponent Elo so a mid-major scorer is
    not ranked with a blue blood. *(LaxGrid "Goals Added".)*
-2. **Era- and league-adjusted scoring index** — index each season-league to 100 so a 15-game NCAA
-   year, a 24-game box year and the shot-clock era can sit in one table. *(Hockey-Reference
-   adjusted stats.)*
+2. ~~Era- and league-adjusted scoring index~~ — shipped as the **points index** on `#/leaders`
+   (100 = that competition-season's average player-game). Cross-era normalisation is still open.
 3. **Team efficiency** — possessions estimated from faceoffs, shots and turnovers, then points per
    100 possessions, opponent-adjusted ratings and expected W-L. *(Basketball-Reference.)*
 4. **Single-number game score** — needs shots and turnovers per game, which the box scores carry but

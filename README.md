@@ -57,7 +57,9 @@ Product details:
   position group, so a defender is compared with defenders and a goalie with goalies.
 - **Peer rank** — "2nd of 37 attackmen in points per game" for his competition and season.
 - **Stat leaders** (`#/leaders`) — every category, single season or career, non-goalie and goalie
-  boards, with a position filter and the qualification minimum printed on the page.
+  boards, with a position filter, the qualification minimum printed on the page, and a **points
+  index** (100 = that competition's average player-game) so a box-league scorer can be compared
+  with a Division I one.
 - **Scores** (`#/scores`) — day-by-day finals, D1 from ESPN's scoreboard and the PLL from the
   league's own games API, each linked to the team page.
 - **High school pipelines** — top high schools per program and per league.
