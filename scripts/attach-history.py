@@ -45,8 +45,22 @@ def main():
                 return team
         return None
 
-    totals = {}
+    # ESPN returns only a slice of the 2023/2024 schedules (median 4-5 games per team vs
+    # 15 for 2025), so only seasons that look complete are attached
+    import statistics
+    complete = {}
     for season, games in seasons.items():
+        counts = {}
+        for g in games:
+            counts[g["home"]] = counts.get(g["home"], 0) + 1
+            counts[g["away"]] = counts.get(g["away"], 0) + 1
+        if counts and statistics.median(counts.values()) >= 12:
+            complete[season] = games
+        else:
+            print(f"  skipping {season}: median {statistics.median(counts.values()):.0f} games/team")
+
+    totals = {}
+    for season, games in complete.items():
         for g in games:
             for side, opp, gf, ga in ((g["home"], g["away"], g["hs"], g["as"]),
                                       (g["away"], g["home"], g["as"], g["hs"])):
