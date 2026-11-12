@@ -50,8 +50,8 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 1. **Opponent-adjusted scoring** — divide per-game output by opponent Elo so a mid-major scorer is
    not ranked with a blue blood. *(LaxGrid "Goals Added".)*
 2. **Conference pages with history** — conference record and finish by season; we hold the results.
-3. **Head-to-head series** — all-time record, streaks, full meeting list. *(LaxGrid `/vs/a/b`.)*
-    Requires storing team-result rows, which the importer currently aggregates away.
+3. **Head-to-head series** — shipped as `#/vs/:a/:b` over the 2025–26 results; an all-time
+    version still needs seasons before 2025 in the scores feed.
 4. **Scores by date** — shipped for D1 and the PLL; MCLA and box leagues still need a feed.
 5. **Game pages** — one page per game with both teams' lines from the box scores.
 6. **Championship detail** — final score, site, OT flag, winning coach, MVP.

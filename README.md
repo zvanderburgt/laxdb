@@ -35,6 +35,7 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/origins` | Where Division I players come from: players by state, share, per-100k rate, top feeder programs |
 | `#/leaders` | Every stat category, by competition and season or career, with a qualification minimum |
 | `#/scores` | Final scores by date: 1,146 NCAA D1 games (2025–26) and 101 PLL games, linked to team pages |
+| `#/vs/:a/:b` | Head to head: record between two programs and every meeting in the scores feed |
 
 Product details:
 
