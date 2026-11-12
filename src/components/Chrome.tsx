@@ -17,6 +17,7 @@ const NAV = [
   { to: "/players", label: "Players" },
   { to: "/teams", label: "Teams" },
   { to: "/leagues", label: "Leagues" },
+  { to: "/leaders", label: "Leaders" },
   { to: "/compare", label: "Compare" },
   { to: "/history", label: "History" },
   { to: "/origins", label: "Origins" },
@@ -266,6 +267,7 @@ export function Footer() {
             <Link to="/players">Players</Link>
             <Link to="/teams">Teams</Link>
             <Link to="/leagues">Leagues</Link>
+            <Link to="/leaders">Leaders</Link>
             <Link to="/compare">Compare</Link>
             <Link to="/history">History</Link>
             <Link to="/origins">Origins</Link>

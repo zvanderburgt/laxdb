@@ -1769,3 +1769,22 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 }
 
 .similar-note { margin: 10px 0 0; line-height: 1.4; }
+
+/* roster movement */
+.moves-block { padding: 14px 18px 18px; border-top: 1px solid var(--line); }
+.moves-block:first-of-type { border-top: 0; }
+.moves-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.moves-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.moves-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 5px; }
+.moves-list li { font-size: 13px; line-height: 1.35; }
+@media (max-width: 640px) { .moves-grid { grid-template-columns: 1fr; gap: 14px; } }
+
+.moves-list--wide { padding: 4px 18px 16px; }
+
+/* leaders */
+.leaders-controls { display: flex; gap: 14px; flex-wrap: wrap; }
+.leaders-controls .field { display: grid; gap: 5px; min-width: 180px; }
+.field-label { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+.leaders-tabs { margin-top: 14px; }
+.leaders-tabs .segmented { flex-wrap: wrap; overflow: visible; max-width: 100%; }
+.leader-name { display: inline-flex; align-items: center; gap: 8px; }
