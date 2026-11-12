@@ -69,6 +69,11 @@ export interface Team {
   sos?: number;
   /** final regular-season records for earlier campaigns (ESPN results) */
   history?: { season: string; w: number; l: number; gf: number; ga: number }[];
+  /** clubs that were renamed: one franchise, several names (Wikipedia lineage) */
+  franchise?: {
+    id: string;
+    names: { name: string; from: number | null; to: number | null; teamId?: string | null }[];
+  };
   record?: {
     w: number; l: number; t: number; pct: number; rank: number; teams: number;
     overallRank?: number; overallTeams?: number; group?: string;

@@ -2110,8 +2110,34 @@ def name_key(name):
     return re.sub(r"[^a-z]", "", (name or "").lower())
 
 
+def load_franchises():
+    """team id -> franchise id, from public/franchises.json when it exists.
+
+    Two names of one club (Elora Mohawks -> Elora Hawks) must count as the same
+    program when merging duplicate players, or a career that spans the rename
+    stays split in two.
+    """
+    path = os.path.join(ROOT, "public", "franchises.json")
+    out = {}
+    try:
+        with open(path) as f:
+            groups = json.load(f).get("groups", [])
+    except (FileNotFoundError, ValueError):
+        return out
+    for group in groups:
+        for name in group.get("names", []):
+            if name.get("teamId"):
+                out[name["teamId"]] = group["id"]
+    return out
+
+
+FRANCHISE_OF = load_franchises()
+
+
 def team_alias(a, b, team_names):
     """'UC Santa Barbara' and 'Santa Barbara' are the same program."""
+    if FRANCHISE_OF.get(a) and FRANCHISE_OF.get(a) == FRANCHISE_OF.get(b):
+        return True
     na, nb = team_names.get(a, ""), team_names.get(b, "")
     na, nb = re.sub(r"[^a-z]", "", na.lower()), re.sub(r"[^a-z]", "", nb.lower())
     if not na or not nb or na == nb:

@@ -1,0 +1,23 @@
+{
+ "generated": "2026-11-12",
+ "groups": [
+  {
+   "id": "f-elora-hawks",
+   "page": "Elora Hawks",
+   "names": [
+    {
+     "name": "Elora Mohawks",
+     "from": 1967,
+     "to": 2025,
+     "teamId": "t-ojbll-elora-mohawks"
+    },
+    {
+     "name": "Elora Hawks",
+     "from": 2025,
+     "to": null,
+     "teamId": "t-ojbll-elora-hawks"
+    }
+   ]
+  }
+ ]
+}

@@ -316,6 +316,44 @@ export function TeamPage() {
   const box = league?.type === "box";
   const lastCol = box ? "PIM" : "GB";
 
+  // one club under several names: totals across the lineage, not just this row
+  const franchiseTotals = (() => {
+    const ids = new Set(
+      ((team.franchise?.names ?? []).map((n) => n.teamId).filter(Boolean) as string[]).concat(team.id),
+    );
+    const players = new Set<string>();
+    let seasons = 0;
+    let points = 0;
+    for (const p of data.players) {
+      let hit = false;
+      for (const s of p.seasons) {
+        if (!ids.has(s.teamId)) continue;
+        seasons += 1;
+        points += s.pts ?? 0;
+        hit = true;
+      }
+      if (hit) players.add(p.id);
+    }
+    return { players: players.size, seasons, points };
+  })();
+
+  // what each name actually played in our data, which is finer than the wiki range
+  const playedUnder = (teamId?: string | null) => {
+    if (!teamId) return null;
+    let first = 0;
+    let last = 0;
+    for (const p of data.players) {
+      for (const s of p.seasons) {
+        if (s.teamId !== teamId) continue;
+        const y = Number(s.season);
+        if (!y) continue;
+        first = first ? Math.min(first, y) : y;
+        last = Math.max(last, y);
+      }
+    }
+    return first ? { first, last } : null;
+  };
+
   return (
     <div className="profile">
       <div
@@ -386,6 +424,44 @@ export function TeamPage() {
       </div>
 
       <div className="page">
+        {team.franchise ? (
+          <Card className="franchise-card">
+            <div className="eyebrow">Franchise</div>
+            <p className="muted small">
+              This club has been renamed. Seasons under each name stay with that name and are
+              linked here.
+            </p>
+            <ul className="franchise-list">
+              {team.franchise.names.map((n) => {
+                const t = n.teamId ? teamById.get(n.teamId) : undefined;
+                const viewing = n.teamId === team.id;
+                const isLatest = n.to === null;
+                const played = playedUnder(n.teamId);
+                // the wiki ranges overlap at the rename year; our own seasons do not
+                const from = played?.first ?? n.from ?? null;
+                const to = n.to === null ? "now" : played && played.last < n.to ? played.last : n.to;
+                return (
+                  <li key={n.name} className={viewing ? "is-viewing" : undefined}>
+                    <span className="franchise-name">
+                      {t && !viewing ? <Link to={`/team/${t.slug}`}>{t.name}</Link> : n.name}
+                    </span>
+                    <span className="franchise-years num">
+                      {from && to === from ? from : `${from ?? "—"}–${to}`}
+                    </span>
+                    <span className="franchise-status">
+                      {isLatest ? <span className="tag tag-accent">Current</span> : null}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="muted small franchise-total">
+              Across every name: {franchiseTotals.players} players ·{" "}
+              {franchiseTotals.seasons} player-seasons ·{" "}
+              {franchiseTotals.points.toLocaleString()} career points
+            </p>
+          </Card>
+        ) : null}
         <ReturningCard team={team} />
         <HonoursCard team={team} />
         <SeriesCard team={team} />
