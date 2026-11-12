@@ -20,6 +20,9 @@ python3 scripts/fetch-logos.py
 echo "── headshots (both Sidearm roster card templates)"
 python3 scripts/fetch-headshots.py
 
+echo "── box bios (GameSheet: dob, hometown, height/weight, jersey, photos, club logos)"
+python3 scripts/fetch-gamesheet.py --apply || true
+
 echo "── repair (negatives, duplicate clubs, orphan teams)"
 python3 scripts/repair-data.py
 

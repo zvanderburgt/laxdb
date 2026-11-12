@@ -2161,6 +2161,12 @@ def same_person(a, b, team_names, strict=False):
     if rows_a & rows_b:
         return False
 
+    # a date of birth is proof either way: same person, or definitively not.
+    # GameSheet supplies them for the box leagues, so this now has teeth.
+    dob_a, dob_b = a.get("dob"), b.get("dob")
+    if dob_a and dob_b and dob_a != dob_b:
+        return False
+
     if a.get("teamId") == b.get("teamId") or team_alias(a.get("teamId"), b.get("teamId"), team_names):
         return True
     if strict:
