@@ -2421,6 +2421,20 @@ def main():
             if s.get("leagueId") in ("ncaa-d1", "mcla"):
                 s["pts"] = (s.get("g") or 0) + (s.get("a") or 0)
 
+    # feeds sometimes hand back HTML-escaped names ("Brennan O&#039;Neill"); decode
+    # them here so the site never renders a literal entity
+    def _unescape_deep(o):
+        if isinstance(o, str):
+            return _html.unescape(o)
+        if isinstance(o, list):
+            return [_unescape_deep(x) for x in o]
+        if isinstance(o, dict):
+            return {k: _unescape_deep(v) for k, v in o.items()}
+        return o
+
+    dataset = _unescape_deep(dataset)
+    games_blob = _unescape_deep(games_blob)
+
     out = os.path.join(ROOT, "public", "data.json")
     with open(out, "w") as f:
         json.dump(dataset, f, separators=(",", ":"))

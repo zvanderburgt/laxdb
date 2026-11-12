@@ -230,7 +230,7 @@ export default function Home() {
           title="Players to know"
           action={<Link className="link-arrow" to="/players">Browse all players →</Link>}
         />
-        <div className="cards-row">
+        <div className="pcard-grid">
           {featured.map((p) => (
             <PlayerCard key={p.id} player={p} team={teamById.get(p.teamId)} />
           ))}

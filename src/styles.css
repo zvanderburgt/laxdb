@@ -1980,3 +1980,56 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .searchbtn-text, .searchbtn kbd { display: none; }
   .searchbtn { padding: 0 9px; }
 }
+
+/* six cards, two rows: the horizontal rail clipped the card's hover lift and cut
+   the last card in half at the viewport edge */
+.pcard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .pcard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* any rail that is still a scroller needs room above for the -3px hover lift and
+   its shadow, or the container's overflow clips the top edge of the card */
+.cards-row { padding-top: 6px; margin-top: -6px; }
+
+/* at phone width a two-up card left ~60px for the name, so every name read "Je…";
+   shrink the avatar, drop the redundant position badge (the line under the name
+   already says Attack) and let the name wrap to two lines */
+@media (max-width: 560px) {
+  .pcard-grid { gap: 10px; }
+  .pcard { padding: 12px; }
+  .pcard-top { gap: 9px; }
+  .pcard-top .avatar { width: 38px; height: 38px; flex: none; }
+  .pcard-top .badge, .pcard .pos-badge { display: none; }
+  .pcard-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.25;
+    font-size: 13.5px;
+  }
+  .pcard-team { font-size: 11px; }
+  .pcard-stats { margin-top: 10px; }
+}
+
+/* the position badge repeats what the line under the name already says; dropping
+   it on phones buys the name and club line ~26px */
+@media (max-width: 560px) {
+  .pcard-top > .pos, .pcard-top > .badge, .pcard-top > [class*="posbadge"], .pcard-top > span[class*="badge"] { display: none; }
+  .pcard-team {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.3;
+  }
+}
