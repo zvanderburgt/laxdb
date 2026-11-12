@@ -33,34 +33,41 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 
 ## Next — small, no new feed
 
-1. **Game highs linking to the game** — career best per category, each pointing at the date it
-   happened. *(Basketball-Reference.)*
-2. **Assisted vs unassisted goals** — derivable from G/A box scores; separates creators from
-   finishers. *(PLL Advanced Stats.)*
-3. **Award race** — position-weighted index over current-season stats, split overall / offence /
-   defence / FOGO so a pole or faceoff man can lead something. *(Lacrosse Reference.)*
-4. **Consensus rating** — RPI, Elo and both polls side by side with a unanimity score.
-   *(LaxPower2 / LaxMath.)*
-5. **Poll archive** — week-by-week order, points and first-place votes where published.
-6. **All-American archive filters** — year, team, position, school, conference, CSV.
-7. **Provenance stamps** — "last updated" and the feed behind every board. *(MaxPreps.)*
+1. **Active players climbing the record book** — join current career totals to the NCAA lists and
+   project seasons-to-pass. *(Hockey-Reference "Active" tabs.)*
+2. **All-time team encyclopedia** — stack every season we hold on one page: record, GF/GA,
+   conference, peak Elo, leading scorer. *(Basketball-Reference franchise pages.)*
+3. **Roster composition** — class mix, returning production, departed points, so "what does this
+   team lose next year" is answered above the roster table. *(On3 roster header.)*
+4. **Eligibility clock** — a "Class of 2027" view with years-remaining badges, from `gradYear`.
+   *(Transfermarkt contract expiry, translated to eligibility.)*
+5. **Provenance stamps** — "last updated" and the feed behind every board. *(MaxPreps.)*
+
+Judged and dropped from this tier: **home/away splits** (the box scores we parse publish no venue),
+**poll first-place votes and also-receiving** (none of the three reachable polls print them), and
+**TV listings** (USA Lacrosse publishes them, but a broadcast schedule goes stale within days and
+this is a static site).
 
 ## Next — needs a precompute pass
 
 1. **Opponent-adjusted scoring** — divide per-game output by opponent Elo so a mid-major scorer is
    not ranked with a blue blood. *(LaxGrid "Goals Added".)*
-2. **Conference pages with history** — conference record and finish by season; we hold the results.
-3. **Head-to-head series** — shipped as `#/vs/:a/:b` over the 2025–26 results; an all-time
-    version still needs seasons before 2025 in the scores feed.
-4. **Scores by date** — shipped for D1 and the PLL; MCLA and box leagues still need a feed.
-5. **Game pages** — shipped as `#/game/:date/:home/:away`, assembled from the player logs.
-6. **Championship detail** — final score, site, OT flag, winning coach, MVP.
-7. **All-time team encyclopedia** — every season we hold on one page with record, GF/GA,
-    conference, Elo. *(Basketball-Reference franchise page.)*
-8. **Single-game impact score** — one number per game (points, GB, CT, faceoffs, saves) so "best
-    game of his career" is sortable. *(Basketball-Reference Game Score.)*
-9. **Recruiting commitments** — LaxNumbers publishes a 3,102-row class-of-2027 page as plain HTML.
-10. **Coach directory** — W-L, tenure, titles *(LaxGrid `/coaches/d1-men`)*. Needs a coach entity.
+2. **Era- and league-adjusted scoring index** — index each season-league to 100 so a 15-game NCAA
+   year, a 24-game box year and the shot-clock era can sit in one table. *(Hockey-Reference
+   adjusted stats.)*
+3. **Team efficiency** — possessions estimated from faceoffs, shots and turnovers, then points per
+   100 possessions, opponent-adjusted ratings and expected W-L. *(Basketball-Reference.)*
+4. **Single-number game score** — needs shots and turnovers per game, which the box scores carry but
+   the importer does not yet store. *(Basketball-Reference Game Score.)*
+5. **Point shares** — split team success into offensive and defensive shares. *(Hockey-Reference.)*
+6. **Championship detail** — winning coach, MVP, venue and OT flag alongside the score we already
+   show. *(College Lacrosse News tournament history.)*
+7. **Coach directory and carousel** — W-L, tenure, titles. *(LaxGrid `/coaches/d1-men`.)*
+8. **Conference pages with history** — conference record and finish by season.
+9. **Recruiting commitments** — LaxNumbers publishes a ~3k-row static table of class-of-2027
+   commitments with high school, club, position and destination.
+10. **Transfer portal** — the only public tracker (College Lacrosse News) injects its table with JS
+    and exposes no JSON, so this needs a browser fetch per page.
 
 ## Later — new modelling or a new source
 
