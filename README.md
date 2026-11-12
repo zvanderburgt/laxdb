@@ -54,8 +54,9 @@ Product details:
   Home/away is not published in the box scores, so it is left out rather than guessed.
 - **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
   They ship as a second file (`games.json`, 1.3 MB) fetched the first time you open a log.
-- **Team logos** for 209 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
-- **Headshots** for 1,261 players — 409 PLL plus 852 parsed from school rosters.
+- **Team logos** for 251 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.
+- **Headshots** for 3,442 players — every PLL player plus 99 % of Division I (2,989 of 3,025),
+  square-cropped from the rosters the schools publish.
 - **Where they come from** (`#/origins`) — every D1 player's home state ranked by headcount and by
   players per 100,000 residents (2020 census), with the three programs each state feeds most.
 - **Team season summaries** — goals/game, goals against/game, shooting %, save %, faceoff %.
@@ -118,9 +119,10 @@ Coverage gaps, stated plainly:
   it — labelled as such, rather than presented as a full season history.
 - Box rosters carry no F/D/T split (the feeds list skaters and goalies only), so box skaters are
   badged as runners.
-- Headshots exist for 1,060 of 16,690 players. Eleven D1 programs (Yale, Cornell, Johns Hopkins,
-  Navy, Georgetown, Villanova, Loyola, Towson, Penn, Hofstra, High Point) publish no roster photos;
-  MCLA and box leagues publish none at all.
+- Headshots exist for 3,442 of 17,685 players: every PLL player and 99 % of Division I. MCLA and box
+  leagues publish none at all. Photos are fetched by `scripts/fetch-headshots.py`, which reads both
+  Sidearm roster templates — the older aria-label card and the newer `data-player-id` card whose
+  image sits in a background-image.
 - Handedness is not published by any source, so there is no hand filter.
 - Field penalty time arrives as MM:SS and is normalised to minutes on import (it was stored in
   seconds before, which inflated PIM by 60×). Box PIM comes from NetFront already in minutes.
@@ -141,7 +143,10 @@ python3 scripts/fetch-real-data.py --no-photos
 The fetcher caches every HTML response under `scripts/.cache/`, so re-runs and parser fixes take
 seconds instead of re-hitting 25 schools.
 
-Headshots live in `public/players/pll/` (428 webp files, ~4 MB, resized to 320px).
+Headshots live in `public/players/{pll,ncaa}/` (3,442 webp files, 224×224, quality 84).
+Team marks live in `public/logos/` (251 webp files, 120×120) and are topped up by
+`python3 scripts/fetch-logos.py`, which falls back to screenshotting SVG marks in headless
+Chromium because Pillow cannot open them.
 
 ## Schema
 

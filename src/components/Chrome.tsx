@@ -282,11 +282,10 @@ export function Footer() {
           </div>
           <div>
             <h4>Sources</h4>
-            <span>NCAA.com statistics</span>
-            <span>School athletics sites</span>
-            <span>mcla.us · stats.netfrontsports.com</span>
-            <span>PLL stats API</span>
-            <span>Updated {data.meta.generated}</span>
+            {(data.meta.sources ?? []).map((s) => (
+              <span key={s}>{s}</span>
+            ))}
+            <span className="footer-stamp">Updated {data.meta.generated}</span>
           </div>
         </div>
       </div>
@@ -294,7 +293,7 @@ export function Footer() {
         <span>
           © 2026 LAXDB. Data compiled from public NCAA and PLL sources; not affiliated with either.
         </span>
-        <span>Field lacrosse · 2023–2026</span>
+        <span>Field and box lacrosse · 2021–2026 · every figure from a published source</span>
       </div>
     </footer>
   );
