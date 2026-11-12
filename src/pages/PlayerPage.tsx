@@ -19,6 +19,7 @@ import {
 import type { Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
+import { peerRanks } from "../lib/peers";
 import { toggleSaved, useRoster } from "../lib/storage";
 import {
   Avatar,
@@ -71,6 +72,7 @@ function Profile({ player }: { player: Player }) {
   const saved = roster.some((p) => p.id === player.id);
   const mates = useMemo(() => teammatesOf(player), [player.id]);
   const similar = useMemo(() => similarTo(player, 6), [player.id]);
+  const peers = useMemo(() => peerRanks(player), [player.id]);
 
   const copy = async () => {
     try {
@@ -361,6 +363,26 @@ function Profile({ player }: { player: Player }) {
                     </div>
                   ))}
               </div>
+            </Card>
+          ) : null}
+
+          {peers.length ? (
+            <Card>
+              <div className="eyebrow">Where he ranks</div>
+              <ul className="peer-list">
+                {peers.map((r) => (
+                  <li key={r.label}>
+                    <span className="muted small">{r.label}</span>
+                    <span className="peer-rank num">
+                      {ordinal(r.rank)} <span className="muted small">of {r.pool}</span>
+                    </span>
+                    <span className="num small">{r.value}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted small similar-note">
+                Same position group, competition and season — minimum five games.
+              </p>
             </Card>
           ) : null}
 
@@ -1170,4 +1192,10 @@ function Scouting({ player }: { player: Player }) {
       </Card>
     </>
   );
+}
+function ordinal(n: number): string {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th";
+  return `${n}${suffix}`;
 }

@@ -1788,3 +1788,8 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .leaders-tabs { margin-top: 14px; }
 .leaders-tabs .segmented { flex-wrap: wrap; overflow: visible; max-width: 100%; }
 .leader-name { display: inline-flex; align-items: center; gap: 8px; }
+
+/* peer ranks */
+.peer-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.peer-list li { display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 10px; }
+.peer-rank { font-weight: 600; }
