@@ -34,34 +34,32 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 
 1. **Game highs linking to the game** — career best per category, each pointing at the date it
    happened. *(Basketball-Reference.)*
-2. **Game highs linking to the game** — career best per category, each pointing at the date it
-   happened. *(Basketball-Reference.)*
-3. **Assisted vs unassisted goals** — derivable from G/A box scores; separates creators from
+2. **Assisted vs unassisted goals** — derivable from G/A box scores; separates creators from
    finishers. *(PLL Advanced Stats.)*
-4. **Award race** — position-weighted index over current-season stats, split overall / offence /
+3. **Award race** — position-weighted index over current-season stats, split overall / offence /
    defence / FOGO so a pole or faceoff man can lead something. *(Lacrosse Reference.)*
-5. **Consensus rating** — RPI, Elo and both polls side by side with a unanimity score.
+4. **Consensus rating** — RPI, Elo and both polls side by side with a unanimity score.
    *(LaxPower2 / LaxMath.)*
-6. **Poll archive** — week-by-week order, points and first-place votes where published.
-7. **All-American archive filters** — year, team, position, school, conference, CSV.
-8. **Provenance stamps** — "last updated" and the feed behind every board. *(MaxPreps.)*
+5. **Poll archive** — week-by-week order, points and first-place votes where published.
+6. **All-American archive filters** — year, team, position, school, conference, CSV.
+7. **Provenance stamps** — "last updated" and the feed behind every board. *(MaxPreps.)*
 
 ## Next — needs a precompute pass
 
-9. **Opponent-adjusted scoring** — divide per-game output by opponent Elo so a mid-major scorer is
+1. **Opponent-adjusted scoring** — divide per-game output by opponent Elo so a mid-major scorer is
    not ranked with a blue blood. *(LaxGrid "Goals Added".)*
-10. **Conference pages with history** — conference record and finish by season; we hold the results.
-11. **Head-to-head series** — all-time record, streaks, full meeting list. *(LaxGrid `/vs/a/b`.)*
+2. **Conference pages with history** — conference record and finish by season; we hold the results.
+3. **Head-to-head series** — all-time record, streaks, full meeting list. *(LaxGrid `/vs/a/b`.)*
     Requires storing team-result rows, which the importer currently aggregates away.
-12. **Scores by date** — the missing entry point: a day-by-day list of finals.
-13. **Game pages** — one page per game with both teams' lines from the box scores.
-14. **Championship detail** — final score, site, OT flag, winning coach, MVP.
-15. **All-time team encyclopedia** — every season we hold on one page with record, GF/GA,
+4. **Scores by date** — the missing entry point: a day-by-day list of finals.
+5. **Game pages** — one page per game with both teams' lines from the box scores.
+6. **Championship detail** — final score, site, OT flag, winning coach, MVP.
+7. **All-time team encyclopedia** — every season we hold on one page with record, GF/GA,
     conference, Elo. *(Basketball-Reference franchise page.)*
-16. **Single-game impact score** — one number per game (points, GB, CT, faceoffs, saves) so "best
+8. **Single-game impact score** — one number per game (points, GB, CT, faceoffs, saves) so "best
     game of his career" is sortable. *(Basketball-Reference Game Score.)*
-17. **Recruiting commitments** — LaxNumbers publishes a 3,102-row class-of-2027 page as plain HTML.
-18. **Coach directory** — W-L, tenure, titles *(LaxGrid `/coaches/d1-men`)*. Needs a coach entity.
+9. **Recruiting commitments** — LaxNumbers publishes a 3,102-row class-of-2027 page as plain HTML.
+10. **Coach directory** — W-L, tenure, titles *(LaxGrid `/coaches/d1-men`)*. Needs a coach entity.
 
 ## Later — new modelling or a new source
 

@@ -104,10 +104,23 @@ function AllAmericans() {
   const blocks = data.history?.allAmericans ?? [];
   const [year, setYear] = useState(blocks[0] ? String(blocks[0].year) : "");
   const [teamKey, setTeamKey] = useState("1st");
+  const [q, setQ] = useState("");
+  const [pos, setPos] = useState("all");
   if (!blocks.length) return null;
 
   const block = blocks.find((b) => String(b.year) === year) ?? blocks[0];
   const group = block.teams.find((t) => t.team.startsWith(teamKey)) ?? block.teams[0];
+
+  const everyRow = block.teams.flatMap((t) => t.players.map((p) => ({ ...p, tier: t.team })));
+  const positions = [...new Set(everyRow.map((p) => p.position).filter(Boolean))].sort();
+  const searching = Boolean(q.trim()) || pos !== "all";
+  const list = searching
+    ? everyRow.filter((p) => {
+        const needle = q.trim().toLowerCase();
+        const hit = !needle || `${p.name} ${p.school}`.toLowerCase().includes(needle);
+        return hit && (pos === "all" || p.position === pos);
+      })
+    : group.players.map((p) => ({ ...p, tier: group.team }));
 
   return (
     <Card padded={false} className="standings-card">
@@ -129,6 +142,27 @@ function AllAmericans() {
           />
         ) : null}
       </div>
+      <div className="aa-filters">
+        <input
+          className="input"
+          placeholder="Filter by name or school"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select className="input" value={pos} onChange={(e) => setPos(e.target.value)}>
+          <option value="all">All positions</option>
+          {positions.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+        {searching ? (
+          <span className="muted small">
+            {list.length} of {everyRow.length} across every team
+          </span>
+        ) : null}
+      </div>
       <div className="record-metrics aa-teams">
         <span className="aa-label">Team</span>
         <Segmented
@@ -143,7 +177,7 @@ function AllAmericans() {
         />
       </div>
       <ul className="aa-list">
-        {group.players.map((p) => {
+        {list.map((p) => {
           const team = p.teamId ? teamById.get(p.teamId) : undefined;
           return (
             <li key={`${p.name}-${p.school}`}>
@@ -160,6 +194,7 @@ function AllAmericans() {
               </span>
               <span className="aa-class muted small">
                 {p.position} · {p.class}
+                {searching ? ` · ${p.tier}` : ""}
               </span>
             </li>
           );

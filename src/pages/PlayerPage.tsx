@@ -16,7 +16,7 @@ import {
   teammatesOf,
   usePlayerGames,
 } from "../lib/data";
-import type { Player, SeasonRow } from "../lib/types";
+import type { GameRow, Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
 import { peerRanks } from "../lib/peers";
@@ -253,6 +253,7 @@ function Profile({ player }: { player: Player }) {
           {tab === "stats" && <StatsTab player={player} />}
           {tab === "gamelog" && (
             <>
+              <Highs player={player} />
               <Splits player={player} />
               <GameLog player={player} />
             </>
@@ -914,6 +915,51 @@ function MixedStats({ player }: { player: Player }) {
         Career spans both codebases, so the table keeps only the columns both publish. Ground
         balls, shots and faceoffs appear on the league-specific season detail further down.
       </div>
+    </Card>
+  );
+}
+
+function Highs({ player }: { player: Player }) {
+  const games = usePlayerGames(player.id);
+  const rows = React.useMemo(() => {
+    if (!games || games.length < 2) return [];
+    const best = (f: (g: GameRow) => number) =>
+      games.reduce<GameRow | null>((b, g) => (!b || f(g) > f(b) ? g : b), null);
+    const cats: { label: string; f: (g: GameRow) => number }[] = [
+      { label: "Points", f: (g) => (g.g || 0) + (g.a || 0) },
+      { label: "Goals", f: (g) => g.g || 0 },
+      { label: "Assists", f: (g) => g.a || 0 },
+      { label: "Ground balls", f: (g) => g.gb || 0 },
+      { label: "Caused turnovers", f: (g) => g.ct || 0 },
+      { label: "Faceoff wins", f: (g) => g.foW || 0 },
+    ];
+    if (player.position === "G") cats.push({ label: "Saves", f: (g) => g.sv || 0 });
+    return cats
+      .map((c) => ({ label: c.label, game: best(c.f), value: best(c.f) ? c.f(best(c.f)!) : 0 }))
+      .filter((r) => r.game && r.value > 0);
+  }, [games, player.position]);
+
+  if (!rows.length) return null;
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Single-game highs</h3>
+          <p className="muted small">Best game in each category, with the date it happened</p>
+        </div>
+      </div>
+      <ul className="highs-list">
+        {rows.map((r) => (
+          <li key={r.label}>
+            <span className="muted small">{r.label}</span>
+            <span className="num strong">{r.value}</span>
+            <span className="muted small">
+              {r.game!.date} · {r.game!.opponent ?? "—"} {r.game!.result ?? ""}
+            </span>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
