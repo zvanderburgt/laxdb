@@ -433,6 +433,9 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
   const league = leagueById.get(player.leagueId);
   const isGoal = player.position === "G";
   const seasons = [...player.seasons].reverse();
+  // box feeds publish penalties, not ground balls, so a box-only summary ends on PIM
+  const summaryBoxOnly =
+    seasons.length > 0 && seasons.slice(0, 4).every((s) => leagueById.get(s.leagueId)?.type === "box");
   // one bar per team per season: a merged career changes clubs, and the chart should show it
   const chartGroups = (() => {
     const order: string[] = [];
@@ -542,7 +545,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
                   <th className="r">AST</th>
                   <th className="r">PTS</th>
                   <th className="r">PTS/G</th>
-                  <th className="r">GB</th>
+                  <th className="r">{summaryBoxOnly ? "PIM" : "GB"}</th>
                 </>
               )}
             </tr>
@@ -590,7 +593,9 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
                     <td className="r num">{s.a}</td>
                     <td className="r num strong">{s.pts ?? 0}</td>
                     <td className="r num">{(s.gp ? (s.pts ?? 0) / s.gp : 0).toFixed(2)}</td>
-                    <td className="r num">{s.gb}</td>
+                    <td className="r num">
+                      {leagueById.get(s.leagueId)?.type === "box" ? s.pen : s.gb}
+                    </td>
                   </>
                 )}
               </tr>
