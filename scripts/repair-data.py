@@ -100,6 +100,36 @@ def main():
         if not any(x["slug"] == t["slug"] for x in teams):
             teams.append(t)
 
+    # 4. two people with one name on the same club in the same season were merged by
+    #    mistake; the extra rows become their own profile again
+    split = 0
+    clones = []
+    for p in players:
+        seen = Counter((s["season"], s["teamId"]) for s in p["seasons"])
+        dup_keys = {k for k, n in seen.items() if n > 1}
+        if not dup_keys:
+            continue
+        keep, moved = [], []
+        used = set()
+        for s in p["seasons"]:
+            key = (s["season"], s["teamId"])
+            if key in dup_keys and key in used:
+                moved.append(s)
+            else:
+                keep.append(s)
+                if key in dup_keys:
+                    used.add(key)
+        if not moved:
+            continue
+        p["seasons"] = keep
+        clone = dict(p)
+        clone["seasons"] = moved
+        clone["id"] = f'{p["id"]}-b'
+        clone["slug"] = f'{p["slug"]}-b'
+        clones.append(clone)
+        split += 1
+    players.extend(clones)
+
     # players whose `teamId` points at a team we have just created keep working
     by_id = {t["id"]: t for t in teams}
     retarget = 0
@@ -111,6 +141,7 @@ def main():
             retarget += 1
 
     data["teams"] = teams
+    data["players"] = players
 
     games = json.load(open(GAMES))
     gneg = 0
@@ -120,7 +151,7 @@ def main():
 
     print(f"clamped {neg} negative season values, {gneg} game-log values")
     print(f"merged {dup} duplicate team rows, added {len(added)} missing teams, "
-          f"retargeted {retarget} players")
+          f"retargeted {retarget} players, split {split} same-name merges")
     for t in added:
         print(f"  + {t['name']} ({t['leagueId']})")
 

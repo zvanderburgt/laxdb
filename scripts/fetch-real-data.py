@@ -2150,6 +2150,14 @@ def same_person(a, b, team_names, strict=False):
     Field to box and school to school across leagues stay separate.
     """
     gpa, gpb = POS_GROUP.get(a.get("position")), POS_GROUP.get(b.get("position"))
+
+    # two records for the same club in the same season are two people with one name, not
+    # one person on two rows — merging them double-counts a season
+    rows_a = {(s["season"], s["teamId"]) for s in a.get("seasons", [])}
+    rows_b = {(s["season"], s["teamId"]) for s in b.get("seasons", [])}
+    if rows_a & rows_b:
+        return False
+
     if a.get("teamId") == b.get("teamId") or team_alias(a.get("teamId"), b.get("teamId"), team_names):
         return True
     if strict:
