@@ -27,6 +27,22 @@ data we wanted is already in the dataset under different league IDs.
 
 ---
 
+## USILA D2/D3 All-American sheets
+
+The D2 and D3 PDFs group players by position, with region, jersey number and selection in the
+same row:
+
+```
+GOALIE  Region  School  #  Class.  Selection
+Christian Tomei  North  Adelphi  23  Junior  1st Team GOY
+```
+
+The D1 sheet (imported) instead prints "Player School Class Position" under team headings, so a
+D2/D3 parser needs its own column map per position group. Those players are also outside our
+current coverage, which is D1 only.
+
+---
+
 ## NCAA Division II and III full rosters
 
 **Status:** not used beyond leaderboards.
