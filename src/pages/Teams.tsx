@@ -103,8 +103,8 @@ function SeriesCard({ team }: { team: Team }) {
         <div>
           <h3 className="card-title">Season series</h3>
           <p className="muted small">
-            {result.season} · rebuilt from the box scores, so only opponents we have a game log
-            against appear
+            {result.season} · rebuilt from the box scores ·{" "}
+            <Link to={`/vs/${team.slug}/`}>head to head →</Link>
           </p>
         </div>
       </div>

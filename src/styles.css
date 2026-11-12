@@ -1837,3 +1837,10 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .score-line { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .scores-venue { grid-column: 1 / -1; text-align: right; }
 @media (max-width: 560px) { .scores-venue { text-align: left; } }
+
+/* head to head */
+.vs-title { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.vs-team { display: inline-flex; align-items: center; gap: 10px; }
+.vs-record { color: var(--text-3); font-weight: 500; }
+.vs-pickers { display: flex; gap: 16px; flex-wrap: wrap; }
+.vs-pickers .field { display: grid; gap: 5px; min-width: 220px; }

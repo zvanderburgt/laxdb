@@ -76,6 +76,9 @@ export default function Scores() {
           </p>
         </div>
         <div className="scores-controls">
+          <Link to="/vs/" className="btn btn-ghost small">
+            Head to head
+          </Link>
           <Segmented
             ariaLabel="League"
             value={league}
