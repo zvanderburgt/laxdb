@@ -545,7 +545,7 @@ kbd {
 }
 .leader-row:hover { background: var(--hover); }
 .leader-rank { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.leader-id { display: flex; flex-direction: column; min-width: 0; }
+.leader-id { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .leader-name { font-weight: 550; font-size: 14px; letter-spacing: -0.012em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .leader-meta { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .leader-val { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
@@ -1089,7 +1089,9 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 }
 .profile-main { min-width: 0; }
 .tabs { margin-bottom: 16px; overflow-x: auto; }
-.rail { position: sticky; top: 74px; display: flex; flex-direction: column; gap: 14px; }
+.rail { display: flex; flex-direction: column; gap: 14px; }
+/* only stick when the column can actually fit in the viewport */
+@media (min-height: 1400px) { .rail { position: sticky; top: 74px; } }
 .rail .card { margin: 0; }
 
 .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin: 0; }
@@ -1787,7 +1789,7 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .field-label { font-size: 9.5px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
 .leaders-tabs { margin-top: 14px; }
 .leaders-tabs .segmented { flex-wrap: wrap; overflow: visible; max-width: 100%; }
-.leader-name { display: inline-flex; align-items: center; gap: 8px; }
+.leader-cell { display: inline-flex; align-items: center; gap: 8px; }
 
 /* peer ranks */
 .peer-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
@@ -1860,3 +1862,27 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 
 /* opponent-adjusted line */
 .adjusted-line { padding: 0 18px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+
+/* ---- alignment pass, desktop + mobile -------------------------------------- */
+
+/* .card + .card is for stacked cards; inside a grid the gap already does the job
+   and the extra margin pushed the right-hand card 14px below its neighbour */
+.leader-grid > .card + .card,
+.game-grid > .card + .card,
+.conf-grid > .card + .card { margin-top: 0; }
+
+/* the two leader pill rows were stacking flush against each other */
+.leaders-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+
+/* table text should start on the same line as the card title above it */
+.standings-card .data-table th:first-child,
+.standings-card .data-table td:first-child { padding-left: 20px; }
+.standings-card .data-table th:last-child,
+.standings-card .data-table td:last-child { padding-right: 20px; }
+
+@media (max-width: 640px) {
+  .standings-card .data-table th:first-child,
+  .standings-card .data-table td:first-child { padding-left: 16px; }
+  .standings-card .data-table th:last-child,
+  .standings-card .data-table td:last-child { padding-right: 16px; }
+}

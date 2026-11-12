@@ -262,7 +262,7 @@ export default function Leaders() {
                 <tr key={r.player.id}>
                   <td className="c num muted">{i + 1}</td>
                   <td>
-                    <Link to={`/player/${r.player.slug}`} className="leader-name">
+                    <Link to={`/player/${r.player.slug}`} className="leader-cell">
                       <PlayerAvatar player={r.player} size={26} />
                       <span>{r.player.name}</span>
                     </Link>
