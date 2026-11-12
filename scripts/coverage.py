@@ -194,6 +194,7 @@ def main():
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--field", choices=sorted(FIELDS), help="list everyone missing this field")
     ap.add_argument("--teams", action="store_true", help="with --field, break down by club")
+    ap.add_argument("--save", action="store_true", help="append this run to docs/coverage-history.json")
     args = ap.parse_args()
 
     dataset, games, scores = load()
@@ -202,6 +203,22 @@ def main():
         return 0
 
     rows = collect(dataset, games, scores)
+    if args.save:
+        import datetime
+        hist_path = os.path.join(ROOT, "docs", "coverage-history.json")
+        history = []
+        if os.path.exists(hist_path):
+            with open(hist_path) as f:
+                history = json.load(f)
+        history.append({
+            "date": datetime.date.today().isoformat(),
+            "players": sum(r["players"] for r in rows),
+            "leagues": {r["id"]: {"players": r["players"], "core": round(r["core"], 1),
+                                  "no_bio": r["no_bio"]} for r in rows},
+        })
+        with open(hist_path, "w") as f:
+            json.dump(history, f, indent=1)
+        print(f"saved snapshot -> {hist_path} ({len(history)} runs)")
     if args.json:
         json.dump(rows, sys.stdout, indent=1)
         print()

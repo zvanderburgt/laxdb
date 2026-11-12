@@ -1,0 +1,171 @@
+# Closing the data gaps
+
+What stands between the dataset and a complete player record, ordered by yield against
+effort. Every number here comes from `python3 scripts/coverage.py --save`; the snapshot
+lives in `docs/coverage-history.json`, so progress is a diff, not an opinion.
+
+**Snapshot 2026-11-12** — 21,754 players · 471 clubs · 37,369 player-seasons · 19 leagues
+
+| | |
+| --- | --- |
+| players with no photo, birth date, hometown, height or weight | **16,811 (77%)** |
+| photo / hometown / height / weight / jersey | 20% / 19% / 18% / 17% / 61% |
+| birth date | 6% |
+| club logos | 344 of 471 (73%) |
+| club staff | 244 of 471 (52%) |
+| players with a game log | 3,044 (14%) |
+| handedness | 0% — **no source publishes it**, not a failed import |
+
+Two facts decide the whole plan. Everything cheap has already been imported; and the
+remaining gaps are uneven — half of all empty profiles sit in one league (MCLA), and a
+third of the fixable ones sit in one league-season range (NCAA D1, 2022–2025).
+
+---
+
+## Phase 1 — D1 historical rosters (the big one)
+
+**Gap:** 3,938 D1 players with no bio at all. Coverage by season explains why:
+
+| season | player-seasons | photo | height | hometown |
+| --- | --- | --- | --- | --- |
+| 2022 | 2,950 | 3% | 3% | 3% |
+| 2023 | 2,904 | 18% | 19% | 19% |
+| 2024 | 3,016 | 39% | 39% | 40% |
+| 2025 | 3,151 | 67% | 66% | 68% |
+| 2026 | 3,130 | 98% | 97% | 99% |
+
+The importer enriches the **current** season from each school's roster page and nothing
+else. Every earlier season is dark, which is why no single school looks at fault.
+
+**Source:** archived per-season roster pages, `/sports/mens-lacrosse/roster/<year>`.
+Verified on `goprincetontigers.com/…/roster/2023` and `umassathletics.com/…/roster/2024`:
+each carries jersey, position, class year, height, weight, hometown, *last school*
+(the high-school field we have almost nowhere) and a headshot.
+
+**Work:**
+1. Walk every D1 school for seasons 2022–2025 (`scripts/fetch-d1-rosters.py`, new). Reuse
+   the roster parser the current-season import already has; the only new part is the
+   season URL and the photo download.
+2. Fall back to the site's own season picker when the URL 404s — the four unmapped hosts
+   (Notre Dame, Virginia, Penn State, VMI) are a URL-template job, already in
+   `docs/deferred-sources.md`.
+3. Square-crop photos at import (224×224, 30% vertical bias) like the existing pass.
+
+**Expected:** ~3,400 players gain a bio, ~7,900 player-seasons enriched, D1 core 36% → ~75%.
+Fills four fields at once: photo, height, weight, hometown. Also unlocks *high school*
+(89% missing) and *class year* (89% missing) for D1 specifically, and improves duplicate
+merging — a class year plus a hometown is real evidence.
+
+**Effort:** medium. One new script, 72 schools × 4 seasons, mostly request volume.
+
+---
+
+## Phase 2 — finish the box leagues GameSheet already covers
+
+**Gap:** the box leagues we do enrich are still half empty — OJLL 62% core, OJBLL 57%,
+OJCL 34%, MSL 19%, NLL 13%, OSL 10%, RMLL Jr A 14%. The importer reports **14,601
+GameSheet rows whose name we don't hold** and 1,283 with no club match.
+
+**Source:** `gamesheetstats.com/api/players/standings/<seasonId>` — open, no token, already
+wired in `scripts/gamesheet.py`.
+
+**Work:**
+1. Loosen matching one step at a time, measuring each: club alias map (already have
+   `public/franchises.json`), town-level ties, then birth-date-only linking for the
+   leftover unambiguous names.
+2. Add the remaining GameSheet seasons for leagues we hold (RMLL Senior A, WCSLA, NLL).
+3. Record every unmatched row to `scripts/.cache/gs/unmatched.json` so the next pass
+   reviews 200 rows instead of 14,601.
+
+**Expected:** +1,000–1,500 players enriched; box photo coverage from ~1 in 5 to ~1 in 3.
+
+**Effort:** small-medium, and it compounds with Phase 1's merge evidence.
+
+---
+
+## Phase 3 — the box leagues with no bio feed at all
+
+**Gap:** ~2,600 players at 0–3% core: **RMLL Junior B Tier 1 (458), Tier 2 (667), TOJLL
+(326), WCJLL (486), PNWJLL (181), WLA (195), RMLL Senior B (170), BCJALL (451)**.
+
+**Why it's stuck:** netfront publishes stat lines only, and **GameSheet does not index any
+of these leagues** — checked, there is no entry for RMLL Jr B, TOJLL, WCJLL or PNWJLL in
+its league list. So no existing feed will fill them.
+
+**Work:** one small scraper per league, in the shape of `fetch-gamesheet.py`:
+1. Start with **BCJALL** and **WCJLL** — both run current league sites with player pages,
+   and BCJALL is the strongest league of the set.
+2. Each pass should take logos and staff off the same pages (127 clubs have no logo, 227
+   have no staff, and these leagues are the bulk of both).
+3. If a league has no player page at all, record it in `docs/deferred-sources.md` and stop
+   citing it as a gap.
+
+**Expected:** +1,500–2,000 players enriched, logo coverage 73% → ~95%, staff 52% → ~80%.
+
+**Effort:** medium (2–3 scrapers), then cheap repetition.
+
+---
+
+## Phase 4 — MCLA, decide once
+
+**Gap:** 8,297 players — half of every empty profile on the site — at 16% core, and 0% on
+photo, birth date, hometown, height and weight.
+
+**What I checked:** `mcla.us/teams/<slug>/<year>/roster` renders a roster, but the page
+carries name, position and class only — zero occurrences of "hometown", zero of "weight".
+MCLA does not publish bios. This is not a parser we forgot to run.
+
+**Options, cheapest first:**
+1. **Accept and label** — MCLA is a club league; mark those profiles "stats only" in the
+   UI so the emptiness is honest rather than looking broken. *Cost: an afternoon.*
+2. **School club sites** — many MCLA teams run their own site with a real roster (height,
+   weight, hometown). Sample 10, measure the hit rate, then decide whether 172 club sites
+   are worth it. *Cost: medium, uneven.*
+3. **Drop MCLA from the "should have bios" set** — it stays a stat database with a note.
+
+**Recommendation:** do 1 now, run 2 as a 10-club probe, and only scale 2 if the probe
+finds bios on more than half.
+
+---
+
+## Phase 5 — the long tail
+
+| gap | size | source | note |
+| --- | --- | --- | --- |
+| game logs | 18,710 players | netfront box scores, ESPN | D1 + PLL only today; box game sheets exist per league |
+| birth dates, PLL | 410 of 420 | PLL API | 403 on a bare GET; the importer's headers work |
+| birth dates, NCAA | 7,076 | — | college rosters do not publish DOB; structural, leave it |
+| staff | 227 clubs | league + club sites | free once Phase 3's scrapers exist |
+| logos | 127 clubs | same | free once Phase 3's scrapers exist |
+| handedness | 21,754 | — | nobody publishes it; remove from all gap reporting |
+
+---
+
+## Targets
+
+After each phase, `scripts/coverage.py --save` should show:
+
+| after | empty profiles | photo | height | logo | staff |
+| --- | --- | --- | --- | --- | --- |
+| today | 16,811 | 20% | 18% | 73% | 52% |
+| Phase 1 | ~13,400 | 36% | 34% | 73% | 52% |
+| Phase 2 | ~12,200 | 42% | 39% | 73% | 52% |
+| Phase 3 | ~10,300 | 48% | 44% | 95% | 80% |
+| Phase 4 (option 1) | ~10,300 + label | — | — | — | — |
+
+A floor worth stating plainly: **birth date will never reach parity** (only box and pro
+feeds publish it) and **handedness will stay at zero**. Everything else on this page is
+reachable from a source we have already proven.
+
+---
+
+## Rules for every pass
+
+- Measure before and after: `python3 scripts/coverage.py --save`, then diff
+  `docs/coverage-history.json`.
+- Import only what the source actually publishes; never infer a birth date, height or
+  hometown from a name or a team.
+- A new feed is a new script beside the others, wired into `scripts/rebuild-all.sh`, so the
+  gap closes again on the next run instead of needing this document.
+- If a source turns out to be empty, write it down in `docs/deferred-sources.md` the same
+  day — the next pass should not re-run a dead end.

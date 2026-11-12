@@ -31,6 +31,22 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
   movement arrows, leaderboards
 - Compare up to three players; My roster; CSV export; share cards
 
+## Next — closing the data gaps
+
+The site is ahead of its data: 77% of player profiles have no photo, birth date, hometown,
+height or weight. Phased plan, with the source and expected yield for each step, lives in
+**`docs/data-gaps.md`**. Short version:
+
+1. **D1 historical rosters** (2022–2025) — one script, ~3,400 players, D1 core 36% → ~75%.
+2. **Finish the box leagues GameSheet already covers** — matching work, +1,000–1,500.
+3. **Box leagues with no bio feed** (RMLL Jr B, TOJLL, WCJLL, PNWJLL, WLA, BCJALL) — a
+   scraper each; brings logos to ~95% and staff to ~80% on the same pages.
+4. **MCLA** — the source publishes no bios; label it honestly, probe 10 club sites before
+   investing in 172.
+5. Long tail: box game logs, PLL birth dates, remaining staff and logos.
+
+Measured with `python3 scripts/coverage.py --save`, trended in `docs/coverage-history.json`.
+
 ## Next — small, no new feed
 
 1. **Active players climbing the record book** — join current career totals to the NCAA lists and
