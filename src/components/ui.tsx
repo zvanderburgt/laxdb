@@ -432,9 +432,17 @@ export function SeasonLines({
       <svg viewBox={`0 0 ${width} ${boxHeight}`} role="img" aria-label="Points by season, one line per club">
         <defs>
           {series.map((s, i) => (
-            <linearGradient key={i} id={`${uid}-${i}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={s.color} stopOpacity="0.3" />
-              <stop offset="100%" stopColor={s.color} stopOpacity="0.02" />
+            <linearGradient
+              key={i}
+              id={`${uid}-${i}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+              style={{ ["--series" as string]: s.color } as React.CSSProperties}
+            >
+              <stop className="sl-stop" offset="0%" stopColor="var(--series)" stopOpacity="0.34" />
+              <stop className="sl-stop" offset="100%" stopColor="var(--series)" stopOpacity="0.02" />
             </linearGradient>
           ))}
         </defs>
@@ -470,12 +478,14 @@ export function SeasonLines({
             return (
               <path
                 key={`gap-${i}-${k}`}
+                className="sl-gap"
                 d={`M${x(prev.i).toFixed(1)},${y(prev.v).toFixed(1)} L${x(next.i).toFixed(1)},${y(next.v).toFixed(1)}`}
                 fill="none"
-                stroke={s.color}
-                strokeWidth="1.6"
-                strokeDasharray="3 4"
-                strokeOpacity="0.55"
+                stroke="var(--series)"
+                strokeWidth="2.8"
+                strokeDasharray="6 5"
+                strokeOpacity="0.9"
+                style={{ ["--series" as string]: s.color } as React.CSSProperties}
               />
             );
           });
@@ -485,12 +495,14 @@ export function SeasonLines({
           runs(s.points).map((run, k) => (
             <path
               key={`l-${i}-${k}`}
+              className="sl-line"
               d={pathOf(run)}
               fill="none"
-              stroke={s.color}
-              strokeWidth="2.5"
+              stroke="var(--series)"
+              strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
+              style={{ ["--series" as string]: s.color } as React.CSSProperties}
             />
           )),
         )}
@@ -500,14 +512,16 @@ export function SeasonLines({
             s.points[c] === undefined ? null : (
               <circle
                 key={`d-${i}-${c}`}
+                className={Object.keys(s.points).length === 1 ? "sl-dot sl-dot-fill" : "sl-dot"}
                 cx={x(categories.indexOf(c))}
                 cy={y(s.points[c])}
                 /* a club with one season has no line to follow: fill its marker so the
                    colour still reads, instead of an empty ring */
-                r={Object.keys(s.points).length === 1 ? 4.6 : 3.6}
-                fill={Object.keys(s.points).length === 1 ? s.color : "var(--card)"}
-                stroke={Object.keys(s.points).length === 1 ? "var(--card)" : s.color}
-                strokeWidth="2.5"
+                r={Object.keys(s.points).length === 1 ? 5.2 : 4.4}
+                fill={Object.keys(s.points).length === 1 ? "var(--series)" : "var(--card)"}
+                stroke={Object.keys(s.points).length === 1 ? "var(--card)" : "var(--series)"}
+                strokeWidth="2.6"
+                style={{ ["--series" as string]: s.color } as React.CSSProperties}
               >
                 <title>{`${c} · ${s.label} · ${s.points[c]}${suffix}`}</title>
               </circle>
@@ -542,7 +556,10 @@ export function SeasonLines({
         <ul className="bar-legend">
           {series.map((s) => (
             <li key={s.label}>
-              <span className="bar-swatch" style={{ background: s.color }} />
+              <span
+                className="bar-swatch sl-swatch"
+                style={{ ["--series" as string]: s.color, background: "var(--series)" } as React.CSSProperties}
+              />
               {s.to ? (
                 <Link to={s.to} className="cell-link">
                   {s.label}

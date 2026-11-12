@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Link, useCompare, useRoute } from "../lib/app";
+import { Link, useCompare, useRoute, useTheme } from "../lib/app";
 import {
   ageOf,
   allAmericansFor,
@@ -21,7 +21,7 @@ import {
 import type { GameRow, Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
-import { distinctEach } from "../lib/palette";
+import { distinctEach, liftForDark } from "../lib/palette";
 import { peerRanks } from "../lib/peers";
 import { splits } from "../lib/splits";
 import { adjustedRate } from "../lib/adjusted";
@@ -430,6 +430,7 @@ function Profile({ player }: { player: Player }) {
 }
 
 function Overview({ player, onStats }: { player: Player; onStats: () => void }) {
+  const { theme } = useTheme();
   const cur = currentSeason(player);
   const team = teamOf(player);
   const league = leagueById.get(player.leagueId);
@@ -497,8 +498,10 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
         if (lge) r.label = `${r.label} · ${lge.short}`;
       }
     });
-    // three reds and one exact duplicate: spread them so each line is its own colour
-    distinctEach(rows.map((r) => r.color)).forEach((c, i) => (rows[i].color = c));
+    // three reds and one exact duplicate: spread them so each line is its own colour,
+    // then lift dark clubs so they survive the dark theme's near-black card
+    const spread = distinctEach(rows.map((r) => r.color));
+    (theme === "dark" ? liftForDark(spread) : spread).forEach((c, i) => (rows[i].color = c));
     return rows;
   })();
   // every year in range, not just the years he played: otherwise 2020 and 2022 sit

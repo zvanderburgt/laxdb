@@ -45,6 +45,19 @@ const toRgb = ([h, s, l]: number[]) => {
 const apart = (a: number[], b: number[]) =>
   Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) > 60;
 
+/** Dark club colours vanish on a near-black card — Elora navy #0C2340 read as a smudge.
+ *  Lift lightness while keeping hue and saturation; colours that are already light are
+ *  left exactly as the club defines them. */
+export function liftForDark(colors: string[]): string[] {
+  return colors.map((raw) => {
+    if (!/^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test((raw ?? "").trim())) return raw;
+    const [h, s, l] = toHsl(hex(raw));
+    if (l >= 0.5) return raw;
+    const lifted = Math.min(0.62, l + 0.28);
+    return toHex(toRgb([h, Math.max(0.38, s), lifted]));
+  });
+}
+
 export function distinctEach(colors: string[], fallback = "#5B6472"): string[] {
   const out: (string | null)[] = colors.map(() => null);
   const taken: number[][] = [];
