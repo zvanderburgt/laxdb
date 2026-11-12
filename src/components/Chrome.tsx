@@ -110,6 +110,20 @@ export function Nav() {
 
 /* ------------------------------ command palette ---------------------------- */
 
+const PAGES = [
+  { to: "/scores", label: "Scores", sub: "Final scores by date", keys: ["scores", "results", "finals"] },
+  { to: "/leaders", label: "Leaders", sub: "Stat leaders by season", keys: ["leaders", "leaderboard", "stats"] },
+  { to: "/teams", label: "Teams", sub: "Every program", keys: ["teams", "clubs"] },
+  { to: "/leagues", label: "Leagues", sub: "Competitions and standings", keys: ["leagues", "standings"] },
+  { to: "/players", label: "Players", sub: "Full database", keys: ["players", "search", "database"] },
+  { to: "/compare", label: "Compare", sub: "Up to three players", keys: ["compare", "versus"] },
+  { to: "/vs/", label: "Head to head", sub: "Two programs, every meeting", keys: ["head", "h2h", "rivalry", "matchup"] },
+  { to: "/origins", label: "Origins", sub: "Where players come from", keys: ["origins", "states", "hometowns", "high schools"] },
+  { to: "/history", label: "History", sub: "Champions, records, All-Americans", keys: ["history", "records", "champions", "awards"] },
+  { to: "/my-roster", label: "My roster", sub: "Saved players", keys: ["roster", "saved", "bookmarks"] },
+];
+
+
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
@@ -125,6 +139,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const results = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    // the routes that are not a player, team or league still deserve to be findable
+    const pages = PAGES.filter((p) => !needle || p.label.toLowerCase().includes(needle) || p.keys.some((k) => k.startsWith(needle))).map(
+      (p) => ({ kind: "Page" as const, to: p.to, label: p.label, sub: p.sub }),
+    );
     if (!needle) {
       const hot = data.players
         .slice()
@@ -146,7 +164,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       .filter((l) => l.name.toLowerCase().includes(needle) || l.short.toLowerCase().includes(needle))
       .slice(0, 3)
       .map((l) => ({ kind: "League" as const, to: `/league/${l.id}`, label: l.name, sub: `${l.level}` }));
-    return [...players, ...teams, ...leagues];
+    return [...pages, ...players, ...teams, ...leagues].slice(0, 12);
   }, [q]);
 
   useEffect(() => setActive(0), [q]);
