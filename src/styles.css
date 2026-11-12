@@ -1748,6 +1748,7 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 
 .season-lines svg { width: 100%; height: auto; display: block; }
 .season-lines .bar-legend { margin-top: 10px; }
+.chart-note { margin: 8px 0 0; line-height: 1.45; }
 
 /* the season summary keeps eight columns on a desktop and five on a phone: the league
    is already implied by the club link, and it is the column that pushed PTS/G off */

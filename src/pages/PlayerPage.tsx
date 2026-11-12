@@ -440,23 +440,43 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
     seasons.length > 0 && seasons.slice(0, 4).every((s) => leagueById.get(s.leagueId)?.type === "box");
   // one line per club: a merged career is several clubs and the chart should show which
   // produced the points. A rate (save %) takes the best of a season, never a sum.
+  // A clan that changed its name is one club — Elora Mohawks 2024 and Elora Hawks 2026
+  // are the same franchise, so they share a series and a colour.
   const chartSeries = (() => {
     const map = new Map<
       string,
-      { label: string; color: string; to?: string; leagueId: string; points: Record<string, number> }
+      {
+        label: string;
+        color: string;
+        to?: string;
+        leagueId: string;
+        points: Record<string, number>;
+        /** earlier names of a renamed club, so the chart can say so */
+        former: string[];
+      }
     >();
     for (const s of seasons) {
       const team = teamById.get(s.teamId);
-      if (!map.has(s.teamId)) {
-        map.set(s.teamId, {
-          label: team?.shortName ?? s.teamId,
-          color: team?.colors?.[0] ?? "var(--accent)",
-          to: team ? `/team/${team.slug}` : undefined,
+      const franchise = team?.franchise;
+      const key = franchise?.id ?? s.teamId;
+      if (!map.has(key)) {
+        // the newest name is the one to show, not the first season we happen to walk
+        const newest = franchise?.names?.find((n) => n.to === null) ?? franchise?.names?.[0];
+        const shown = (newest?.teamId ? teamById.get(newest.teamId) : undefined) ?? team;
+        map.set(key, {
+          label: shown?.shortName ?? team?.shortName ?? s.teamId,
+          color: shown?.colors?.[0] ?? "var(--accent)",
+          to: shown ? `/team/${shown.slug}` : undefined,
           leagueId: s.leagueId,
           points: {},
+          former: [],
         });
       }
-      const entry = map.get(s.teamId)!;
+      const entry = map.get(key)!;
+      const clubName = team?.shortName ?? s.teamId;
+      if (franchise && clubName !== entry.label && !entry.former.includes(clubName)) {
+        entry.former.push(clubName);
+      }
       const value = isGoal
         ? s.sv + s.ga > 0
           ? Math.round((s.sv / (s.sv + s.ga)) * 1000) / 10
@@ -518,6 +538,15 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           series={chartSeries}
           suffix={isGoal ? "%" : ""}
         />
+        {chartSeries.some((s) => s.former.length) ? (
+          <p className="muted small chart-note">
+            {chartSeries
+              .filter((s) => s.former.length)
+              .map((s) => `${s.label} includes seasons played as ${s.former.join(" and ")}`)
+              .join(". ")}
+            .
+          </p>
+        ) : null}
       </Card>
 
       <Card>

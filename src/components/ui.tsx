@@ -460,6 +460,27 @@ export function SeasonLines({
           )),
         )}
 
+        {/* a club he left and came back to: dashed, so the line reads as one club without
+            pretending the missing season happened */}
+        {series.map((s, i) => {
+          const segments = runs(s.points);
+          return segments.slice(1).map((run, k) => {
+            const prev = segments[k][segments[k].length - 1];
+            const next = run[0];
+            return (
+              <path
+                key={`gap-${i}-${k}`}
+                d={`M${x(prev.i).toFixed(1)},${y(prev.v).toFixed(1)} L${x(next.i).toFixed(1)},${y(next.v).toFixed(1)}`}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="1.6"
+                strokeDasharray="3 4"
+                strokeOpacity="0.55"
+              />
+            );
+          });
+        })}
+
         {series.map((s, i) =>
           runs(s.points).map((run, k) => (
             <path
