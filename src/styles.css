@@ -2065,3 +2065,83 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 a.vs-team { text-decoration: none; color: inherit; }
 a.vs-team:hover { color: var(--accent); }
 .hv-mini-name a, .hv-mini-team a { display: inline-block; max-width: 100%; }
+
+/* ------------------------------ team roster ------------------------------ */
+/* Eight columns cannot fit a phone, so the roster is a grid list that reflows to
+   two rows per player under 640px instead of scrolling sideways. */
+.roster-head,
+.roster-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px 60px minmax(230px, 0.95fr);
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+.roster-head {
+  height: 38px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.roster-row { padding: 9px 20px; border-bottom: 1px solid var(--line); }
+.roster-row:last-child { border-bottom: 0; }
+.roster-row:hover { background: var(--hover); }
+.roster-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.roster-who .cell-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-pos { display: flex; justify-content: center; }
+.roster-class { text-align: center; font-size: 12.5px; }
+.roster-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  font-size: 13px;
+  text-align: right;
+}
+.roster-stats b { font-weight: 500; }
+.roster-stats i { display: none; font-style: normal; }
+
+@media (max-width: 640px) {
+  .roster-head { display: none; }
+  .roster-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "who pos"
+      "stats stats";
+    row-gap: 10px;
+    padding: 12px 16px;
+  }
+  .roster-who { grid-area: who; }
+  .roster-pos { grid-area: pos; }
+  .roster-class { display: none; }
+  .roster-stats {
+    grid-area: stats;
+    padding-top: 9px;
+    border-top: 1px solid var(--hairline);
+    text-align: left;
+  }
+  .roster-stats > span { display: flex; flex-direction: column; gap: 2px; }
+  .roster-stats b { font-size: 14.5px; }
+  .roster-stats i {
+    display: block;
+    order: 2;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+  }
+}
+
+/* season-at-a-glance: two of the four labels wrap to two lines on a phone, which
+   pushed their values below the neighbouring ones. Reserve the second line. */
+@media (max-width: 640px) {
+  .team-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
+  .team-stats .stat-label { height: 2.4em; line-height: 1.2; display: flex; align-items: flex-end; }
+  .team-stats .stat-value { font-size: 26px; }
+}
+
+/* a card followed by the roster grid had no gap at all: `.card + .card` only
+   matches card siblings, and `.leader-grid` is a wrapper */
+.card + .leader-grid { margin-top: 16px; }

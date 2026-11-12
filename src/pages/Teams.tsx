@@ -312,6 +312,9 @@ export function TeamPage() {
   const skaters = roster.filter((p) => p.position !== "G");
   const goalies = roster.filter((p) => p.position === "G");
   const leaders = [...skaters].sort((a, b) => (currentSeason(b).pts ?? 0) - (currentSeason(a).pts ?? 0)).slice(0, 3);
+  // box feeds publish penalties, not ground balls — a GB column there is a column of zeros
+  const box = league?.type === "box";
+  const lastCol = box ? "PIM" : "GB";
 
   return (
     <div className="profile">
@@ -335,15 +338,31 @@ export function TeamPage() {
             <div className="profile-id">
               <div className="profile-tags">
                 <span className="tag">{league?.short}</span>
-                <span className="tag">{team.conference}</span>
+                {team.conference && team.conference !== league?.name ? (
+                  <span className="tag">{team.conference}</span>
+                ) : null}
                 <span className="tag">{league?.type === "box" ? "Box lacrosse" : "Field lacrosse"}</span>
               </div>
               <h1>{team.name}</h1>
-              <div className="profile-sub">
-                {team.city ? <span>{team.city}</span> : null}
-                {team.city ? <span className="dot">·</span> : null}
-                <Link to={`/league/${team.leagueId}`}>{league?.name}</Link>
-              </div>
+              {(() => {
+                // the tags above already carry the league and the code; repeating them
+                // here left a hero with the same string twice and no city line
+                const shown = new Set(
+                  [league?.short, team.conference, box ? "Box lacrosse" : "Field lacrosse"]
+                    .filter(Boolean)
+                    .map((x) => String(x).toLowerCase()),
+                );
+                const city = team.city && !shown.has(team.city.toLowerCase()) ? team.city : null;
+                const leagueName = league?.name && !shown.has(league.name.toLowerCase()) ? league.name : null;
+                if (!city && !leagueName) return null;
+                return (
+                  <div className="profile-sub">
+                    {city ? <span>{city}</span> : null}
+                    {city && leagueName ? <span className="dot">·</span> : null}
+                    {leagueName ? <Link to={`/league/${team.leagueId}`}>{leagueName}</Link> : null}
+                  </div>
+                );
+              })()}
               <div className="profile-meta">
                 {team.record ? (
                   <span>
@@ -436,42 +455,46 @@ export function TeamPage() {
                 <p className="muted small">{data.meta.season} season · {skaters.length} skaters · {goalies.length} goalies</p>
               </div>
             </div>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th className="c">Pos</th>
-                  <th className="c">Class</th>
-                  <th className="r">GP</th>
-                  <th className="r">G</th>
-                  <th className="r">AST</th>
-                  <th className="r">PTS</th>
-                  <th className="r">GB</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roster.map((p) => {
-                  const s = currentSeason(p);
-                  return (
-                    <tr key={p.id}>
-                      <td>
-                        <Link to={`/player/${p.slug}`} className="cell-player">
-                          <PlayerAvatar player={p} size={28} />
-                          <span className="cell-name">{p.name}</span>
-                        </Link>
-                      </td>
-                      <td className="c"><PositionBadge pos={p.position} /></td>
-                      <td className="c muted">{p.classYear ?? "—"}</td>
-                      <td className="r num">{s.gp}</td>
-                      <td className="r num">{p.position === "G" ? "—" : s.g}</td>
-                      <td className="r num">{p.position === "G" ? "—" : s.a}</td>
-                      <td className="r num strong">{p.position === "G" ? "—" : s.pts}</td>
-                      <td className="r num">{s.gb}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {/* a table cannot fit eight columns on a phone without sideways scrolling,
+                so each player is a block that reflows to two rows under 640px */}
+            <div className="roster-list">
+              <div className="roster-head" aria-hidden="true">
+                <span>Player</span>
+                <span className="roster-pos">Pos</span>
+                <span className="roster-class">Class</span>
+                <span className="roster-stats">
+                  <span>GP</span>
+                  <span>G</span>
+                  <span>AST</span>
+                  <span>PTS</span>
+                  <span>{lastCol}</span>
+                </span>
+              </div>
+              {roster.map((p) => {
+                const s = currentSeason(p);
+                const isG = p.position === "G";
+                return (
+                  <div className="roster-row" key={p.id}>
+                    <Link to={`/player/${p.slug}`} className="cell-player roster-who">
+                      <PlayerAvatar player={p} size={28} />
+                      <span className="cell-name">{p.name}</span>
+                    </Link>
+                    <span className="roster-pos"><PositionBadge pos={p.position} /></span>
+                    <span className="roster-class muted">{p.classYear ?? "—"}</span>
+                    <span className="roster-stats">
+                      <span><b className="num">{s.gp}</b><i>GP</i></span>
+                      <span><b className="num">{isG ? "—" : s.g}</b><i>G</i></span>
+                      <span><b className="num">{isG ? "—" : s.a}</b><i>A</i></span>
+                      <span><b className="num strong">{isG ? "—" : s.pts}</b><i>PTS</i></span>
+                      <span>
+                        <b className="num">{box ? s.pen ?? 0 : s.gb}</b>
+                        <i>{lastCol}</i>
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
             {roster.length === 0 ? <div className="table-note">No players indexed for this program yet.</div> : null}
           </Card>
 
