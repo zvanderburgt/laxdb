@@ -142,10 +142,15 @@ Coverage gaps, stated plainly:
 Rebuild the dataset:
 
 ```bash
-python3 scripts/fetch-real-data.py            # uses scripts/.cache/ for pages already fetched
-python3 scripts/fetch-real-data.py --refresh  # ignore the cache
-python3 scripts/fetch-real-data.py --no-photos
+./scripts/rebuild-all.sh              # import → logos → headshots → history → polls → scores → build → deploy
+python3 scripts/fetch-real-data.py    # import alone, from scripts/.cache/
+python3 scripts/fetch-real-data.py --refresh
 ```
+
+A bare re-import **resets the asset fields**: `data.json` is rebuilt from the school feeds, so
+`logo` and `photo` fall back to what the in-import parsers find (about 210 logos and 1,300
+headshots instead of 252 and 3,489). `scripts/rebuild-all.sh` runs the top-up passes in the only
+order that keeps them.
 
 The fetcher caches every HTML response under `scripts/.cache/`, so re-runs and parser fixes take
 seconds instead of re-hitting 25 schools.
