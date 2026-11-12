@@ -9,12 +9,12 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 ## Shipped
 
 **Data**
-- 17,685 players, 472 teams, 19 competitions, 26,164 player-seasons (2021–2026)
-- NCAA D1: **71 programs** (was 25) — 3,025 players, 2,991 with box-score game logs
+- 21,803 players, 471 teams, 19 competitions, 34,943 player-seasons (2021–2026)
+- NCAA D1: **72 programs** — 7,166 players, roughly 3,000 per season from 2022 to 2026
 - MCLA (172 teams), PLL, 16 Canadian box leagues down to Junior C
 - Elo + strength of schedule for 63 D1 teams, from 563 ESPN results
-- 209 team logos, 1,261 player headshots (224×224 webp, square-cropped)
-- Careers merged per person: 1,118 players across teams, 623 across competitions
+- 252 team logos, 3,615 player headshots (224×224 webp, square-cropped)
+- Careers merged per person: 1,253 players across teams, 792 across competitions
 
 **Pages**
 - Player: bio, season-by-season, position-aware stats, per-game view, game log with last-5 form,
