@@ -1816,3 +1816,9 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .team-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 980px) { .team-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .footer-stamp { color: var(--text-3); margin-top: 2px; }
+
+/* conference blocks */
+.conf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 26px; padding: 6px 18px 18px; }
+.conf-head { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.conf-block .data-table { font-size: 12.4px; }
+.conf-block .data-table td { padding: 4px 6px; }

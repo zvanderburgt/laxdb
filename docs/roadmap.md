@@ -27,7 +27,8 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
 - `#/history` — 126 seasons of champions, titles by program, Tewaaraton, NCAA record book
   (13 boards / 388 rows), **USILA All-Americans 2023–2026** (409 players)
 - Team: roster, leaders, record, Elo/SOS, staff, **recent seasons**
-- League: standings, ratings, **three polls with movement arrows**, leaderboards
+- League: standings, **conference breakdown**, ratings with **consensus rank**, three polls with
+  movement arrows, leaderboards
 - Compare up to three players; My roster; CSV export; share cards
 
 ## Next — small, no new feed

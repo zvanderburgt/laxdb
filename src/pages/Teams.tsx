@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { Link, useRoute } from "../lib/app";
+import { seriesFor } from "../lib/series";
 import {
   careerTotals,
+  loadGames,
   currentSeason,
   data,
   leagueById,
@@ -15,6 +17,60 @@ import {
   teamOf,
 } from "../lib/data";
 import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
+import type { Team } from "../lib/types";
+
+function SeriesCard({ team }: { team: Team }) {
+  const [result, setResult] = React.useState<{ season: string; rows: import("../lib/series").Series[] } | null>(null);
+  React.useEffect(() => {
+    let alive = true;
+    loadGames().then((all) => {
+      if (alive) setResult(seriesFor(team, all));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [team.id]);
+
+  if (!result || result.rows.length < 3) return null;
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Season series</h3>
+          <p className="muted small">
+            {result.season} · rebuilt from the box scores, so only opponents we have a game log
+            against appear
+          </p>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Opponent</th>
+              <th className="r">W–L</th>
+              <th className="r">Last meeting</th>
+              <th className="r">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.rows.map((r) => (
+              <tr key={r.opponent}>
+                <td>{r.opponent}</td>
+                <td className="r num strong">
+                  {r.w}–{r.l}
+                </td>
+                <td className="r num muted">{r.last}</td>
+                <td className="r num">{r.result}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
 
 export function TeamsPage() {
   const [q, setQ] = useState("");
@@ -178,6 +234,8 @@ export function TeamPage() {
       </div>
 
       <div className="page">
+        <SeriesCard team={team} />
+
         {team.history && team.history.length ? (
           <Card padded={false} className="standings-card">
             <div className="card-toolbar">

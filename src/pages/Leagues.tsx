@@ -14,7 +14,7 @@ import {
   teamOf,
 } from "../lib/data";
 import { Avatar, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
-import type { League } from "../lib/types";
+import type { League, Team } from "../lib/types";
 
 export function LeaguesPage() {
   const groups = useMemo(() => {
@@ -185,6 +185,61 @@ function Move({ prev, rank }: { prev?: number | null; rank: number }) {
       {delta > 0 ? "▲" : "▼"}
       {Math.abs(delta)}
     </span>
+  );
+}
+
+function ConferenceCard({ league }: { league: League }) {
+  const byConf = new Map<string, Team[]>();
+  for (const t of leagueTeams(league.id)) {
+    if (!t.conference) continue;
+    byConf.set(t.conference, [...(byConf.get(t.conference) ?? []), t]);
+  }
+  if (byConf.size < 2) return null;
+
+  const confs = [...byConf.entries()]
+    .map(([name, teams]) => ({
+      name,
+      teams: teams.sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0)),
+    }))
+    .sort((a, b) => b.teams.length - a.teams.length || a.name.localeCompare(b.name));
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">By conference</h3>
+          <p className="muted small">
+            {confs.length} conferences · ordered by Elo inside each · overall records
+          </p>
+        </div>
+      </div>
+      <div className="conf-grid">
+        {confs.map((c) => (
+          <div key={c.name} className="conf-block">
+            <div className="conf-head">
+              <span className="strong">{c.name}</span>
+              <span className="muted small">{c.teams.length}</span>
+            </div>
+            <table className="data-table">
+              <tbody>
+                {c.teams.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <Link to={`/team/${t.slug}`} className="team-link">
+                        <TeamLogo team={t} size={16} />
+                        {t.shortName}
+                      </Link>
+                    </td>
+                    <td className="r num">{t.record ? `${t.record.w}–${t.record.l}` : "—"}</td>
+                    <td className="r num muted">{t.elo ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -446,6 +501,7 @@ export function LeaguePage() {
 
       <div className="page">
         <StandingsCard league={league} />
+        <ConferenceCard league={league} />
         <RatingsCard league={league} />
         <PollCard league={league} />
         <div className="leader-grid">

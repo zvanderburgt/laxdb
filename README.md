@@ -42,7 +42,9 @@ Product details:
   SV% — the columns their feeds actually publish (no goals-against or minutes are available, so the
   site reads the published rates instead of computing zeros).
 - **Team Elo + strength of schedule** for D1 (from ESPN results), on league and team pages, plus a
-  **Recent seasons** table built from the previous campaign's results.
+  **Recent seasons** table built from the previous campaign's results and a **Season series** table
+  rebuilt from the box scores (which opponents, how many times, and the last result).
+- **Conference breakdown** on the D1 league page: every conference, ordered by Elo, with records.
 - **Teammates** on every profile — who shared a roster, ranked by career points.
 - **Comparable players** — a 1–99 similarity score built from per-game rates z-scored inside each
   position group, so a defender is compared with defenders and a goalie with goalies.
