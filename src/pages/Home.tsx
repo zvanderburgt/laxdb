@@ -100,6 +100,7 @@ export default function Home() {
                   <div className="hv-mini-row" key={r.player.id}>
                     <span className="num muted">{i + 1}</span>
                     <span className="hv-mini-name">{r.player.name}</span>
+                    <span className="hv-mini-team muted">{teamById.get(r.player.teamId)?.shortName}</span>
                     <span className="num">{r.season.pts}</span>
                   </div>
                 ))}
@@ -329,13 +330,20 @@ function HeroCard({ player }: { player: Player }) {
         <div><span className="hv-num num">{s.a}</span><span className="hv-lbl">A</span></div>
         <div><span className="hv-num num">{s.gb}</span><span className="hv-lbl">GB</span></div>
       </div>
-      <Sparkline
-        values={p.seasons.map((x) => x.pts ?? 0)}
-        labels={p.seasons.map((x) => x.season)}
-        width={330}
-        height={104}
-        showValues={false}
-      />
+      {(() => {
+        const bySeason = new Map<string, number>();
+        for (const s of p.seasons) bySeason.set(s.season, (bySeason.get(s.season) ?? 0) + (s.pts ?? 0));
+        const years = [...bySeason.keys()].sort();
+        return (
+          <Sparkline
+            values={years.map((y) => bySeason.get(y) ?? 0)}
+            labels={years}
+            width={330}
+            height={104}
+            showValues={false}
+          />
+        );
+      })()}
       <div className="hv-foot">
         <span>Points by season</span>
         <span className="num">{s.season} · {s.gp} GP</span>
