@@ -196,6 +196,29 @@ export interface TewaaratonWinner {
   teamId: string | null;
 }
 
+export interface RecordSection {
+  key: string;
+  scope: "career" | "season" | "program";
+  label: string;
+  columns: string[];
+  rows: Record<string, string>[];
+}
+
+export interface AllAmericanPlayer {
+  name: string;
+  school: string;
+  class: string;
+  position: string;
+  teamId: string | null;
+}
+
+export interface AllAmericanBlock {
+  division: string;
+  year: number;
+  source: string;
+  teams: { team: string; players: AllAmericanPlayer[] }[];
+}
+
 export interface Dataset {
   meta: { generated: string; dataset: string; season: string; sources?: string[] };
   leagues: League[];
@@ -205,6 +228,8 @@ export interface Dataset {
     champions: Champion[];
     programs: ProgramTitles[];
     tewaaraton: TewaaratonWinner[];
+    records?: { source: string; sections: RecordSection[] };
+    allAmericans?: AllAmericanBlock[];
     sources: string[];
   };
 }

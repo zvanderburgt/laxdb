@@ -31,7 +31,7 @@ GitHub Pages, or any static host. No server, no keys.
 | `#/leagues`, `#/league/:id` | Competition directory; standings, leaderboard with position filter, teams, goalie leaders |
 | `#/compare` | Up to three players side by side, row-scaled bars, deep-linkable (`?ids=`) |
 | `#/my-roster` | Players saved in this browser, with CSV export |
-| `#/history` | Records: national champions by year, titles by program, Tewaaraton winners |
+| `#/history` | Records: national champions by year, titles by program, Tewaaraton winners, NCAA record book, USILA All-Americans |
 
 Product details:
 

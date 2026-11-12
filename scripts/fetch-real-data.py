@@ -1795,6 +1795,155 @@ def build_history(teams):
     return history
 
 
+
+# --------------------------------------------------------------------------- #
+# Record book (Wikipedia) + USILA All-America teams (PDF)
+# --------------------------------------------------------------------------- #
+RECORDS_URL = "https://en.wikipedia.org/wiki/NCAA_Division_I_men%27s_lacrosse_records"
+
+# D1 only: the D2/D3 sheets are laid out per position group with region, jersey and
+# selection in one row, a different shape entirely (see docs/deferred-sources.md).
+AA_PDFS = {
+    ("D1", 2026): ("https://s3.amazonaws.com/sidearm.sites/usila.sidearmsports.com/documents/"
+                   "2026/5/21/2026_USILA_Division_I_All_American_Teams_and_Award_Winners_Sheet1.pdf"),
+}
+
+AA_POS = ("ATT", "MID", "DEF", "GOAL", "GK", "FO", "SSDM", "LSM", "D", "A", "M", "G")
+AA_CLASS = ("Freshman", "Sophomore", "Junior", "Senior", "Grad", "Graduate", "Redshirt")
+
+
+def build_records():
+    """Career and single-season leaderboards plus program win totals."""
+    html = get(RECORDS_URL)
+    sections = []
+    heading = ""
+    for chunk in re.finditer(r"(<h[23][^>]*>.*?</h[23]>)|(<table[^>]*>.*?</table>)", html, re.S):
+        if chunk.group(1):
+            heading = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", chunk.group(1))).strip()
+            continue
+        tb = chunk.group(2)
+        heads = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", x)).strip()
+                 for x in re.findall(r"<th[^>]*>(.*?)</th>", tb, re.S)][:9]
+        if not heads or "Player" not in heads and "University" not in heads:
+            continue
+        rows = []
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S):
+            cells = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", c)).strip()
+                     for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
+            # Wikipedia leaves footnote markers in the figures: "10.89 [a]"
+            cells = [re.sub(r"\s*\[[a-z0-9]{1,3}\]$", "", c) for c in cells]
+            if len(cells) < 4:
+                continue
+            rows.append(dict(zip(heads, cells)))
+        if len(rows) < 5:
+            continue
+        low = heading.lower()
+        if "program" in low:
+            key, scope, label = "program-wins", "program", "Program wins and titles"
+        else:
+            metric = ("points" if "point" in low else
+                      "goals" if "goal" in low else
+                      "assists" if "assist" in low else "other")
+            per_game = "per game" in low
+            # two tables share the heading "Assists per game"; the season one carries a
+            # singular "Year" column, the career one "Years"
+            season_table = ("one season" in low or "in one season" in low
+                            or ("Year" in heads and "Years" not in heads))
+            scope = "season" if season_table else "career"
+            key = f"{scope}-{metric}{'-pg' if per_game else ''}"
+            label = f"{'Single season' if scope == 'season' else 'Career'} {metric}"
+            label += " per game" if per_game else ""
+            label = label[0].upper() + label[1:]
+        if any(s["key"] == key for s in sections):
+            continue
+        sections.append({"key": key, "scope": scope, "label": label, "columns": heads, "rows": rows})
+
+    print(f"  + record book: {len(sections)} leaderboards, "
+          f"{sum(len(s['rows']) for s in sections)} rows")
+    return {"source": RECORDS_URL, "sections": sections}
+
+
+def _aa_text(url):
+    import io as _io
+    from pypdf import PdfReader
+    raw = fetch_bytes(url)
+    reader = PdfReader(_io.BytesIO(raw))
+    return "\n".join((p.extract_text() or "") for p in reader.pages)
+
+
+AA_ROW = re.compile(
+    r"^(?P<name>.+?)\s+(?P<school>.+?)\s+(?P<cls>Freshman|Sophomore|Junior|Senior|Grad|Graduate)\s+"
+    r"(?P<pos>ATT|MID|DEF|GOAL|GK|FO|SSDM|LSM)$"
+)
+AA_TEAM = re.compile(r"^(1st|2nd|3rd|Fourth|Honorable Mention)\s*(Team)?$", re.I)
+
+
+def split_name_school(body, known):
+    """PDF text collapses the columns, so split from the right against known schools.
+
+    Program names carry mascots in our dataset ("Notre Dame Fighting Irish"), the sheet
+    prints "Notre Dame", so a prefix match counts as a hit.
+    """
+    tokens = body.split()
+    # longest school first: "Owen Duffy North Carolina" must not split at "Carolina"
+    for i in range(2, len(tokens)):
+        candidate = " ".join(tokens[i:])
+        key = norm_team(candidate)
+        # norm_team strips spaces, so compare without one: "northcarolina" prefixes
+        # "northcarolinatarheels"
+        if key in known or any(k.startswith(key) for k in known):
+            return " ".join(tokens[:i]), candidate
+    if len(tokens) >= 3:
+        return " ".join(tokens[:-1]), tokens[-1]
+    return body, ""
+
+
+def build_all_americans(teams):
+    """USILA All-America teams come as PDFs — one line per player."""
+    by_name = {norm_team(t["name"]): t["id"] for t in teams if t["leagueId"] == "ncaa-d1"}
+
+    def team_id(school):
+        key = norm_team(school)
+        return by_name.get(key) or next((tid for k, tid in by_name.items() if k.startswith(key)), None)
+
+    out = []
+    for (division, year), url in AA_PDFS.items():
+        try:
+            text = _aa_text(url)
+        except Exception as e:
+            print(f"  ! all-americans {division} {year}: {e}")
+            continue
+        groups, current, awards = [], None, []
+        for line in (l.strip() for l in text.splitlines()):
+            if not line or line.startswith(str(year)) or line.lower().startswith(("player school", "award name")):
+                continue
+            m = AA_TEAM.match(line)
+            if m:
+                current = {"team": line.replace("Team", "").strip(), "players": []}
+                groups.append(current)
+                continue
+            pm = AA_ROW.match(line)
+            if pm and current is not None:
+                body = line[: pm.start("cls")].strip()
+                name, school = split_name_school(body, by_name)
+                current["players"].append({
+                    "name": name, "school": school,
+                    "class": pm.group("cls"), "position": pm.group("pos"),
+                    "teamId": team_id(school),
+                })
+                continue
+            if current is None and re.search(r"\b(ATT|MID|DEF|GOAL|FO|SSDM|LSM)\b\s+(Freshman|Sophomore|Junior|Senior|Grad)", line):
+                parts = line.split()
+                if len(parts) >= 4:
+                    awards.append({"award": " ".join(parts[:-4]), "name": " ".join(parts[-4:-3])})
+        groups = [g for g in groups if g["players"]]
+        total = sum(len(g["players"]) for g in groups)
+        print(f"  + all-americans {division} {year}: {total} players in {len(groups)} teams")
+        out.append({"division": division, "year": year, "source": url, "teams": groups})
+
+    return out
+
+
 def main():
     print("College (NCAA D1)…")
     leagues, teams, players = build_college()
@@ -1846,6 +1995,14 @@ def main():
 
     print("Records and history…")
     dataset_history = build_history(teams)
+    try:
+        dataset_history["records"] = build_records()
+    except Exception as e:
+        print(f"  ! records: {e}")
+    try:
+        dataset_history["allAmericans"] = build_all_americans(teams)
+    except Exception as e:
+        print(f"  ! all-americans: {e}")
 
     print("Standings…")
     attach_standings(leagues, teams)

@@ -1,7 +1,172 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById } from "../lib/data";
-import { Card, Empty, TeamLogo } from "../components/ui";
+import { Card, Empty, Segmented, TeamLogo } from "../components/ui";
+
+const METRICS = [
+  { value: "points", label: "Points" },
+  { value: "goals", label: "Goals" },
+  { value: "assists", label: "Assists" },
+  { value: "points-pg", label: "Pts/G" },
+  { value: "goals-pg", label: "G/G" },
+  { value: "assists-pg", label: "A/G" },
+];
+
+function RecordBook() {
+  const records = data.history?.records;
+  const [scope, setScope] = useState<"career" | "season">("career");
+  const [metric, setMetric] = useState("points");
+  if (!records || !records.sections.length) return null;
+
+  const section =
+    records.sections.find((s) => s.key === `${scope}-${metric}`) ??
+    records.sections.find((s) => s.scope === scope);
+  if (!section) return null;
+
+  const skip = ["Player", "Team", "Years", "Year", "Games"];
+  const statCols = section.columns.filter((c) => !skip.includes(c));
+  const ABBREV: Record<string, string> = {
+    Goals: "G", Assists: "A", Points: "PTS", PPG: "PTS/G", GPG: "G/GP", APG: "A/G",
+    "All-time Wins": "W", "All-time Losses": "L", "Winning Percent": "PCT",
+    "National Titles": "TITLES", "Total Games": "GP", "Total Seasons": "SEASONS",
+    "Initial Season": "FIRST",
+  };
+  const head = (c: string) => ABBREV[c] ?? c;
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Record book</h3>
+          <p className="muted small">NCAA Division I · {section.label.toLowerCase()}</p>
+        </div>
+        <Segmented
+          size="sm"
+          ariaLabel="Scope"
+          value={scope}
+          onChange={(v) => setScope(v as "career" | "season")}
+          options={[
+            { value: "career", label: "Career" },
+            { value: "season", label: "Single season" },
+          ]}
+        />
+      </div>
+      <div className="record-metrics">
+        <Segmented
+          size="sm"
+          ariaLabel="Metric"
+          value={METRICS.some((m) => m.value === metric) ? metric : "points"}
+          onChange={setMetric}
+          options={METRICS}
+        />
+      </div>
+      <div className="table-scroll">
+        <table className="data-table record-table">
+          <thead>
+            <tr>
+              <th className="c">#</th>
+              <th>{section.scope === "program" ? "University" : "Player"}</th>
+              <th>{section.scope === "program" ? "First" : "Team"}</th>
+              <th className="r">{scope === "season" ? "Year" : "Years"}</th>
+              {statCols.map((c) => (
+                <th key={c} className="r">
+                  {head(c)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {section.rows.slice(0, 12).map((r, i) => (
+              <tr key={`${r.Player ?? r.University}-${i}`}>
+                <td className="c num muted">{i + 1}</td>
+                <td className="strong">{r.Player ?? r.University}</td>
+                <td className="muted">{r.Team ?? r["Initial Season"]}</td>
+                <td className="r num muted">{r.Year ?? r.Years ?? "—"}</td>
+                {statCols.map((c) => (
+                  <td key={c} className="r num">
+                    {r[c]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-note">
+        These lists reach back to the 1970s, so the players are not linked — most predate the
+        seasons we index. Source: NCAA record book via Wikipedia.
+      </div>
+    </Card>
+  );
+}
+
+function AllAmericans() {
+  const blocks = data.history?.allAmericans ?? [];
+  const [year, setYear] = useState(blocks[0] ? String(blocks[0].year) : "");
+  const [teamKey, setTeamKey] = useState("1st");
+  if (!blocks.length) return null;
+
+  const block = blocks.find((b) => String(b.year) === year) ?? blocks[0];
+  const group = block.teams.find((t) => t.team.startsWith(teamKey)) ?? block.teams[0];
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">All-Americans</h3>
+          <p className="muted small">
+            {block.year} USILA {block.division} ·{" "}
+            {block.teams.reduce((n, t) => n + t.players.length, 0)} players
+          </p>
+        </div>
+        {blocks.length > 1 ? (
+          <Segmented
+            size="sm"
+            ariaLabel="Season"
+            value={year}
+            onChange={setYear}
+            options={blocks.map((b) => ({ value: String(b.year), label: String(b.year) }))}
+          />
+        ) : null}
+      </div>
+      <div className="record-metrics">
+        <Segmented
+          size="sm"
+          ariaLabel="Team"
+          value={group.team}
+          onChange={setTeamKey}
+          options={block.teams.map((t) => ({
+            value: t.team,
+            label: `${t.team} (${t.players.length})`,
+          }))}
+        />
+      </div>
+      <ul className="aa-list">
+        {group.players.map((p) => {
+          const team = p.teamId ? teamById.get(p.teamId) : undefined;
+          return (
+            <li key={`${p.name}-${p.school}`}>
+              <span className="aa-name">{p.name}</span>
+              <span className="aa-school">
+                {team ? (
+                  <Link to={`/team/${team.slug}`} className="team-link">
+                    <TeamLogo team={team} size={16} />
+                    {team.shortName}
+                  </Link>
+                ) : (
+                  <span className="muted">{p.school}</span>
+                )}
+              </span>
+              <span className="aa-class muted small">
+                {p.position} · {p.class}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
 
 export default function History() {
   const history = data.history;
@@ -115,6 +280,13 @@ export default function History() {
               ))}
             </ul>
           </Card>
+        </div>
+      </div>
+
+      <div className="leader-grid history-second">
+        <RecordBook />
+        <div className="stack">
+          <AllAmericans />
         </div>
       </div>
     </div>

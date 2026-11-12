@@ -22,12 +22,17 @@ not the UI — is what decides whether it ships.
 - Three D1 polls (committee, RPI, USILA coaches) via a browser-rendered fetch, with a
   day-by-day archive in `rankings-history.json`
 - Records page: 126 seasons of national champions, titles by program, 26 Tewaaraton winners
+- NCAA record book: 13 leaderboards (career + single season, points/goals/assists, per game),
+  388 rows, plus program win totals
+- 2026 USILA D1 All-Americans: 100 players across 1st/2nd/3rd/honourable mention, parsed from
+  the published PDF
 
 ## Next (in progress or ready to start)
 
-### 1. All-Americans and all-time records
-Champions, titles by program and Tewaaraton are in. Still missing: All-American teams by year, and
-all-time individual/team record books. Both are on Wikipedia/USILA and parse the same way.
+### 1. All-Americans for earlier seasons
+The 2026 D1 sheet is in. Earlier years need their PDF URLs (the document path includes a
+publication date, so they cannot be derived). D2/D3 use a different layout — see
+`docs/deferred-sources.md`.
 
 ### 2. Weekly poll movement — already have the data
 `rankings-history.json` keeps a snapshot per poll per day, so a "movement" column (up/down since

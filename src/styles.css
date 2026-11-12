@@ -1671,3 +1671,53 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .card-toolbar { padding: 14px 16px; }
   .feature-band { padding: 22px 18px; }
 }
+
+/* ------------------------------- history page ----------------------------- */
+.history-second { margin-top: 18px; }
+.record-metrics { padding: 0 18px 12px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.record-metrics::-webkit-scrollbar { display: none; }
+.record-metrics .segmented { flex: none; }
+.aa-list { list-style: none; margin: 0; padding: 4px 18px 16px; display: grid; gap: 2px; }
+.aa-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px;
+}
+.aa-list li:last-child { border-bottom: 0; }
+.aa-name { font-weight: 560; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aa-school { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aa-class { white-space: nowrap; }
+@media (max-width: 640px) {
+  .aa-list li { grid-template-columns: minmax(0, 1fr) auto; }
+  .aa-class { display: none; }
+  .record-metrics { padding: 0 16px 10px; }
+}
+
+.record-table th, .record-table td { padding: 9px 7px; font-size: 12.6px; }
+.record-table th { font-size: 9.6px; }
+.record-table th:first-child, .record-table td:first-child { padding-left: 14px; }
+@media (max-width: 640px) {
+  .record-table th, .record-table td { padding: 7px 5px; font-size: 11.8px; }
+}
+
+/* a wide table must not widen its grid track: without this the record book pushes
+   the whole column past the viewport on a phone */
+.leader-grid > *, .stack > * { min-width: 0; }
+@media (max-width: 640px) {
+  .record-table th:nth-child(4), .record-table td:nth-child(4) { display: none; }
+}
+
+@media (max-width: 640px) {
+  .record-table th, .record-table td { padding: 7px 4px; font-size: 11.2px; }
+  .record-table th { font-size: 9px; letter-spacing: 0.04em; }
+}
+
+@media (max-width: 640px) {
+  /* let the All-America filters wrap instead of clipping "Honorable Mention" */
+  .record-metrics .segmented { flex-wrap: wrap; overflow: visible; max-width: 100%; }
+  .record-metrics .seg-item { padding: 5px 8px; font-size: 11.8px; }
+}
