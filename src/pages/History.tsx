@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById } from "../lib/data";
 import { Card, Empty, Segmented, TeamLogo } from "../components/ui";
@@ -221,6 +221,39 @@ export default function History() {
   }
 
   const champions = history.champions.slice(0, 40);
+
+  // the final is the last single-game day of the season — a multi-game day is a round,
+  // not a final, and anything else would be a guess
+  const [finals, setFinals] = useState<Record<string, { winner: string; won: number; lost: number; loser: string }>>({});
+  useEffect(() => {
+    let alive = true;
+    fetch(`${import.meta.env.BASE_URL}scores.json`)
+      .then((r) => r.json())
+      .then((payload: { d1?: { date: string; home: string; away: string; hs: number; as: number }[] }) => {
+        if (!alive || !payload.d1) return;
+        const byDate = new Map<string, { date: string; home: string; away: string; hs: number; as: number }>();
+        const multi = new Set<string>();
+        for (const g of payload.d1) {
+          if (byDate.has(g.date)) multi.add(g.date);
+          else byDate.set(g.date, g);
+        }
+        const out: Record<string, { winner: string; won: number; lost: number; loser: string }> = {};
+        for (const [date, g] of [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+          if (multi.has(date)) continue; // more than one game that day: not a final
+          const year = date.slice(0, 4);
+          out[year] =
+            g.hs > g.as
+              ? { winner: g.home, won: g.hs, lost: g.as, loser: g.away }
+              : { winner: g.away, won: g.as, lost: g.hs, loser: g.home };
+        }
+        setFinals(out);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const programs = [...history.programs].sort((a, b) => b.titles - a.titles).slice(0, 12);
 
   return (
@@ -252,6 +285,7 @@ export default function History() {
                 <tr>
                   <th className="c">Year</th>
                   <th>Champion</th>
+                  <th className="r">Final</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,6 +303,15 @@ export default function History() {
                         ) : (
                           <span className="muted">{c.team}</span>
                         )}
+                      </td>
+                      <td className="r num muted">
+                        {(() => {
+                          const f = finals[String(c.year)];
+                          if (!f) return "—";
+                          const first = c.team.toLowerCase().split(" ")[0];
+                          const isWinner = f.winner.toLowerCase().includes(first);
+                          return isWinner ? `${f.won}–${f.lost}` : "—";
+                        })()}
                       </td>
                     </tr>
                   );
