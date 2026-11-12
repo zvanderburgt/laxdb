@@ -11,8 +11,6 @@ import ComparePage from "./pages/Compare";
 import MyRoster from "./pages/MyRoster";
 import History from "./pages/History";
 import { Empty } from "./components/ui";
-import { TooltipProvider } from "./components/shadcn/tooltip";
-import { Toaster } from "./components/shadcn/sonner";
 
 function titleFor(path: string) {
   const seg = path.split("/").filter(Boolean);
@@ -69,14 +67,11 @@ function Routes() {
 export default function App() {
   return (
     <ThemeProvider>
-      <TooltipProvider delayDuration={300}>
-        <RouterProvider>
-          <CompareProvider>
-            <Routes />
-            <Toaster position="bottom-center" />
-          </CompareProvider>
-        </RouterProvider>
-      </TooltipProvider>
+      <RouterProvider>
+        <CompareProvider>
+          <Routes />
+        </CompareProvider>
+      </RouterProvider>
     </ThemeProvider>
   );
 }

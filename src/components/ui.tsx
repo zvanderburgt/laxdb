@@ -1,15 +1,5 @@
 import React from "react";
 import { Link } from "../lib/app";
-import { Card as ShadcnCard } from "./shadcn/card";
-import { Tabs, TabsList, TabsTrigger } from "./shadcn/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./shadcn/select";
-import { cn } from "../lib/utils";
 import type { Player, Team } from "../lib/types";
 import { positionLabel, teamById } from "../lib/data";
 
@@ -140,61 +130,19 @@ export function Segmented<T extends string>({
   ariaLabel?: string;
 }) {
   return (
-    <Tabs value={value} onValueChange={(v) => onChange(v as T)}>
-      <TabsList
-        aria-label={ariaLabel}
-        className={cn(
-          "gap-0.5 rounded-[11px] bg-secondary p-[3px]",
-          size === "sm" ? "h-8" : "h-9",
-        )}
-      >
-        {options.map((o) => (
-          <TabsTrigger
-            key={o.value}
-            value={o.value}
-            className={cn(
-              "rounded-[9px] px-2.5 text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-              size === "sm" ? "text-[12px]" : "text-[13px]",
-            )}
-          >
-            {o.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
-  );
-}
-
-
-export function FilterSelect({
-  value,
-  onChange,
-  options,
-  ariaLabel,
-  className = "",
-  placeholder = "Select",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  ariaLabel?: string;
-  className?: string;
-  placeholder?: string;
-}) {
-  const current = options.find((o) => o.value === value);
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="sm" aria-label={ariaLabel} className={cn("h-8 min-w-[132px] rounded-full text-[12.5px]", className)}>
-        <SelectValue placeholder={placeholder}>{current?.label ?? placeholder}</SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className={`segmented seg-${size}`} role="tablist" aria-label={ariaLabel}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          role="tab"
+          aria-selected={o.value === value}
+          className={`seg-item ${o.value === value ? "is-on" : ""}`}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -227,11 +175,7 @@ export function Card({
   className?: string;
   padded?: boolean;
 }) {
-  return (
-    <ShadcnCard className={cn("card gap-0 py-0 shadow-sm", padded && "pad", className)}>
-      {children}
-    </ShadcnCard>
-  );
+  return <div className={`card ${padded ? "pad" : ""} ${className}`}>{children}</div>;
 }
 
 export function SectionHead({

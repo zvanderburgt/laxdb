@@ -10,24 +10,9 @@ import {
   statesList,
   teamOf,
 } from "../lib/data";
-import { Input } from "../components/shadcn/input";
-import { Button } from "../components/shadcn/button";
-import { Avatar, Empty, FilterSelect, PlayerAvatar, PositionBadge, Segmented } from "../components/ui";
+import { Avatar, Empty, PositionBadge, Segmented, PlayerAvatar } from "../components/ui";
 
 const POSITIONS = ["A", "M", "D", "G", "FO", "LSM"];
-const SORTS = [
-  { value: "pts", label: "Sort: points" },
-  { value: "ppg", label: "Sort: points per game" },
-  { value: "g", label: "Sort: goals" },
-  { value: "a", label: "Sort: assists" },
-  { value: "gb", label: "Sort: ground balls" },
-  { value: "shp", label: "Sort: shooting %" },
-  { value: "fop", label: "Sort: faceoff %" },
-  { value: "svp", label: "Sort: save %" },
-  { value: "gp", label: "Sort: games" },
-  { value: "name", label: "Sort: name" },
-];
-
 type SortKey =
   | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
   | "shp" | "fop" | "svp";
@@ -158,113 +143,91 @@ export default function Players() {
         />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[210px] flex-1 sm:max-w-[280px]">
-          <svg
-            viewBox="0 0 20 20"
-            width="15"
-            height="15"
-            aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          >
+      <div className="filterbar">
+        <div className="filter-search">
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
             <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
             <path d="M12.8 12.8L17 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
-          <Input
+          <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Name, team or high school"
             aria-label="Search players"
-            className="h-8 rounded-full pl-8 pr-7 text-[12.5px]"
           />
-          {q ? (
+          {q ? <button className="clear-x" onClick={() => setQ("")} aria-label="Clear">×</button> : null}
+        </div>
+
+        <div className="pos-pills">
+          {POSITIONS.map((p) => (
             <button
-              className="absolute right-2 top-1/2 grid size-4 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
-              onClick={() => setQ("")}
-              aria-label="Clear"
+              key={p}
+              className={`pill ${pos.includes(p) ? "is-on" : ""}`}
+              onClick={() => setPos((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]))}
             >
-              ×
+              {p}
             </button>
-          ) : null}
+          ))}
         </div>
 
-        <div className="flex items-center gap-1">
-          {POSITIONS.map((p) => {
-            const on = pos.includes(p);
-            return (
-              <Button
-                key={p}
-                size="sm"
-                variant={on ? "default" : "outline"}
-                onClick={() => setPos((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]))}
-                className="h-8 min-w-8 rounded-full px-2 text-[12px]"
-              >
-                {p}
-              </Button>
-            );
-          })}
-        </div>
+        <select value={league} onChange={(e) => setLeague(e.target.value)} aria-label="League">
+          <option value="all">All leagues</option>
+          {data.leagues.map((l) => (
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
 
-        <FilterSelect
-          value={league}
-          onChange={setLeague}
-          ariaLabel="League"
-          options={[
-            { value: "all", label: "All leagues" },
-            ...data.leagues.map((l) => ({ value: l.id, label: l.name })),
-          ]}
-        />
+        <select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Class year">
+          <option value="all">All classes</option>
+          {classYears().map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
 
-        <FilterSelect
-          value={year}
-          onChange={setYear}
-          ariaLabel="Class year"
-          options={[
-            { value: "all", label: "All classes" },
-            ...classYears().map((y) => ({ value: String(y), label: String(y) })),
-          ]}
-        />
+        <select value={state} onChange={(e) => setState(e.target.value)} aria-label="State">
+          <option value="all">All regions</option>
+          {statesList().map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
 
-        <FilterSelect
-          value={state}
-          onChange={setState}
-          ariaLabel="State"
-          options={[
-            { value: "all", label: "All regions" },
-            ...statesList().map((s) => ({ value: s, label: s })),
-          ]}
-        />
-
-        <FilterSelect
+        <select
           value={sort}
-          onChange={(v) => setSort(v as SortKey)}
-          ariaLabel="Sort by"
-          className="min-w-[168px]"
-          options={SORTS}
-        />
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          aria-label="Sort by"
+        >
+          <option value="pts">Sort: points</option>
+          <option value="ppg">Sort: points per game</option>
+          <option value="g">Sort: goals</option>
+          <option value="a">Sort: assists</option>
+          <option value="gb">Sort: ground balls</option>
+          <option value="shp">Sort: shooting %</option>
+          <option value="fop">Sort: faceoff %</option>
+          <option value="svp">Sort: save %</option>
+          <option value="gp">Sort: games</option>
+          <option value="name">Sort: name</option>
+        </select>
 
-        <Input
+        <input
+          className="filter-input"
           value={hs}
           onChange={(e) => setHs(e.target.value)}
           placeholder="High school"
           aria-label="High school"
-          className="h-8 w-[148px] rounded-full text-[12.5px]"
         />
 
-        <Input
+        <input
+          className="filter-input narrow"
           value={minGp}
           onChange={(e) => setMinGp(e.target.value.replace(/\D/g, ""))}
           placeholder="Min GP"
           aria-label="Minimum games played"
           inputMode="numeric"
-          className="h-8 w-[92px] rounded-full text-[12.5px]"
         />
 
         {activeFilters > 0 ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-full text-[12.5px]"
+          <button
+            className="btn btn-ghost btn-sm"
             onClick={() => {
               setPos([]);
               setLeague("all");
@@ -275,7 +238,7 @@ export default function Players() {
             }}
           >
             Reset {activeFilters}
-          </Button>
+          </button>
         ) : null}
       </div>
 

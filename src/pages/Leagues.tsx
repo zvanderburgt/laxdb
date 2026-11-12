@@ -13,7 +13,7 @@ import {
   teamById,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, FilterSelect, PlayerAvatar, PositionBadge, SectionHead, Segmented, Stat, TeamLogo } from "../components/ui";
+import { Avatar, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 import type { League } from "../lib/types";
 
 export function LeaguesPage() {
@@ -405,15 +405,12 @@ export function LeaguePage() {
                 <p className="muted small">{data.meta.season} regular season</p>
               </div>
               <div className="head-controls">
-                <FilterSelect
-                  value={pos}
-                  onChange={setPos}
-                  ariaLabel="Position"
-                  options={[
-                    { value: "all", label: "All positions" },
-                    ...["A", "M", "D", "FO", "LSM", "G"].map((p) => ({ value: p, label: p })),
-                  ]}
-                />
+                <select value={pos} onChange={(e) => setPos(e.target.value)} aria-label="Position">
+                  <option value="all">All positions</option>
+                  {["A", "M", "D", "FO", "LSM", "G"].map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="stat-tabs">
