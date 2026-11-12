@@ -50,8 +50,9 @@ this is a static site).
 
 ## Next — needs a precompute pass
 
-1. **Opponent-adjusted scoring** — divide per-game output by opponent Elo so a mid-major scorer is
-   not ranked with a blue blood. *(LaxGrid "Goals Added".)*
+1. ~~Opponent-adjusted scoring~~ — shipped on the game-log tab: output weighted by opponent Elo,
+   shown against the raw rate with the sample size. A league-wide adjusted leaderboard is the
+   remaining piece.
 2. ~~Era- and league-adjusted scoring index~~ — shipped as the **points index** on `#/leaders`
    (100 = that competition-season's average player-game). Cross-era normalisation is still open.
 3. **Team efficiency** — possessions estimated from faceoffs, shots and turnovers, then points per

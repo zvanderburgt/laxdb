@@ -65,6 +65,8 @@ Product details:
 - **High school pipelines** — top high schools per program and per league.
 - **Splits** — by month, by result, and versus RPI top-25 opponents, computed from the game log.
   Home/away is not published in the box scores, so it is left out rather than guessed.
+- **Opponent-adjusted points per game** — each game's output weighted by the opponent's Elo over
+  the 1500 baseline, shown beside the raw rate with the average opponent rating and sample size.
 - **Game logs** from each game's official D1 box score, with the best game highlighted and CSV export.
   They ship as a second file (`games.json`, 1.3 MB) fetched the first time you open a log.
 - **Team logos** for 252 clubs (school athletics marks, MCLA, PLL) with the colour crest as fallback.

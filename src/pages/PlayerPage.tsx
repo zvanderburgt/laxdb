@@ -22,6 +22,7 @@ import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
 import { peerRanks } from "../lib/peers";
 import { splits } from "../lib/splits";
+import { adjustedRate } from "../lib/adjusted";
 import { toggleSaved, useRoster } from "../lib/storage";
 import {
   Avatar,
@@ -969,6 +970,7 @@ function Highs({ player }: { player: Player }) {
 function Splits({ player }: { player: Player }) {
   const games = usePlayerGames(player.id);
   const groups = React.useMemo(() => (games ? splits(games, player) : []), [games, player.id]);
+  const adj = React.useMemo(() => (games ? adjustedRate(games, player) : null), [games, player.id]);
   if (!groups.length) return null;
 
   return (
@@ -982,6 +984,16 @@ function Splits({ player }: { player: Player }) {
           </p>
         </div>
       </div>
+      {adj ? (
+        <p className="adjusted-line">
+          <span className="muted small">Opponent-adjusted points / game</span>{" "}
+          <span className="num strong">{adj.adjusted.toFixed(2)}</span>{" "}
+          <span className="muted small">
+            vs {adj.raw.toFixed(2)} raw · opponents averaged {Math.round(adj.avgOppElo)} Elo across{" "}
+            {adj.games} games
+          </span>
+        </p>
+      ) : null}
       <div className="splits-grid">
         {groups.map((g) => (
           <div key={g.label} className="splits-group">
