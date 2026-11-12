@@ -73,6 +73,7 @@ export default function Leaders() {
 
   const [season, setSeason] = useState<string | null>(null);
   const [scope, setScope] = useState<"season" | "career">("season");
+  const [pos, setPos] = useState<"all" | "A" | "M" | "D" | "G">("all");
   const activeSeason = season && seasons.includes(season) ? season : seasons[0];
   const cat = CATS.find((c) => c.key === catKey) ?? CATS[0];
 
@@ -105,7 +106,15 @@ export default function Leaders() {
   }, [leagueId, activeSeason, scope]);
 
   const board = useMemo(() => {
+    const inGroup = (position: string) => {
+      if (pos === "all") return true;
+      if (pos === "G") return position === "G";
+      if (pos === "D") return position === "D" || position === "LSM";
+      if (pos === "M") return position === "M" || position === "SSDM" || position === "FO";
+      return position === "A";
+    };
     const eligible = rows.filter((r) => {
+      if (!inGroup(r.player.position)) return false;
       if (cat.goalie) return (r.sv + r.ga) > 0 || r.ga > 0;
       return r.gp > 0;
     });
@@ -123,7 +132,7 @@ export default function Leaders() {
       .sort((a, b) => (cat.asc ? a.v - b.v : b.v - a.v))
       .slice(0, 25);
     return { list, minGames };
-  }, [rows, cat]);
+  }, [rows, cat, pos]);
 
   const league = leagueById.get(leagueId);
 
@@ -189,6 +198,18 @@ export default function Leaders() {
           </label>
         </div>
         <div className="leaders-tabs">
+          <Segmented
+            ariaLabel="Position"
+            value={pos}
+            onChange={setPos}
+            options={[
+              { value: "all", label: "All positions" },
+              { value: "A", label: "Attack" },
+              { value: "M", label: "Midfield" },
+              { value: "D", label: "Defence" },
+              { value: "G", label: "Goalie" },
+            ]}
+          />
           <Segmented
             ariaLabel="Stat"
             value={catKey}
