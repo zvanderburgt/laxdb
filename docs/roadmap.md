@@ -50,6 +50,10 @@ on `(season, team, stats)` so career totals never double.
 The current team is the newest season, ranked by competition when a player finished two in the same
 year; the headshot is taken from that competition when one exists.
 
+Charts follow the same rule: once a career spans clubs, the season chart becomes grouped bars — one
+bar per team, in that team's colour, with a legend and a value per bar. A single-club player keeps
+the original area line.
+
 ## Next (in progress or ready to start)
 
 ### 1. All-Americans for earlier seasons

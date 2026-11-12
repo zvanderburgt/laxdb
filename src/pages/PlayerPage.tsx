@@ -28,6 +28,7 @@ import {
   PositionBadge,
   Segmented,
   Sparkline,
+  SeasonBars,
   Stat,
   PlayerAvatar,
   TeamLogo,
@@ -393,6 +394,29 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
   const league = leagueById.get(player.leagueId);
   const isGoal = player.position === "G";
   const seasons = [...player.seasons].reverse();
+  // one bar per team per season: a merged career changes clubs, and the chart should show it
+  const chartGroups = (() => {
+    const order: string[] = [];
+    const bySeason = new Map<string, { value: number; color: string; label: string }[]>();
+    for (const s of seasons) {
+      const team = teamById.get(s.teamId);
+      const value = isGoal
+        ? s.sv + s.ga > 0
+          ? Math.round((s.sv / (s.sv + s.ga)) * 1000) / 10
+          : 0
+        : s.pts ?? 0;
+      if (!bySeason.has(s.season)) {
+        bySeason.set(s.season, []);
+        order.push(s.season);
+      }
+      bySeason.get(s.season)!.push({
+        value,
+        color: team?.colors?.[0] ?? "var(--accent)",
+        label: team?.shortName ?? s.teamId,
+      });
+    }
+    return order.map((season) => ({ season, bars: bySeason.get(season)! }));
+  })();
 
   return (
     <>
@@ -415,14 +439,15 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           <h3 className="card-title">{isGoal ? "Save percentage by season" : "Points by season"}</h3>
           <span className="muted small">{player.seasons[0]?.season}–{cur.season}</span>
         </div>
-        <Sparkline
-          values={seasons
-            .slice()
-            .reverse()
-            .map((s) => (isGoal ? (s.sv + s.ga ? Math.round((s.sv / (s.sv + s.ga)) * 1000) / 10 : 0) : s.pts ?? 0))}
-          labels={seasons.slice().reverse().map((s) => s.season)}
-          valueSuffix={isGoal ? "%" : ""}
-        />
+        {chartGroups.length > 1 && new Set(player.seasons.map((s) => s.teamId)).size > 1 ? (
+          <SeasonBars groups={chartGroups} valueSuffix={isGoal ? "%" : ""} />
+        ) : (
+          <Sparkline
+            values={chartGroups.map((g) => g.bars.reduce((n, b) => n + b.value, 0))}
+            labels={chartGroups.map((g) => g.season)}
+            valueSuffix={isGoal ? "%" : ""}
+          />
+        )}
       </Card>
 
       <Card>

@@ -287,6 +287,108 @@ export function Sparkline({
   );
 }
 
+
+/** Season totals split by team — a merged career spans clubs, so colour does the work. */
+export function SeasonBars({
+  groups,
+  width = 560,
+  height = 190,
+  valueSuffix = "",
+  legend = true,
+  showValues = true,
+}: {
+  groups: { season: string; bars: { value: number; color: string; label: string }[] }[];
+  width?: number;
+  height?: number;
+  valueSuffix?: string;
+  legend?: boolean;
+  showValues?: boolean;
+}) {
+  if (!groups.length) return null;
+  // counting stats add up across teams; a rate (save %) does not — two seasons at 62%
+  // and 61% are not a 124% year, so the scale and the label use the biggest single bar
+  const isRate = valueSuffix === "%";
+  const totals = groups.map((g) =>
+    isRate ? Math.max(...g.bars.map((b) => b.value), 0) : g.bars.reduce((n, b) => n + b.value, 0),
+  );
+  const max = Math.max(...totals, 1);
+  const pad = { l: 34, r: 12, t: 22, b: 26 };
+  const w = width - pad.l - pad.r;
+  const h = height - pad.t - pad.b;
+  const slot = w / groups.length;
+  const barW = Math.min(26, Math.max(7, slot * 0.5));
+  const gap = 2;
+  const y = (v: number) => pad.t + h - (v / max) * h;
+
+  const seen = new Map<string, string>();
+  for (const g of groups) for (const b of g.bars) if (!seen.has(b.label)) seen.set(b.label, b.color);
+
+  return (
+    <div className="season-bars">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Season totals by team">
+        {[0, 0.5, 1].map((t) => (
+          <line key={t} x1={pad.l} x2={width - pad.r} y1={pad.t + h * t} y2={pad.t + h * t} className="grid-line" />
+        ))}
+        <text x={pad.l - 8} y={pad.t + 4} className="axis-label" textAnchor="end">{max}{valueSuffix}</text>
+        <text x={pad.l - 8} y={pad.t + h / 2 + 4} className="axis-label" textAnchor="end">{Math.round(max / 2)}</text>
+        <text x={pad.l - 8} y={pad.t + h + 4} className="axis-label" textAnchor="end">0</text>
+        {groups.map((g, gi) => {
+          const cx = pad.l + slot * gi + slot / 2;
+          const spread = g.bars.length * barW + (g.bars.length - 1) * gap;
+          return (
+            <g key={`${g.season}-${gi}`}>
+              {showValues && g.bars.length === 1 ? (
+                <text x={cx} y={y(totals[gi]) - 7} className="point-label" textAnchor="middle">
+                  {totals[gi]}{valueSuffix}
+                </text>
+              ) : null}
+              {g.bars.map((b, bi) => {
+                const bx = cx - spread / 2 + bi * (barW + gap);
+                const bh = Math.max(4, (b.value / max) * h);   // a 2-point season must still be visible
+                return (
+                  <g key={`${b.label}-${bi}`}>
+                    <rect
+                      x={bx}
+                      y={pad.t + h - bh}
+                      width={barW}
+                      height={bh}
+                      rx={Math.min(4, barW / 3)}
+                      fill={b.color}
+                    >
+                      <title>{`${g.season} · ${b.label} · ${b.value}${valueSuffix}`}</title>
+                    </rect>
+                    {showValues && g.bars.length > 1 ? (
+                      <text
+                        x={bx + barW / 2}
+                        y={pad.t + h - bh - 4}
+                        className="bar-value"
+                        textAnchor="middle"
+                      >
+                        {b.value}
+                      </text>
+                    ) : null}
+                  </g>
+                );
+              })}
+              <text x={cx} y={height - 6} className="axis-label" textAnchor="middle">{g.season}</text>
+            </g>
+          );
+        })}
+      </svg>
+      {legend && seen.size > 1 ? (
+        <ul className="bar-legend">
+          {[...seen].map(([label, color]) => (
+            <li key={label}>
+              <span className="bar-swatch" style={{ background: color }} />
+              {label}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export function GradeBar({ label, value, rank }: { label: string; value: number; rank?: number }) {
   return (
     <div className="grade">
