@@ -333,6 +333,7 @@ and PLL 7.1% — and it will grow as articles are written.
 | source | what happened |
 | --- | --- |
 | GameSheet league players list | saved pages carry **zero** `shotHand`; the payload holds standings rows only |
+| GameSheet **club roster** page | works — but only in the **rendered table**, never the JSON payload: the skater table has an `SH` column (Left/Right) and the goalie table has `CT` (catch hand, the inverse, so it is skipped). 31 skaters on Akwesasne, 26 matched |
 | GameSheet CSV export | built in the browser from the visible rows (`text/csv` in the bundle, no endpoint), paginated 20–60 rows, and has no hand column at all |
 | 290 archived D1 roster pages | **0** mentions of "shoots" — college rosters do not publish it |
 | NLL.com player pages | no handedness field anywhere in a 490 KB page |
@@ -340,8 +341,10 @@ and PLL 7.1% — and it will grow as articles are written.
 | wcjll.com / tojll.com / rmll.ca | redirect to canadianlacrosseleague.com, whose stats app covers only CLL events (`league_id=188`) — no league switcher, no club rosters |
 | Digitalshift API from Python | 401 with a valid browser ticket under seven header shapes; DOM scraping only |
 
-**Consequence:** the only bulk route left is a saved page per club on GameSheet (one save
-yields the whole club roster).
+**Consequence:** the only bulk route left is a saved page per club on GameSheet — and the
+value lives in the **rendered HTML table**, not the flight payload. Reading only the payload
+was the mistake that made this look like an OJBLL dead end; the club page carries `SH` for
+every skater.
 
 ---
 
