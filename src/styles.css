@@ -1642,6 +1642,38 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 }
 .cms-toast.is-ok { color: var(--green); }
 
+/* structured fields: lists, people rows and the colour pair, in the palette's sheet */
+.cms-array { width: min(620px, 100%); }
+.cms-rows-editor { display: grid; gap: 8px; padding: 4px 20px 8px; overflow-y: auto; }
+.cms-rowline { display: flex; gap: 6px; align-items: center; }
+.cms-rowline .cms-input { flex: 1 1 auto; min-width: 0; }
+.cms-rowline .cms-input-year { flex: 0 0 84px; width: 84px; }
+.cms-add { justify-self: start; margin-top: 2px; }
+.cms-colors { display: flex; flex-wrap: wrap; gap: 16px; padding: 4px 20px 8px; align-items: center; }
+.cms-color { display: flex; align-items: center; gap: 9px; }
+.cms-color input[type="color"] {
+  width: 38px; height: 38px; padding: 0; border: 1px solid var(--hairline-strong);
+  border-radius: 9px; background: none; cursor: pointer;
+}
+.cms-color-hex { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-2); }
+.cms-color-role { font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.cms-array-hint { width: 100%; margin: 2px 0 0; font-size: 12.5px; color: var(--text-3); }
+/* inside the sheet a field is a field, not a focused overlay: the ring belongs to :focus only */
+.cms-array .cms-input { border-color: var(--hairline-strong); box-shadow: none; }
+.cms-array .cms-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cms-rowhead {
+  display: flex; gap: 6px; align-items: center; padding: 0 2px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3);
+}
+.cms-rowhead span { flex: 1 1 auto; min-width: 0; }
+.cms-rowhead .cms-head-year { flex: 0 0 84px; width: 84px; }
+.cms-rowhead .cms-head-x { flex: 0 0 18px; width: 18px; }
+.cms-empty-slot {
+  margin: 2px 0; padding: 8px 10px; border: 1px dashed var(--hairline-strong); border-radius: 8px;
+  color: var(--text-3); font-size: 13px;
+}
+.strength-row[data-cms], .highlight-list[data-cms], .staff-list[data-cms] { cursor: pointer; }
+
 @media (max-width: 900px) {
   .cms-stack, .cms-sep { display: none; }
 }

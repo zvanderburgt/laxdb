@@ -427,7 +427,16 @@ Two things this phase had to work out that the plan did not foresee:
   published value, while returning to the feed is the server-side `/api/revert`. Recomputing "before"
   from the live object after a reload just reads the override back, which is why it is captured.
 
-**Phase 3 — structured + people + media (1–2 sessions).** number/date/select/people controls, `/media`
+**Phase 3a — structured controls. ✅ shipped.** Lists, people rows and the colour pair open in their own
+sheet (the palette's geometry) rather than a one-line input: staff and awards edit row by row with
+column labels, strengths as lines, team colours as two swatches. Newly editable: player `awards`,
+`strengths`, `scouting.author`, `scouting.date`; team `name`, `conference`, `city`, `colours`, `staff`;
+league `name`, `level`. Verified in the browser: an added staff row renders on the team page, a
+strength pair renders as tags, an award row appears in career highlights, and the colour pair repaints
+the team hero wash. The people-row string cap moved to 200 characters — a school's assistant-AD title
+is 150, and the 120 cap silently rejected the whole list.
+
+**Phase 3b — media (1–2 sessions).** number/date/select/people controls, `/media`
 with the shared crop path, team and league fields, colour picker with a contrast warning. *Done when*
 a portrait uploaded through the dock is 224×224 and matches `save_image()`'s output byte-for-byte in
 dimensions, and a staff row can be added, reordered and removed in one publish.

@@ -388,6 +388,8 @@ export function TeamPage() {
           <div className="profile-head">
             <span
               className={`team-crest xl ${team.logo ? "has-logo" : ""}`}
+              data-cms="team.colors"
+              data-cms-id={team.id}
               style={{ background: `linear-gradient(150deg, ${team.colors[0]}, ${team.colors[1]})` }}
             >
               {team.logo ? <TeamLogo team={team} size={88} /> : team.shortName.slice(0, 2).toUpperCase()}
@@ -400,7 +402,7 @@ export function TeamPage() {
                 ) : null}
                 <span className="tag">{league?.type === "box" ? "Box lacrosse" : "Field lacrosse"}</span>
               </div>
-              <h1>{team.name}</h1>
+              <h1 data-cms="team.name" data-cms-id={team.id}>{team.name}</h1>
               {(() => {
                 // the tags above already carry the league and the code; repeating them
                 // here left a hero with the same string twice and no city line
@@ -663,7 +665,7 @@ export function TeamPage() {
             {team.staff && team.staff.length ? (
               <Card>
                 <div className="eyebrow">Support staff</div>
-                <ul className="staff-list">
+                <ul className="staff-list" data-cms="team.staff" data-cms-id={team.id}>
                   {team.staff.map((s, i) => (
                     <li key={`${s.name}-${i}`}>
                       <span className="staff-role">{s.role}</span>
@@ -676,8 +678,14 @@ export function TeamPage() {
             <Card>
               <div className="eyebrow">Program</div>
               <dl className="facts">
-                <div><dt>Conference</dt><dd>{team.conference}</dd></div>
-                <div><dt>City</dt><dd>{team.city}</dd></div>
+                <div>
+                  <dt>Conference</dt>
+                  <dd data-cms="team.conference" data-cms-id={team.id}>{team.conference || "—"}</dd>
+                </div>
+                <div>
+                  <dt>City</dt>
+                  <dd data-cms="team.city" data-cms-id={team.id}>{team.city || "—"}</dd>
+                </div>
                 <div>
                   <dt>Competition</dt>
                   <dd>

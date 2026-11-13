@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   commitField,
   discardAll,
+  fieldValueOf,
   dropField,
   publishDraft,
   signIn,
@@ -17,6 +18,7 @@ import {
   stopEditing,
   undoLast,
   useCms,
+  snapshot,
   fieldOf,
   type PendingField,
 } from "../../lib/cms";
@@ -79,6 +81,8 @@ export default function Editor() {
   const [editing, setEditing] = useState<Target | null>(null);
   const [draft, setDraft] = useState("");
   const [review, setReview] = useState(false);
+  /** a structured field (list / people / colours) open in its own sheet */
+  const [rows, setRows] = useState<{ target: Target; type: string; label: string; item?: readonly string[]; value: unknown[] } | null>(null);
   const [signOpen, setSignOpen] = useState(false);
   const [pass, setPass] = useState("");
   const [notice, setNotice] = useState<{ text: string; kind: "" | "ok" | "bad" } | null>(null);
@@ -133,8 +137,18 @@ export default function Editor() {
       const target = read(el);
       if (!target) return;
       const def = fieldFor(target.entity, target.path);
-      if (!def || !["text", "prose", "number", "date", "select"].includes(def.type)) {
-        setNotice({ text: `${target.label}: that control arrives with the next pass`, kind: "" });
+      if (!def) return;
+
+      if (def.type === "people" || def.type === "list" || def.type === "colors") {
+        const current = fieldValueOf(target.entity as never, target.id, target.path);
+        const value = def.type === "colors"
+          ? ([...(Array.isArray(current) ? current : ["#0071e3", "#f5f5f7"])] as string[])
+          : (Array.isArray(current) ? (JSON.parse(JSON.stringify(current)) as unknown[]) : []);
+        setRows({ target, type: def.type, label: def.label, item: def.item, value });
+        return;
+      }
+      if (def.type === "image") {
+        setNotice({ text: "Photo upload lands in the next pass", kind: "" });
         return;
       }
       setEditing({ ...target, rect: boxOf(el, def.type) });
@@ -191,7 +205,7 @@ export default function Editor() {
     const target = { entity: editing.entity as never, id: editing.id, path: editing.path };
     closeInput();
     const ok = await commitField(target, value);
-    if (!ok) setNotice({ text: cms.notice || "could not save that field", kind: "bad" });
+    if (!ok) setNotice({ text: snapshot().notice || "could not save that field", kind: "bad" });
   };
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -345,6 +359,146 @@ export default function Editor() {
           </button>
           {cms.signInError ? <span className="cms-signin-err">{cms.signInError}</span> : null}
         </form>
+      ) : null}
+
+      {rows ? (
+        <div className="cms-sheet-backdrop" onClick={() => setRows(null)}>
+          <div
+            className="cms-sheet cms-array"
+            role="dialog"
+            aria-modal="true"
+            aria-label={rows.label}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="cms-sheet-head">
+              <div>
+                <div className="eyebrow">{rows.target.entity === "site" ? "Site" : "Edit"}</div>
+                <h2>{rows.label}</h2>
+              </div>
+              <button className="tray-x" onClick={() => setRows(null)} aria-label="Close">
+                ×
+              </button>
+            </div>
+
+            {rows.type === "colors" ? (
+              <div className="cms-colors">
+                {(rows.value as string[]).map((hex, i) => (
+                  <label key={i} className="cms-color">
+                    <input
+                      type="color"
+                      value={/^#[0-9a-f]{6}$/i.test(hex) ? hex : "#000000"}
+                      onChange={(e) => {
+                        const next = [...(rows.value as string[])];
+                        next[i] = e.target.value;
+                        setRows({ ...rows, value: next });
+                      }}
+                    />
+                    <span className="cms-color-hex">{hex}</span>
+                    <span className="cms-color-role">{i === 0 ? "Primary" : "Secondary"}</span>
+                  </label>
+                ))}
+                <p className="cms-array-hint">The crest gradient and team accents use these two.</p>
+              </div>
+            ) : (
+              <div className="cms-rows-editor">
+                {rows.type === "people" && (rows.item ?? []).length ? (
+                  <div className="cms-rowhead">
+                    {(rows.item ?? []).map((k) => (
+                      <span key={k} className={`cms-head-${k}`}>
+                        {k}
+                      </span>
+                    ))}
+                    <span className="cms-head-x" />
+                  </div>
+                ) : null}
+                {rows.value.length === 0 ? (
+                  <p className="cms-sheet-empty">Nothing yet — add the first row.</p>
+                ) : null}
+                {(rows.value as Record<string, unknown>[]).map((row, i) => (
+                  <div className="cms-rowline" key={i}>
+                    {rows.type === "list" ? (
+                      <input
+                        className="cms-input"
+                        value={String(row ?? "")}
+                        placeholder="Add a line"
+                        onChange={(e) => {
+                          const next = [...rows.value];
+                          next[i] = e.target.value;
+                          setRows({ ...rows, value: next });
+                        }}
+                      />
+                    ) : (
+                      (rows.item ?? []).map((key) => (
+                        <input
+                          key={key}
+                          className={`cms-input cms-input-${key}`}
+                          value={String((row as Record<string, unknown>)[key] ?? "")}
+                          placeholder={key}
+                          inputMode={key === "year" ? "numeric" : undefined}
+                          onChange={(e) => {
+                            const next = [...(rows.value as Record<string, unknown>[])];
+                            const v = e.target.value;
+                            next[i] = { ...next[i], [key]: key === "year" ? Number(v) || 0 : v };
+                            setRows({ ...rows, value: next });
+                          }}
+                        />
+                      ))
+                    )}
+                    <button
+                      className="cms-chip-x"
+                      aria-label="Remove row"
+                      onClick={() => setRows({ ...rows, value: rows.value.filter((_, j) => j !== i) })}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="btn btn-ghost btn-sm cms-add"
+                  onClick={() =>
+                    setRows({
+                      ...rows,
+                      value: [
+                        ...rows.value,
+                        rows.type === "list"
+                          ? ""
+                          : Object.fromEntries((rows.item ?? []).map((k) => [k, k === "year" ? new Date().getFullYear() : ""])),
+                      ],
+                    })
+                  }
+                >
+                  + Add {rows.type === "list" ? "line" : "row"}
+                </button>
+              </div>
+            )}
+
+            <div className="cms-sheet-foot">
+              <span className="cms-foot-note">Saved to the draft, not the site</span>
+              <div className="cms-foot-actions">
+                <button className="btn btn-ghost btn-sm" onClick={() => setRows(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={async () => {
+                    const { target, value } = rows;
+                    setRows(null);
+                    const clean = (value as unknown[]).filter((v) =>
+                      typeof v === "string" ? v.trim() : true
+                    );
+                    const ok = await commitField(
+                      { entity: target.entity as never, id: target.id, path: target.path },
+                      clean
+                    );
+                    if (!ok) setNotice({ text: snapshot().notice || "could not save that field", kind: "bad" });
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {review ? (
