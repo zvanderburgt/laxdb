@@ -192,7 +192,8 @@ function validateValue(f: FieldDef, value: unknown): Result<unknown> {
           if (typeof v === "number" && Number.isFinite(v)) row[k] = v;
           else if (typeof v === "string") {
             const s = cleanString(v, false);
-            if (s.length > 120) return bad(`${k} is too long`);
+            // job titles are long: this school's assistant AD line is 150 characters
+            if (s.length > 200) return bad(`${k} is too long (max 200)`);
             row[k] = s;
           } else return bad(`${k} must be text`);
         }

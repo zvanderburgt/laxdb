@@ -65,6 +65,8 @@ export default function PlayerPage() {
 }
 
 function Profile({ player }: { player: Player }) {
+  // the awards card renders an "add" slot only while the editor is on
+  const editing = useIsEditing();
   const [tab, setTab] = useState<Tab>("overview");
   const { has, toggle } = useCompare();
   const [copied, setCopied] = useState(false);
@@ -417,13 +419,14 @@ function Profile({ player }: { player: Player }) {
             </Card>
           ) : null}
 
-          {player.awards.length ? (
+          {player.awards.length || editing ? (
             <Card>
               <div className="card-head" style={{ marginBottom: 8 }}>
                 <div className="eyebrow" style={{ marginBottom: 0 }}>Career highlights</div>
                 <button className="link-arrow small link-btn" onClick={() => setTab("awards")}>All</button>
               </div>
-              <div className="highlight-list">
+              <div className="highlight-list" data-cms="player.awards" data-cms-id={player.id}>
+                {player.awards.length === 0 ? <p className="cms-empty-slot">Add awards</p> : null}
                 {[...player.awards].sort((a, b) => b.year - a.year).slice(0, 3).map((a, i) => (
                   <div key={i} className="highlight">
                     <span className="highlight-year num">{a.year}</span>
@@ -602,8 +605,8 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
               Add a bio
             </p>
           ) : null}
-          {player.strengths.length ? (
-            <div className="strength-row">
+          {player.strengths.length || editing ? (
+            <div className="strength-row" data-cms="player.strengths" data-cms-id={player.id}>
               {player.strengths.map((s) => (
                 <span key={s} className="tag">{s}</span>
               ))}
@@ -1479,9 +1482,11 @@ function Scouting({ player }: { player: Player }) {
         <div className="card-head">
           <div>
             <div className="eyebrow">Scouting report</div>
-            <h3 className="card-title">{player.scouting.author}</h3>
+            <h3 className="card-title" data-cms="player.scouting.author" data-cms-id={player.id}>{player.scouting.author}</h3>
           </div>
-          <span className="muted small">{fmtDate(player.scouting.date)}</span>
+          <span className="muted small" data-cms="player.scouting.date" data-cms-id={player.id} data-cms-value={player.scouting.date}>
+            {fmtDate(player.scouting.date)}
+          </span>
         </div>
         <p className="prose lead" data-cms="player.scouting.report" data-cms-id={player.id}>{player.scouting.report}</p>
         <div className="strength-row">

@@ -301,6 +301,12 @@ export async function signOut() {
 
 /* --------------------------------- helpers -------------------------------- */
 
+/** The current value of a field on an entity — what a structured editor starts from. */
+export function fieldValueOf(entity: EntityType, id: string, path: string): unknown {
+  const obj = entityObject(entity, id);
+  return obj ? fieldValue(obj, path) : undefined;
+}
+
 const fieldValue = (obj: unknown, path: string): unknown => {
   let cur: unknown = obj;
   for (const part of path.split(".")) {

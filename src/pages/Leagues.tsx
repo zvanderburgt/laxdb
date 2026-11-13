@@ -593,8 +593,8 @@ export function LeaguePage() {
                 <span className="tag">{league.type === "box" ? "Box lacrosse" : "Field lacrosse"}</span>
                 <span className="tag">{league.country}</span>
               </div>
-              <h1>{league.name}</h1>
-              <p className="muted">{league.level} · {teams.length} teams · {pool.length} players tracked</p>
+              <h1 data-cms="league.name" data-cms-id={league.id}>{league.name}</h1>
+              <p className="muted"><span data-cms="league.level" data-cms-id={league.id}>{league.level}</span> · {teams.length} teams · {pool.length} players tracked</p>
             </div>
           </div>
           <div className="profile-stats">
