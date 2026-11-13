@@ -58,7 +58,7 @@ def norm(text: str) -> str:
 
 
 def name_key(text: str) -> str:
-    key = re.sub(r"\([^)]*\)", " ", norm(text))
+    key = norm(re.sub(r"\([^)]*\)", " ", text or ""))
     return re.sub(r"\s+", " ", re.sub(r"\b(jr|sr|ii|iii|iv)\b", " ", key)).strip()
 
 

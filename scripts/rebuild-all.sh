@@ -26,6 +26,9 @@ python3 scripts/fetch-d1-rosters.py --apply || true
 echo "── box bios (GameSheet: dob, hometown, height/weight, jersey, photos, club logos)"
 python3 scripts/fetch-gamesheet.py --apply || true
 
+echo "── handedness + birth dates from Wikipedia lacrosse infoboxes"
+python3 scripts/fetch-wikipedia-hands.py --apply || true
+
 echo "── 2026 rosters from saved GameSheet league pages (data/gs-pages)"
 python3 scripts/import-gs-pages.py --apply || true
 
