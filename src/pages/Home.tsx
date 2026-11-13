@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, navigate } from "../lib/app";
 import {
   careerTotals,
@@ -74,14 +74,81 @@ export default function Home() {
   }, []);
 
   const [spot, setSpot] = useState(0);
+  const [dir, setDir] = useState<1 | -1>(1);
   const [paused, setPaused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  // manual moves restart the autoplay clock instead of waiting out the old interval
+  const [tick, setTick] = useState(0);
+  const count = spotlight.length;
 
   useEffect(() => {
-    if (paused || spotlight.length < 2) return;
+    if (paused || dragging || count < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = window.setInterval(() => setSpot((i) => (i + 1) % spotlight.length), 6500);
+    const id = window.setInterval(() => {
+      setDir(1);
+      setSpot((i) => (i + 1) % count);
+    }, 6500);
     return () => window.clearInterval(id);
-  }, [paused, spotlight.length]);
+  }, [paused, dragging, count, tick]);
+
+  const go = useCallback(
+    (delta: number) => {
+      if (count < 2) return;
+      setDir(delta > 0 ? 1 : -1);
+      setSpot((i) => (i + delta + count) % count);
+      setTick((t) => t + 1);
+    },
+    [count]
+  );
+
+  // one pointer drag = one slide. touch-action: pan-y on the wrapper lets the page
+  // scroll vertically while horizontal drags arrive here.
+  const drag = useRef<{ x: number; y: number; id: number; live: boolean } | null>(null);
+  const swallowClick = useRef(0);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if ((e.target as HTMLElement).closest("button")) return;
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, live: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.live && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+      d.live = true;
+      setDragging(true);
+      // capture so a fast flick that leaves the card still lands as one gesture
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* a synthetic or already-released pointer cannot be captured; the
+           drag still works while the pointer stays over the card */
+      }
+    }
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || d.id !== e.pointerId) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.live) return;
+    setDragging(false);
+    // the card holds links: a drag that ends over one must not navigate
+    swallowClick.current = performance.now() + 350;
+    if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.2) go(dx < 0 ? 1 : -1);
+  };
+
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (performance.now() < swallowClick.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   const current = spotlight[spot % Math.max(spotlight.length, 1)];
 
@@ -132,15 +199,62 @@ export default function Home() {
           {current ? (
             <div className="hero-visual reveal">
               <div
-                className="hv-rotate"
+                className={`hv-rotate${dir < 0 ? " dir-prev" : ""}${dragging ? " is-dragging" : ""}`}
+                role="group"
+                aria-roledescription="carousel"
+                aria-label={`Featured players, slide ${spot + 1} of ${count}`}
                 onMouseEnter={() => setPaused(true)}
                 onMouseLeave={() => setPaused(false)}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onClickCapture={onClickCapture}
+                onDragStart={(e) => e.preventDefault()}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight") {
+                    e.preventDefault();
+                    go(1);
+                  } else if (e.key === "ArrowLeft") {
+                    e.preventDefault();
+                    go(-1);
+                  }
+                }}
               >
-                {current ? <HeroCard key={current.id} player={current} /> : null}
-                <div className="hv-dots" aria-hidden="true">
-                  {spotlight.map((p, i) => (
-                    <span key={p.id} className={"hv-dot" + (i === spot ? " on" : "")} />
-                  ))}
+                <HeroCard key={current.id} player={current} />
+                <div className="hv-nav">
+                  <button
+                    type="button"
+                    className="hv-arrow"
+                    aria-label="Previous featured player"
+                    onClick={() => go(-1)}
+                  >
+                    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                      <path d="M12.5 4.5L7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <div className="hv-dots">
+                    {spotlight.map((p, i) => (
+                      <button
+                        type="button"
+                        key={p.id}
+                        className={"hv-dot" + (i === spot ? " on" : "")}
+                        aria-label={`Show ${p.name}`}
+                        aria-current={i === spot ? "true" : undefined}
+                        onClick={() => go(i - spot)}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="hv-arrow"
+                    aria-label="Next featured player"
+                    onClick={() => go(1)}
+                  >
+                    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                      <path d="M7.5 4.5L13 10l-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div className="hv-mini">
