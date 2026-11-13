@@ -251,9 +251,11 @@ def main():
             clubs = {norm(teams.get(s["teamId"], {}).get("name", "")) for s in p["seasons"]} | {
                 norm(teams.get(s["teamId"], {}).get("shortName", "")) for s in p["seasons"]
             }
-            # a shared name is not identity: the club must appear in his career
+            # a shared name is not identity: the club must appear in his career, or the
+            # birth date on the page must match the one we already hold
             if club and club not in clubs and not any(c and (c in club or club in c) for c in clubs):
-                continue
+                if not (row.get("dob") and p.get("dob") == row["dob"]):
+                    continue
             touched = False
             for field in ("dob", "heightIn", "weightLb", "jersey"):
                 if row.get(field) and not p.get(field):
