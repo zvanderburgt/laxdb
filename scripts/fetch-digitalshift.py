@@ -35,24 +35,34 @@ import cdp  # noqa: E402
 DATA = os.path.join(ROOT, "public", "data.json")
 CACHE = os.path.join(ROOT, "scripts", ".cache", "ds")
 
-# our league id -> (site, our season label)
+# our league id -> (site, optional entry path that already scopes the league)
+# A domain that 301s to another host cannot be scraped here; the entry path is for sites
+# whose league route is not linked from the root page (PNWJLL hides its division behind it).
 LEAGUES = {
-    "nf-bcjall": "https://www.bcjall.com",
-    "nf-wcjll": "https://www.wcjll.com",
-    "nf-tojll": "https://www.tojll.com",
-    "nf-pnwjll": "https://www.pnwjll.com",
-    "nf-rmll-junior-b-tier-1": "https://www.rmll.ca",
-    "nf-rmll-junior-b-tier-2": "https://www.rmll.ca",
-    "nf-rmll-senior-b": "https://www.rmll.ca",
-    "nf-wla": "https://www.wla.ca",
+    "nf-bcjall": ("https://www.bcjall.com", None),
+    "nf-pnwjll": ("https://www.pnwjll.com", "/stats#/675/teams?division_id=51261"),
+    # these three only redirect to canadianlacrosseleague.com; see docs/deferred-sources.md
+    "nf-wcjll": ("https://www.wcjll.com", None),
+    "nf-tojll": ("https://www.tojll.com", None),
+    "nf-rmll-junior-b-tier-1": ("https://www.rmll.ca", None),
+    "nf-rmll-junior-b-tier-2": ("https://www.rmll.ca", None),
+    "nf-rmll-senior-b": ("https://www.rmll.ca", None),
+    "nf-wla": ("https://www.wla.ca", None),
 }
 
 READ_ROSTER = """
 (() => {
   const tables = [...document.querySelectorAll('table')];
-  const t = tables.find(x => {
+  // prefer the extended roster, but accept a plain name/position table too: that is the
+  // honest answer for a league that publishes no bios, and it shows up as 0 filled rather
+  // than as a silent failure
+  const rich = tables.filter(x => {
     const head = [...x.querySelectorAll('th')].map(h => h.innerText.trim().toLowerCase()).join('|');
     return head.includes('name') && (head.includes('height') || head.includes('hometown'));
+  });
+  const t = rich[0] || tables.find(x => {
+    const head = [...x.querySelectorAll('th')].map(h => h.innerText.trim().toLowerCase()).join('|');
+    return head.includes('name') && head.includes('pos');
   });
   if (!t) return null;
   const heads = [...t.querySelectorAll('thead th')].map(h => h.innerText.trim());
@@ -61,6 +71,12 @@ READ_ROSTER = """
   ).filter(r => r.length > 3);
   return {heads, rows};
 })()
+"""
+
+TEAMS_LINKS = """
+(() => [...new Set([...document.querySelectorAll('a')]
+  .map(a => a.getAttribute('href'))
+  .filter(h => h && /#\\/\\d+\\/teams/.test(h)))])
 """
 
 TEAM_LINKS = """
@@ -108,7 +124,7 @@ def hand_of(text: str) -> str:
     return ""
 
 
-async def scrape(site: str, refresh: bool) -> tuple[list[dict], int]:
+async def scrape(site: str, refresh: bool, entry: str | None = None) -> tuple[list[dict], int]:
     slug = re.sub(r"[^a-z0-9]+", "-", site.split("//")[1]).strip("-")
     path = os.path.join(CACHE, f"{slug}.json")
     if os.path.exists(path) and not refresh:
@@ -116,23 +132,33 @@ async def scrape(site: str, refresh: bool) -> tuple[list[dict], int]:
             payload = json.load(f)
         return payload["players"], payload.get("teams", 0)
 
-    page = await cdp.open_page(site, wait=4.0)
+    page = await cdp.open_page(site + entry if entry else site, wait=10.0)
     players: list[dict] = []
     teams = 0
     try:
-        links = await page.eval("""(() => [...document.querySelectorAll('a')]
-            .map(a => a.getAttribute('href'))
-            .filter(h => h && /#\\/\\d+\\/teams/.test(h)))()""") or []
-        teams_url = site + (links[0] if links else "/stats#/teams")
-        await page.goto(teams_url, wait=5.0)
-        roster_links = await page.eval(TEAM_LINKS) or []
+        # the league-scoped teams route is not always linked from the root page
+        teams_links = await page.eval(TEAMS_LINKS) or []
+        if not teams_links and not entry:
+            await page.goto(site + "/stats", wait=6.0)
+            teams_links = await page.eval(TEAMS_LINKS) or []
+        roster_links: list[str] = []
+        if teams_links:
+            await page.goto(site + teams_links[0], wait=6.0)
+            roster_links = await page.eval(TEAM_LINKS) or []
+        if not roster_links:
+            # fall back to whatever roster links the current page already exposes
+            roster_links = await page.eval(TEAM_LINKS) or []
+        if not roster_links:
+            # one more settle: this platform lazily paints the team grid
+            await asyncio.sleep(6)
+            roster_links = await page.eval(TEAM_LINKS) or []
         for href in roster_links:
             table = None
             # the hash-routed app paints the table a beat after load; retry once rather
             # than silently dropping the club from the pass
             # the hash route repaints a couple of seconds after the shell loads; below
             # ~7s half the clubs come back with no table at all
-            for wait in (8.0, 10.0):
+            for wait in (9.0, 12.0):
                 await page.goto(site + href, wait=wait)
                 table = await page.eval(READ_ROSTER)
                 if table:
@@ -175,10 +201,11 @@ async def main_async(args) -> int:
         by_name[name_key(p["name"])].append(p)
 
     filled = defaultdict(int)
-    for league_id, site in LEAGUES.items():
+    for league_id, cfg in LEAGUES.items():
         if args.league and args.league != league_id:
             continue
-        rows, teams = await scrape(site, args.refresh)
+        site, entry = cfg
+        rows, teams = await scrape(site, args.refresh, entry)
         if not rows:
             print(f"  {league_id}: no roster rows ({site})")
             continue

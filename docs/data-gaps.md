@@ -186,17 +186,24 @@ players now have it, split 74 left / 74 right.
 8 clubs read, 228 riders, 211 matched. Our dataset lists 16 BCJALL clubs because it keeps
 the defunct ones; the league currently fields 8.
 
-### The other six leagues redirect
+### The other six leagues: mapped, and the answer is "not configured for bios"
 
-`wcjll.com`, `tojll.com`, `rmll.ca` and `wla.ca` all 301 to
-**canadianlacrosseleague.com**, one umbrella platform. Its teams live behind
-`#/<league>/teams?division_id=<n>`, so each of our leagues needs its division id mapped
-before its rosters can be read. The scraper already handles everything after that point.
+Each one was checked, not assumed:
 
-**Next:** enumerate the umbrella site's divisions, map WCJLL / TOJLL / PNWJLL / RMLL Jr B
-T-I, T-II, RMLL Sr B and WLA to their ids, and let `fetch-digitalshift.py` run per
-division. Expected: the same shape of win as BCJALL — height, weight, hometown and
-handedness for ~2,000 more players, plus club logos off the same pages.
+| league | what the domain does | result |
+| --- | --- | --- |
+| PNWJLL | still serves its own platform (league 675) | roster table is `# · Name · POS` — **no bio columns**. 7 clubs, 44 riders read, 0 fillable |
+| WCJLL, TOJLL, RMLL Jr B T-I/T-II, RMLL Sr B | 301 to `canadianlacrosseleague.com` | the umbrella site exposes no league index — only league 188, an international competition — and its stats route rejects our ids |
+| WLA | does not answer (60-byte response, TLS failure) | no route |
+
+So the extended roster table is a **per-league configuration** on that platform, not a
+platform feature: BCJALL switched it on, PNWJLL did not, and the redirected leagues cannot
+be addressed at all. The scraper keeps the entry-path plumbing (`LEAGUES` is now
+`(site, entry_path)`) so a league that turns bios on can be picked up with one line, and a
+plain `# · Name · POS` table now reports "0 filled" instead of looking like a crash.
+
+**What's left for these leagues:** the data has to come from the league itself — the
+configuration is on their side.
 
 ---
 

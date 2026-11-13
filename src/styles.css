@@ -1351,6 +1351,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   background: var(--card);
   border: 1px solid var(--hairline);
   border-radius: 18px;
+  border-color: var(--hairline-strong);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   animation: pop 0.22s var(--ease) both;
@@ -1591,12 +1592,8 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .form-strip { border-top: 1px solid var(--line); padding-top: 10px; }
 }
 
-/* six nav items need a tighter header before the mobile breakpoint */
-@media (max-width: 1000px) {
-  .nav-links { gap: 0; }
-  .nav-link { padding: 6px 8px; font-size: 12.8px; }
-  .nav-link[href="#/history"], .nav-link[href="#/my-roster"] { display: none; }
-}
+/* dead once the link row started collapsing at 1060: the two-link drop only ever
+   applied from 901 to 1000, where the row no longer exists */
 
 /* history page: keep the long champions list from towering over the rail */
 .history-scroll { max-height: 520px; overflow-y: auto; }
@@ -1996,9 +1993,10 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
    (the search field and the chip grid) was forcing the page 36px wider */
 .hero-inner > * { min-width: 0; }
 
-/* the nav only collapsed at 760px, but nine links plus the search field stop
-   fitting around 860 — 768 to 860 overflowed the viewport by ~21px */
-@media (max-width: 900px) {
+/* the nav collapses at 1060, not 900: nine links plus the search field need
+   ~990px of content, so 1001–1040 overflowed the viewport by up to 21px once the
+   link row came back. The hamburger carries every route below the breakpoint. */
+@media (max-width: 1060px) {
   .nav-links { display: none; }
   .searchbtn-text, .searchbtn kbd { display: none; }
   .searchbtn { padding: 0 9px; }
@@ -2254,20 +2252,20 @@ a.vs-team:hover { color: var(--accent); }
 }
 
 /* ------------------------------ mobile menu ------------------------------ */
-/* Below 900px the desktop link row is hidden and only search was left in the
+/* Below 1060px the desktop link row is hidden and only search was left in the
    header, so the nine routes were unreachable without the command palette.
    The trigger sits beside the theme toggle; the sheet drops below the bar and
    closes on route change, Escape or a tap on the scrim. */
 
 .menubtn { display: none; }
-.menubtn.is-open { color: var(--text); border-color: var(--hairline-strong); background: var(--hover); }
+.menubtn.is-open { color: var(--text); border-color: var(--hairline-strong); background: var(--surface-2); }
 
 .menu-scrim {
   position: fixed;
   inset: 54px 0 0;
   z-index: 70;
-  background: rgba(0, 0, 0, 0.2);
-  animation: fade 0.16s ease both;
+  background: rgba(0, 0, 0, 0.28);
+  animation: fade 0.16s ease;
 }
 
 .mobile-menu {
@@ -2283,8 +2281,11 @@ a.vs-team:hover { color: var(--accent); }
   background: var(--card);
   border: 1px solid var(--hairline);
   border-radius: 18px;
+  border-color: var(--hairline-strong);
   box-shadow: var(--shadow-lg);
-  animation: pop 0.2s var(--ease) both;
+  /* no fill mode: a throttled headless browser never ticks the animation and
+     "both" would pin the sheet at the 0-opacity start */
+  animation: pop 0.2s var(--ease);
 }
 .menu-item {
   display: flex;
@@ -2302,13 +2303,172 @@ a.vs-team:hover { color: var(--accent); }
 .menu-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-item .nav-count { margin-left: auto; }
 
-@media (max-width: 900px) {
+@media (max-width: 1060px) {
   .menubtn { display: inline-grid; }
+  /* the label is hidden here, so this control has to be a square holding a
+     centred glyph: as an auto-width flex row it rendered 35×32 with the 15px
+     icon 10px from one edge and 15px from the other, beside two 32px squares */
+  .searchbtn { justify-content: center; padding: 0; }
+  .searchbtn svg { width: 17px; height: 17px; }
+}
+@media (min-width: 641px) and (max-width: 1060px) {
+  .searchbtn { width: 32px; height: 32px; }
 }
 @media (max-width: 640px) {
   .mobile-menu { left: 16px; right: 16px; }
 }
 /* the sheet must not survive a resize past the breakpoint where the trigger hides */
-@media (min-width: 901px) {
+@media (min-width: 1061px) {
   .mobile-menu, .menu-scrim { display: none; }
+}
+
+/* the season-by-season stats table ran to thirteen columns and scrolled sideways on a
+   phone, so it is the roster's grid list instead: one line per season above 640px, and a
+   two-row block below it with every stat labelled under its value. */
+.season-head,
+.season-row {
+  display: grid;
+  grid-template-columns: 56px minmax(96px, 1fr) 66px minmax(0, 2.6fr);
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+.season-head {
+  min-height: 38px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.season-row {
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.season-row:last-child { border-bottom: 0; }
+.season-row:hover { background: var(--hover); }
+.season-year { font-weight: 550; letter-spacing: -0.01em; }
+.season-team { min-width: 0; }
+.season-team .team-link { max-width: 100%; }
+.season-team .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-league { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.season-cells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 4px;
+  font-size: 13px;
+  text-align: right;
+}
+.season-cells b { font-weight: 500; }
+.season-cells b.strong { font-weight: 600; }
+.season-cells i { display: none; font-style: normal; }
+
+/* the totals row carries a caption where a season would be, so it is not a season */
+.season-row.season-total {
+  background: var(--bg-soft);
+  border-top: 1px solid var(--hairline-strong);
+  font-size: 13px;
+}
+.season-total .season-year { grid-column: 1 / span 3; }
+.season-total .season-team,
+.season-total .season-league { display: none; }
+.season-total .season-cells { grid-column: 4; }
+
+/* twelve stat columns plus season, team and league never fit on one line in a 724px
+   card, so a wide season keeps the labelled block at every width and gives the stats
+   their own full-width line. Nothing clips and nothing scrolls sideways. */
+@media (min-width: 641px) {
+  .season-board.is-wide .season-head { display: none; }
+  .season-board.is-wide .season-row {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "year league team"
+      "cells cells cells";
+    row-gap: 10px;
+    padding: 12px 20px;
+  }
+  .season-board.is-wide .season-year { grid-area: year; }
+  .season-board.is-wide .season-league { grid-area: league; white-space: nowrap; }
+  .season-board.is-wide .season-league::before { content: "\00b7\00a0"; }
+  .season-board.is-wide .season-league:empty { display: none; }
+  .season-board.is-wide .season-team { grid-area: team; justify-self: end; text-align: right; }
+  .season-board.is-wide .season-cells {
+    grid-area: cells;
+    grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--hairline);
+    text-align: left;
+  }
+  .season-board.is-wide .season-cells > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .season-board.is-wide .season-cells i {
+    display: block;
+    order: 2;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+  }
+  .season-board.is-wide .season-row.season-total {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "year"
+      "cells";
+  }
+  .season-board.is-wide .season-total .season-year { grid-area: year; grid-column: auto; }
+  .season-board.is-wide .season-total .season-cells { grid-area: cells; grid-column: auto; border-top: 0; padding-top: 4px; }
+}
+
+@media (max-width: 640px) {
+  .season-head { display: none; }
+  .season-row {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "year league team"
+      "cells cells cells";
+    row-gap: 10px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  .season-year { grid-area: year; }
+  .season-league { grid-area: league; white-space: nowrap; }
+  .season-league::before { content: "\00b7\00a0"; }
+  .season-league:empty { display: none; }
+  .season-team { grid-area: team; justify-self: end; text-align: right; }
+  .season-cells {
+    grid-area: cells;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--hairline);
+    text-align: left;
+  }
+  .season-cells > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .season-cells b { font-size: 14.5px; }
+  .season-cells i {
+    display: block;
+    order: 2;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+  }
+  .season-row.season-total {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "year"
+      "cells";
+  }
+  .season-total .season-year { grid-area: year; grid-column: auto; }
+  .season-total .season-team,
+  .season-total .season-league { display: none; }
+  .season-total .season-cells {
+    grid-area: cells;
+    grid-column: auto;
+    border-top: 0;
+    padding-top: 4px;
+  }
 }

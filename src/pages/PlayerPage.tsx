@@ -675,6 +675,74 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
   );
 }
 
+type SeasonCellData = { label: string; value: React.ReactNode; strong?: boolean };
+
+type SeasonLineData = {
+  key: string;
+  season: string;
+  league: string;
+  team: React.ReactNode;
+  cells: SeasonCellData[];
+};
+
+/**
+ * Season-by-season rows. A fifteen-column table cannot fit a phone, so this is a grid
+ * list in the roster's shape: one line per season above 640px, a two-row block below
+ * it with the stat labels printed under each value. No sideways scrolling either way.
+ */
+function SeasonBoard({
+  lines,
+  totals,
+  totalCaption,
+}: {
+  lines: SeasonLineData[];
+  totals: SeasonCellData[];
+  totalCaption: string;
+}) {
+  return (
+    <div className={`season-board${totals.length >= 10 ? " is-wide" : ""}`}>
+      <div className="season-head" aria-hidden="true">
+        <span>Season</span>
+        <span>Team</span>
+        <span>League</span>
+        <span className="season-cells">
+          {totals.map((c) => (
+            <span key={c.label}>{c.label}</span>
+          ))}
+        </span>
+      </div>
+      {lines.map((ln) => (
+        <div className="season-row" key={ln.key}>
+          <span className="season-year num">{ln.season}</span>
+          <span className="season-team">{ln.team}</span>
+          <span className="season-league muted">{ln.league}</span>
+          <span className="season-cells">
+            {ln.cells.map((c) => (
+              <span key={c.label}>
+                <b className={c.strong ? "num strong" : "num"}>{c.value}</b>
+                <i>{c.label}</i>
+              </span>
+            ))}
+          </span>
+        </div>
+      ))}
+      <div className="season-row season-total">
+        <span className="season-year strong">{totalCaption}</span>
+        <span className="season-team" />
+        <span className="season-league" />
+        <span className="season-cells">
+          {totals.map((c) => (
+            <span key={c.label}>
+              <b className="num strong">{c.value}</b>
+              <i>{c.label}</i>
+            </span>
+          ))}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function StatsTab({ player }: { player: Player }) {
   const [scope, setScope] = useState<string>("all");
   const [perGame, setPerGame] = useState<"total" | "game">("total");
@@ -752,163 +820,116 @@ function StatsTab({ player }: { player: Player }) {
           </button>
         </div>
       </div>
-      <div className="table-scroll">
-        <table className="data-table stats-table">
-          <thead>
-            <tr>
-              <th>Season</th>
-              <th>Team</th>
-              <th>League</th>
-              <th className="r">GP</th>
-              <th className="r">GS</th>
-              {isGoal ? (
-                isBox ? (
-                  <>
-                    <th className="r">W</th>
-                    <th className="r">L</th>
-                    <th className="r">GAA</th>
-                    <th className="r">SV%</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="r">MIN</th>
-                    <th className="r">GA</th>
-                    <th className="r">GAA</th>
-                    <th className="r">SV</th>
-                    <th className="r">SV%</th>
-                    <th className="r">W–L</th>
-                  </>
-                )
-              ) : isBox ? (
-                <>
-                  <th className="r">G</th>
-                  <th className="r">AST</th>
-                  <th className="r">PTS</th>
-                  <th className="r">PIM</th>
-                </>
-              ) : (
-                <>
-                  <th className="r">G</th>
-                  <th className="r">AST</th>
-                  <th className="r">PTS</th>
-                  <th className="r">SH</th>
-                  <th className="r">SH%</th>
-                  <th className="r">GB</th>
-                  <th className="r">TO</th>
-                  <th className="r">CT</th>
-                  <th className="r">FO%</th>
-                  <th className="r">PIM</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s, i) => {
-              const l = leagueById.get(s.leagueId);
-              const isBoxRow = l?.type === "box";
-              return (
-                <tr key={`${s.season}-${s.teamId}-${i}`}>
-                  <td className="num strong">{s.season}</td>
-                  <td>
-                    <Link to={`/team/${teamById.get(s.teamId)?.slug}`} className="team-link">
-                      <span className="team-dot" style={{ background: teamById.get(s.teamId)?.colors[0] }} />
-                      {teamById.get(s.teamId)?.shortName}
-                    </Link>
-                  </td>
-                  <td className="muted small">{l?.short}</td>
-                  <td className="r num">{s.gp}</td>
-                  <td className="r num">{s.gs}</td>
-                  {isGoal ? (
-                    isBoxRow ? (
-                      <>
-                        <td className="r num">{s.w}</td>
-                        <td className="r num">{s.l}</td>
-                        <td className="r num">{s.gaa ? s.gaa.toFixed(2) : "—"}</td>
-                        <td className="r num">{s.svp ? s.svp.toFixed(3).replace(/^0/, "") : "—"}</td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="r num">{s.min}</td>
-                        <td className="r num">{s.ga}</td>
-                        <td className="r num">{s.min ? ((s.ga * 60) / s.min).toFixed(2) : "—"}</td>
-                        <td className="r num">{s.sv}</td>
-                        <td className="r num">{s.sv + s.ga ? (s.sv / (s.sv + s.ga)).toFixed(3).replace(/^0/, "") : "—"}</td>
-                        <td className="r num">{s.w}–{s.l}</td>
-                      </>
-                    )
-                  ) : isBoxRow ? (
-                    <>
-                      <td className="r num">{val(s.g, s.gp)}</td>
-                      <td className="r num">{val(s.a, s.gp)}</td>
-                      <td className="r num strong">{val(s.pts ?? 0, s.gp)}</td>
-                      <td className="r num">{val(s.pen, s.gp)}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="r num">{val(s.g, s.gp)}</td>
-                      <td className="r num">{val(s.a, s.gp)}</td>
-                      <td className="r num strong">{val(s.pts ?? 0, s.gp)}</td>
-                      <td className="r num">{val(s.sh, s.gp)}</td>
-                      <td className="r num">{s.sh ? ((s.g / s.sh) * 100).toFixed(1) : "—"}</td>
-                      <td className="r num">{val(s.gb, s.gp)}</td>
-                      <td className="r num">{val(s.to, s.gp)}</td>
-                      <td className="r num">{val(s.ct, s.gp)}</td>
-                      <td className="r num">{s.foA ? (s.foW / s.foA).toFixed(3).replace(/^0/, "") : "—"}</td>
-                      <td className="r num">{val(s.pen, s.gp)}</td>
-                    </>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={3} className="strong">Career totals</td>
-              <td className="r num strong">{totals.gp}</td>
-              <td className="r num strong">{rows.reduce((n, s) => n + s.gs, 0)}</td>
-              {isGoal ? (
-                isBox ? (
-                  <>
-                    <td className="r num strong">{totals.w}</td>
-                    <td className="r num strong">{totals.l}</td>
-                    <td className="r num strong">{totals.gaa ? totals.gaa.toFixed(2) : "—"}</td>
-                    <td className="r num strong">{totals.svp ? totals.svp.toFixed(3).replace(/^0/, "") : "—"}</td>
-                  </>
-                ) : (
-                  <>
-                    <td className="r num strong">{totals.min}</td>
-                    <td className="r num strong">{totals.ga}</td>
-                    <td className="r num strong">{totals.gaa.toFixed(2)}</td>
-                    <td className="r num strong">{totals.sv}</td>
-                    <td className="r num strong">{totals.svp.toFixed(3).replace(/^0/, "")}</td>
-                    <td className="r num strong">{totals.w}–{totals.l}</td>
-                  </>
-                )
-              ) : isBox ? (
-                <>
-                  <td className="r num strong">{val(totals.g, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.a, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.pts, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.pen, totals.gp)}</td>
-                </>
-              ) : (
-                <>
-                  <td className="r num strong">{val(totals.g, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.a, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.pts, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.sh, totals.gp)}</td>
-                  <td className="r num strong">{totals.sh ? ((totals.g / totals.sh) * 100).toFixed(1) : "—"}</td>
-                  <td className="r num strong">{val(totals.gb, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.to, totals.gp)}</td>
-                  <td className="r num strong">{val(totals.ct, totals.gp)}</td>
-                  <td className="r num strong">{totals.fop ? totals.fop.toFixed(3).replace(/^0/, "") : "—"}</td>
-                  <td className="r num strong">{val(totals.pen, totals.gp)}</td>
-                </>
-              )}
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      <SeasonBoard
+        lines={rows.map((s, i) => {
+          const l = leagueById.get(s.leagueId);
+          const rowBox = l?.type === "box";
+          const t = teamById.get(s.teamId);
+          const cells: SeasonCellData[] = isGoal
+            ? rowBox
+              ? [
+                  { label: "GP", value: s.gp },
+                  { label: "GS", value: s.gs },
+                  { label: "W", value: s.w },
+                  { label: "L", value: s.l },
+                  { label: "GAA", value: s.gaa ? s.gaa.toFixed(2) : "\u2014" },
+                  { label: "SV%", value: s.svp ? s.svp.toFixed(3).replace(/^0/, "") : "\u2014" },
+                ]
+              : [
+                  { label: "GP", value: s.gp },
+                  { label: "GS", value: s.gs },
+                  { label: "MIN", value: s.min },
+                  { label: "GA", value: s.ga },
+                  { label: "GAA", value: s.min ? ((s.ga * 60) / s.min).toFixed(2) : "\u2014" },
+                  { label: "SV", value: s.sv },
+                  { label: "SV%", value: s.sv + s.ga ? (s.sv / (s.sv + s.ga)).toFixed(3).replace(/^0/, "") : "\u2014" },
+                  { label: "W\u2013L", value: `${s.w}\u2013${s.l}` },
+                ]
+            : rowBox
+              ? [
+                  { label: "GP", value: s.gp },
+                  { label: "GS", value: s.gs },
+                  { label: "G", value: val(s.g, s.gp) },
+                  { label: "AST", value: val(s.a, s.gp) },
+                  { label: "PTS", value: val(s.pts ?? 0, s.gp), strong: true },
+                  { label: "PIM", value: val(s.pen, s.gp) },
+                ]
+              : [
+                  { label: "GP", value: s.gp },
+                  { label: "GS", value: s.gs },
+                  { label: "G", value: val(s.g, s.gp) },
+                  { label: "AST", value: val(s.a, s.gp) },
+                  { label: "PTS", value: val(s.pts ?? 0, s.gp), strong: true },
+                  { label: "SH", value: val(s.sh, s.gp) },
+                  { label: "SH%", value: s.sh ? ((s.g / s.sh) * 100).toFixed(1) : "\u2014" },
+                  { label: "GB", value: val(s.gb, s.gp) },
+                  { label: "TO", value: val(s.to, s.gp) },
+                  { label: "CT", value: val(s.ct, s.gp) },
+                  { label: "FO%", value: s.foA ? (s.foW / s.foA).toFixed(3).replace(/^0/, "") : "\u2014" },
+                  { label: "PIM", value: val(s.pen, s.gp) },
+                ];
+          return {
+            key: `${s.season}-${s.teamId}-${i}`,
+            season: s.season,
+            league: l?.short ?? "",
+            team: t ? (
+              <Link to={`/team/${t.slug}`} className="team-link">
+                <span className="team-dot" style={{ background: t.colors[0] }} />
+                <span className="team-name">{t.shortName}</span>
+              </Link>
+            ) : (
+              s.teamId
+            ),
+            cells,
+          };
+        })}
+        totals={
+          isGoal
+            ? isBox
+              ? [
+                  { label: "GP", value: totals.gp },
+                  { label: "GS", value: rows.reduce((n, s) => n + s.gs, 0) },
+                  { label: "W", value: totals.w },
+                  { label: "L", value: totals.l },
+                  { label: "GAA", value: totals.gaa ? totals.gaa.toFixed(2) : "\u2014" },
+                  { label: "SV%", value: totals.svp ? totals.svp.toFixed(3).replace(/^0/, "") : "\u2014" },
+                ]
+              : [
+                  { label: "GP", value: totals.gp },
+                  { label: "GS", value: rows.reduce((n, s) => n + s.gs, 0) },
+                  { label: "MIN", value: totals.min },
+                  { label: "GA", value: totals.ga },
+                  { label: "GAA", value: totals.gaa.toFixed(2) },
+                  { label: "SV", value: totals.sv },
+                  { label: "SV%", value: totals.svp.toFixed(3).replace(/^0/, "") },
+                  { label: "W\u2013L", value: `${totals.w}\u2013${totals.l}` },
+                ]
+            : isBox
+              ? [
+                  { label: "GP", value: totals.gp },
+                  { label: "GS", value: rows.reduce((n, s) => n + s.gs, 0) },
+                  { label: "G", value: val(totals.g, totals.gp) },
+                  { label: "AST", value: val(totals.a, totals.gp) },
+                  { label: "PTS", value: val(totals.pts, totals.gp) },
+                  { label: "PIM", value: val(totals.pen, totals.gp) },
+                ]
+              : [
+                  { label: "GP", value: totals.gp },
+                  { label: "GS", value: rows.reduce((n, s) => n + s.gs, 0) },
+                  { label: "G", value: val(totals.g, totals.gp) },
+                  { label: "AST", value: val(totals.a, totals.gp) },
+                  { label: "PTS", value: val(totals.pts, totals.gp) },
+                  { label: "SH", value: val(totals.sh, totals.gp) },
+                  { label: "SH%", value: totals.sh ? ((totals.g / totals.sh) * 100).toFixed(1) : "\u2014" },
+                  { label: "GB", value: val(totals.gb, totals.gp) },
+                  { label: "TO", value: val(totals.to, totals.gp) },
+                  { label: "CT", value: val(totals.ct, totals.gp) },
+                  { label: "FO%", value: totals.fop ? totals.fop.toFixed(3).replace(/^0/, "") : "\u2014" },
+                  { label: "PIM", value: val(totals.pen, totals.gp) },
+                ]
+        }
+        totalCaption="Career totals"
+      />
       {player.careerLine && player.careerLine.gp > 0 ? (
         <div className="table-note">
           <strong>League career</strong> ({player.careerLine.seasons}{" "}
@@ -958,58 +979,40 @@ function MixedStats({ player }: { player: Player }) {
           </select>
         </div>
       </div>
-      <div className="table-scroll">
-        <table className="data-table stats-table">
-          <thead>
-            <tr>
-              <th>Season</th>
-              <th>Team</th>
-              <th>League</th>
-              <th className="r">GP</th>
-              <th className="r">G</th>
-              <th className="r">AST</th>
-              <th className="r">PTS</th>
-              <th className="r">PIM</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s, i) => {
-              const l = leagueById.get(s.leagueId);
-              const team = teamById.get(s.teamId);
-              return (
-                <tr key={`${s.season}-${s.teamId}-${i}`}>
-                  <td className="num">{s.season}</td>
-                  <td>
-                    {team ? (
-                      <Link to={`/team/${team.slug}`} className="team-link">
-                        {team.shortName}
-                      </Link>
-                    ) : (
-                      s.teamId
-                    )}
-                  </td>
-                  <td className="muted small">{l?.short ?? s.leagueId}</td>
-                  <td className="r num">{s.gp}</td>
-                  <td className="r num">{s.g}</td>
-                  <td className="r num">{s.a}</td>
-                  <td className="r num strong">{s.pts ?? s.g + s.a}</td>
-                  <td className="r num">{s.pen ?? "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={3} className="strong">Career totals</td>
-              <td className="r num strong">{totals.gp}</td>
-              <td className="r num strong">{totals.g}</td>
-              <td className="r num strong">{totals.a}</td>
-              <td className="r num strong">{totals.pts}</td>
-              <td className="r num strong">{totals.pen}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+      <SeasonBoard
+        lines={rows.map((s, i) => {
+          const l = leagueById.get(s.leagueId);
+          const t = teamById.get(s.teamId);
+          return {
+            key: `${s.season}-${s.teamId}-${i}`,
+            season: s.season,
+            league: l?.short ?? "",
+            team: t ? (
+              <Link to={`/team/${t.slug}`} className="team-link">
+                <span className="team-dot" style={{ background: t.colors[0] }} />
+                <span className="team-name">{t.shortName}</span>
+              </Link>
+            ) : (
+              s.teamId
+            ),
+            cells: [
+              { label: "GP", value: s.gp },
+              { label: "G", value: s.g },
+              { label: "AST", value: s.a },
+              { label: "PTS", value: s.pts ?? s.g + s.a, strong: true },
+              { label: "PIM", value: s.pen ?? "\u2014" },
+            ] as SeasonCellData[],
+          };
+        })}
+        totals={[
+          { label: "GP", value: totals.gp },
+          { label: "G", value: totals.g },
+          { label: "AST", value: totals.a },
+          { label: "PTS", value: totals.pts },
+          { label: "PIM", value: totals.pen },
+        ]}
+        totalCaption="Career totals"
+      />
       <div className="table-note">
         Career spans both codebases, so the table keeps only the columns both publish. Ground
         balls, shots and faceoffs appear on the league-specific season detail further down.
