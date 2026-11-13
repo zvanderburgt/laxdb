@@ -23,6 +23,23 @@ import {
   type PendingField,
 } from "../../lib/cms";
 import { fieldFor } from "../../lib/cms-registry";
+import { cmsSession } from "../../lib/overrides";
+
+/** Crop to a 224×224 square (30% from the top) and encode as WebP, in the browser. */
+async function squareWebp(file: File, size = 224): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = (bitmap.width - side) / 2;
+  const sy = Math.max(0, (bitmap.height - side) * 0.3);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("no 2d context");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, size, size);
+  return canvas.toDataURL("image/webp", 0.9);
+}
 
 interface Rect {
   top: number;
@@ -148,7 +165,7 @@ export default function Editor() {
         return;
       }
       if (def.type === "image") {
-        setNotice({ text: "Photo upload lands in the next pass", kind: "" });
+        void pickImage(target, def.label);
         return;
       }
       setEditing({ ...target, rect: boxOf(el, def.type) });
@@ -191,6 +208,53 @@ export default function Editor() {
     const raw = el?.getAttribute("data-cms-value");
     if (raw != null) setDraft(raw);
   }, [editing]);
+
+  /**
+   * Pick, crop and upload an image.
+   *
+   * The crop happens here, not on the server: the browser already has a decoder, and it keeps the
+   * function free of native image code. 224×224 square, 30% from the top — the same contract the
+   * importer's `save_image()` uses, so an uploaded headshot and a scraped one are the same size.
+   */
+  const pickImage = async (target: Target, label: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp";
+    // it has to be in the document: a detached input gets no change event in every browser, and it
+    // cannot be driven by a test harness either
+    input.style.display = "none";
+    input.setAttribute("data-cms-file", "1");
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setNotice({ text: `Uploading ${label.toLowerCase()}…`, kind: "" });
+      try {
+        const data = await squareWebp(file);
+        const res = await fetch("/api/media", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json", "x-cms-csrf": cmsSession?.csrf ?? "" },
+          body: JSON.stringify({ kind: target.entity === "team" ? "team" : "player", id: target.id, data }),
+        });
+        const json = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+        if (!res.ok || !json?.url) {
+          setNotice({ text: json?.error ?? `upload failed (${res.status})`, kind: "bad" });
+          return;
+        }
+        const ok = await commitField(
+          { entity: target.entity as never, id: target.id, path: target.path },
+          json.url
+        );
+        setNotice({ text: ok ? `${label} updated` : snapshot().notice || "could not save", kind: ok ? "ok" : "bad" });
+      } catch (err) {
+        setNotice({ text: `could not read that image — ${String(err).slice(0, 60)}`, kind: "bad" });
+      } finally {
+        input.remove();
+      }
+    };
+    document.body.appendChild(input);
+    input.click();
+  };
 
   /* -------------------------------- actions -------------------------------- */
 

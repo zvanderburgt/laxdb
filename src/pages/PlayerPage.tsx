@@ -21,7 +21,7 @@ import {
 import type { GameRow, Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
-import { distinctEach, liftForDark } from "../lib/palette";
+import { clubInk, distinctEach, liftForDark } from "../lib/palette";
 import { peerRanks } from "../lib/peers";
 import { splits } from "../lib/splits";
 import { adjustedRate } from "../lib/adjusted";
@@ -61,7 +61,14 @@ export default function PlayerPage() {
       </div>
     );
   }
-  return <Profile player={player} />;
+  return <ClubInk colors={teamOf(player)?.colors}><Profile player={player} /></ClubInk>;
+}
+
+/** Publishes `--club` to the subtree, so club-coloured marks fall back to the accent when there is none. */
+function ClubInk({ colors, children }: { colors?: string[]; children: React.ReactNode }) {
+  const { theme } = useTheme();
+  const club = clubInk(colors, theme);
+  return <div style={{ ["--club" as string]: club } as React.CSSProperties}>{children}</div>;
 }
 
 function Profile({ player }: { player: Player }) {
@@ -122,7 +129,9 @@ function Profile({ player }: { player: Player }) {
             <span aria-current="page">{player.name}</span>
           </div>
           <div className="profile-head">
-            <PlayerAvatar player={player} size={112} radius={30} className="hero-avatar" />
+            <span className="cms-photo" data-cms="player.photo" data-cms-id={player.id}>
+              <PlayerAvatar player={player} size={112} radius={30} className="hero-avatar" />
+            </span>
             <div className="profile-id">
               <div className="profile-tags">
                 <span className={`tag tag-pos pos-${player.position.toLowerCase()}`}>{player.positionName}</span>

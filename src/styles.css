@@ -1250,7 +1250,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   background: var(--hairline);
 }
 .tl-year { font-size: 13px; font-weight: 600; color: var(--text-3); padding-top: 1px; }
-.tl-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-top: 6px; box-shadow: 0 0 0 3px var(--accent-soft); }
+.tl-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--club, var(--accent)); margin-top: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--club, var(--accent)) 18%, transparent); }
 .tl-title { font-size: 14px; font-weight: 550; letter-spacing: -0.015em; }
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 10px; }
@@ -1796,8 +1796,8 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 }
 
 /* game log best-game highlight */
-.data-table tr.is-best td { background: color-mix(in srgb, var(--accent) 11%, transparent); }
-.data-table tr.is-best td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+.data-table tr.is-best td { background: color-mix(in srgb, var(--club, var(--accent)) 11%, transparent); }
+.data-table tr.is-best td:first-child { box-shadow: inset 2px 0 0 var(--club, var(--accent)); }
 
 /* ------------------------------- team logos -------------------------------- */
 .team-logo { object-fit: contain; border-radius: 4px; background: transparent; flex: none; }
@@ -2130,7 +2130,8 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 /* returning production */
 .returning-pct { font-size: 20px; }
 .returning-bar { height: 6px; margin: 0 18px; border-radius: 99px; background: var(--line); overflow: hidden; }
-.returning-bar > span { display: block; height: 100%; background: var(--accent); }
+/* club identity, not brand action: these carry the team's own colour when one clears 3:1 */
+.returning-bar > span { display: block; height: 100%; background: var(--club, var(--accent)); }
 .returning-body { display: grid; gap: 6px; padding: 10px 18px 16px; }
 
 /* opponent-adjusted line */

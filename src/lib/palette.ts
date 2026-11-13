@@ -45,6 +45,34 @@ const toRgb = ([h, s, l]: number[]) => {
 const apart = (a: number[], b: number[]) =>
   Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2) > 60;
 
+/** Relative luminance, for deciding whether a club colour can carry a 3:1 graphic. */
+const luminance = (raw: string) => {
+  const [r, g, b] = hex(raw).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+/**
+ * The club colour to paint UI with — a mark, a bar, a timeline dot.
+ *
+ * Brand colours are authored for a white page and half of them are pale (Cornell's secondary is
+ * literally #ffffff). A graphic needs 3:1 against the surface it sits on, so: lift for dark first,
+ * then take the first colour that actually clears 3:1 against that theme's background, and fall back
+ * to the primary if neither does (the caller keeps `--accent` behind it as a last resort).
+ */
+export function clubInk(colors: string[] | undefined, theme: string): string | undefined {
+  if (!colors?.length) return undefined;
+  const candidates = (theme === "dark" ? liftForDark(colors) : colors).filter((c) =>
+    /^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test((c ?? "").trim())
+  );
+  if (!candidates.length) return undefined;
+  const surface = theme === "dark" ? 0 : 0.96; // #000 canvas / #fbfbfd paper
+  const contrast = (l: number) => (Math.max(l, surface) + 0.05) / (Math.min(l, surface) + 0.05);
+  return candidates.find((c) => contrast(luminance(c)) >= 3) ?? candidates[0];
+}
+
 /** Dark club colours vanish on a near-black card — Elora navy #0C2340 read as a smudge.
  *  Lift lightness while keeping hue and saturation; colours that are already light are
  *  left exactly as the club defines them. */
