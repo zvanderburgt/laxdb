@@ -7,6 +7,8 @@ stores at ~/.netlify/config.json after `netlify login`.
 
 Usage:
   python3 scripts/deploy-netlify.py                # deploy to the site in .netlify/state.json
+  python3 scripts/deploy-netlify.py --draft        # same, but as a draft: returns a preview URL and
+                                                   # leaves the live site on its current deploy
   python3 scripts/deploy-netlify.py --create laxdb # create (or reuse) a site named laxdb
 """
 import io, json, os, sys, time, urllib.request, zipfile
@@ -92,9 +94,13 @@ def find_or_create_site(name=None):
 
 def main():
     site_id = find_or_create_site("laxdb" if "--create" in sys.argv else None)
+    # --draft builds a deploy you can open and share without publishing it: it gets its
+    # own deploy URL and the live site keeps serving the current production deploy.
+    draft = "--draft" in sys.argv
     payload = zip_dist()
-    print(f"uploading {len(payload)/1e6:.1f} MB zip…")
-    dep = api("POST", f"/sites/{site_id}/deploys", raw=payload, ctype="application/zip")
+    print(f"uploading {len(payload)/1e6:.1f} MB zip…" + (" (draft)" if draft else ""))
+    qs = "?draft=true" if draft else ""
+    dep = api("POST", f"/sites/{site_id}/deploys{qs}", raw=payload, ctype="application/zip")
     if not dep.get("id"):
         sys.exit(f"deploy failed: {dep}")
     dep_id = dep["id"]
@@ -102,7 +108,14 @@ def main():
         d = api("GET", f"/sites/{site_id}/deploys/{dep_id}")
         state = d.get("state")
         if state in ("ready", "current"):
-            print(f"deploy {state}: {d.get('ssl_url') or d.get('url')}")
+            url = (
+                d.get("deploy_ssl_url")
+                or d.get("deploy_url")
+                or d.get("ssl_url")
+                or d.get("url")
+            )
+            print(f"deploy {state}: {url}")
+            print(f"  live site: {d.get('ssl_url') or d.get('url')}")
             os.makedirs(os.path.join(ROOT, ".netlify"), exist_ok=True)
             json.dump({"siteId": site_id}, open(os.path.join(ROOT, ".netlify", "state.json"), "w"))
             return
