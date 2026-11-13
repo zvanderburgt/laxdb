@@ -47,6 +47,29 @@ their tables — this is a URL-mapping job, not a parsing one.
 
 ---
 
+## Digitalshift (BCJALL, WCJLL, TOJLL, PNWJLL, RMLL, WLA)
+
+**Status:** partially used. BCJALL is scraped; the rest need a division map.
+
+**What changed:** this used to read "internal endpoint absent from the public bundle". The
+endpoint is `https://web.api.digitalshift.ca/partials/stats/players?league_id=<id>`, found
+through `performance.getEntriesByType("resource")` in a rendered page. It answers **401**
+from Python with every header shape tried (bearer, raw, and three custom ticket names), and
+the page's `localStorage.website_api_ticket` rotating value did not help.
+
+**What works:** the rendered roster table, read in headless Chromium
+(`scripts/fetch-digitalshift.py` via `scripts/cdp.py`). Columns:
+`#  Name  POS  Shoots  Height  Weight  Hometown  Minor Association  Sponsor  Collegiate Team`.
+
+The app's hash route repaints ~7s after the shell loads, so anything under that wait
+returns no table at all — that is why half the clubs came back empty at 3–4s.
+
+**Where it blocks:** `wcjll.com`, `tojll.com`, `rmll.ca` and `wla.ca` all 301 to
+`canadianlacrosseleague.com`, an umbrella platform where each league is a
+`division_id`. Map our league ids to division ids and the scraper runs unchanged.
+
+---
+
 ## USILA D2/D3 All-American sheets
 
 The D2 and D3 PDFs group players by position, with region, jersey number and selection in the

@@ -163,7 +163,44 @@ wired in `scripts/gamesheet.py`.
 
 ---
 
-## Phase 3 — the box leagues with no bio feed at all
+## Phase 3 — the box leagues with no bio feed at all — PART SHIPPED 2026-11-12
+
+### BCJALL — done
+
+`scripts/fetch-digitalshift.py` renders each club's roster in headless Chromium and reads
+the table. The platform's own API answers 401 outside the browser, so the rendered DOM is
+the only way in — but it carries more than any feed we hold:
+
+    # | Name | POS | Shoots | Height | Weight | Hometown | Minor Association | Collegiate Team
+
+| | before | after |
+| --- | --- | --- | --- | --- |
+| BCJALL core | 3% | **18%** |
+| height / weight / hometown | 3 / 3 / 2% | **35 / 32 / 35%** |
+| handedness, whole dataset | 0 | **148 players** |
+
+**Handedness exists here.** It was the one field marked "no source publishes it" — the
+BCJALL roster prints `Shoots`, and the player page already renders `RH right-handed`. 148
+players now have it, split 74 left / 74 right.
+
+8 clubs read, 228 riders, 211 matched. Our dataset lists 16 BCJALL clubs because it keeps
+the defunct ones; the league currently fields 8.
+
+### The other six leagues redirect
+
+`wcjll.com`, `tojll.com`, `rmll.ca` and `wla.ca` all 301 to
+**canadianlacrosseleague.com**, one umbrella platform. Its teams live behind
+`#/<league>/teams?division_id=<n>`, so each of our leagues needs its division id mapped
+before its rosters can be read. The scraper already handles everything after that point.
+
+**Next:** enumerate the umbrella site's divisions, map WCJLL / TOJLL / PNWJLL / RMLL Jr B
+T-I, T-II, RMLL Sr B and WLA to their ids, and let `fetch-digitalshift.py` run per
+division. Expected: the same shape of win as BCJALL — height, weight, hometown and
+handedness for ~2,000 more players, plus club logos off the same pages.
+
+---
+
+## Phase 3 (original plan, kept for context)
 
 **Gap:** ~2,600 players at 0–3% core: **RMLL Junior B Tier 1 (458), Tier 2 (667), TOJLL
 (326), WCJLL (486), PNWJLL (181), WLA (195), RMLL Senior B (170), BCJALL (451)**.
