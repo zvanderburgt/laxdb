@@ -136,6 +136,15 @@ main { animation: pageIn var(--dur-2) var(--ease-out); }
   to { opacity: 1; transform: none; }
 }
 
+/* a panel that swaps its content in place — a profile tab, a league, a season —
+   settles instead of cutting. No fill mode: if it never runs the panel is simply
+   there, which is the resting state every entrance has to fall back to. */
+.panel-in { animation: panelIn var(--dur-2) var(--ease-out); }
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
 .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 .muted { color: var(--text-2); }
 .small { font-size: 12.5px; }
@@ -601,6 +610,8 @@ kbd {
 .leader-val { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
 .leader-gp { font-size: 11.5px; color: var(--text-3); }
 .leader-bar { height: 5px; border-radius: 3px; background: var(--card-2); overflow: hidden; }
+/* a bar is a number you can see: it grows to that number when it appears, and a
+   re-sort regrows it. Transform only, so a throttled animation still shows a bar. */
 .leader-bar > span { display: block; height: 100%; border-radius: 3px; }
 
 .leader-more {
@@ -753,6 +764,7 @@ kbd {
 /* ------------------------------- segmented ------------------------------- */
 
 .segmented {
+  position: relative; /* the ink is positioned against the track */
   display: inline-flex;
   gap: 2px;
   padding: 3px;
@@ -763,7 +775,24 @@ kbd {
   max-width: 100%;
 }
 .segmented::-webkit-scrollbar { display: none; }
+/* the selected pill: one element that slides between segments, so the control
+   reads as one object moving rather than two backgrounds swapping */
+.seg-ink {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  z-index: 0;
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
+  pointer-events: none;
+  transition: transform var(--dur-2) var(--ease-out), width var(--dur-2) var(--ease-out);
+}
+[data-theme="dark"] .seg-ink { background: #3a3a3c; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
 .seg-item {
+  position: relative;
+  z-index: 1;
   border: 0;
   background: transparent;
   padding: 6px 13px;
@@ -773,17 +802,11 @@ kbd {
   color: var(--text-2);
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.18s, background 0.22s var(--ease), box-shadow 0.22s;
+  transition: color var(--dur-1) var(--ease);
 }
 .seg-item:hover { color: var(--text); }
-.seg-item.is-on {
-  background: var(--card);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.05);
-}
+.seg-item.is-on { color: var(--text); font-weight: 600; }
 .seg-sm .seg-item { padding: 4px 10px; font-size: 12.5px; }
-[data-theme="dark"] .seg-item.is-on { background: #3a3a3c; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
 
 /* --------------------------------- stats --------------------------------- */
 
@@ -1371,6 +1394,16 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .cmp-val .num { font-size: 17px; letter-spacing: -0.02em; }
 .cmp-bar { height: 5px; border-radius: 3px; background: var(--card-2); width: 100%; overflow: hidden; }
 .cmp-bar > span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #5ac8fa); }
+.leader-bar > span,
+.cmp-bar > span,
+.grade-fill {
+  transform-origin: left center;
+  animation: barIn var(--dur-4) var(--ease-out);
+}
+@keyframes barIn {
+  from { transform: scaleX(0); }
+  to { transform: none; }
+}
 .cmp-add-col { width: 150px; }
 .cmp-drop { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--text-3); font-size: 12px; padding: 6px 0; }
 .cmp-plus {
@@ -2811,4 +2844,14 @@ a.vs-team:hover { color: var(--accent); }
   .btn:active {
     transform: none !important;
   }
+
+  /* the motion layer added for lists, tabs and bars */
+  .panel-in,
+  .leader-bar > span,
+  .cmp-bar > span,
+  .grade-fill {
+    animation: none !important;
+    transform: none !important;
+  }
+  .seg-ink { transition: none !important; }
 }

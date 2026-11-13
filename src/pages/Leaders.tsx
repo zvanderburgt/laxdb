@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { useFlipRows } from "../lib/motion";
 import { Link } from "../lib/app";
 import { data, leagueById, teamById, teamByName } from "../lib/data";
 import { BlockList, Card, PlayerAvatar, Segmented, Term } from "../components/ui";
@@ -165,6 +166,12 @@ export default function Leaders() {
     return { list, minGames };
   }, [rows, cat, pos]);
 
+  /* changing the ranked stat or the position filter re-ranks the same people:
+     the rows slide to their new place rather than cutting to a new list */
+  const body = useRef<HTMLTableSectionElement>(null);
+  const motionKey = `${leagueId}|${cat.key}|${season ?? "career"}|${scope}|${pos}`;
+  useFlipRows(body, [motionKey], { max: 30 });
+
   const league = leagueById.get(leagueId);
 
   // the ranked statistic is the headline column; the fixed G / AST / PTS columns skip it,
@@ -269,6 +276,7 @@ export default function Leaders() {
 
       <Card padded={false} className="standings-card">
         <BlockList
+          motionKey={motionKey}
           rows={board.list.map(({ r, v }, i) => ({
             key: r.player.id,
             rank: i + 1,
@@ -296,9 +304,9 @@ export default function Leaders() {
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={body}>
               {board.list.map(({ r, v }, i) => (
-                <tr key={r.player.id}>
+                <tr key={r.player.id} data-k={r.player.id}>
                   <td className="c num muted">{i + 1}</td>
                   <td>
                     <Link to={`/player/${r.player.slug}`} className="leader-cell">

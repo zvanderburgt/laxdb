@@ -274,17 +274,21 @@ function Profile({ player }: { player: Player }) {
 
       <div className="profile-body">
         <div className="profile-main">
-          {tab === "overview" && <Overview player={player} onStats={() => setTab("stats")} />}
-          {tab === "stats" && <StatsTab player={player} />}
-          {tab === "gamelog" && (
-            <>
-              <Highs player={player} />
-              <Splits player={player} />
-              <GameLog player={player} />
-            </>
-          )}
-          {tab === "awards" && <AwardsTab player={player} />}
-          {tab === "scouting" && <Scouting player={player} />}
+          {/* keyed by tab: the panel settles in as the pill lands on it, so the
+              tab change reads as one movement instead of two unrelated cuts */}
+          <div className="panel-in" key={tab}>
+            {tab === "overview" && <Overview player={player} onStats={() => setTab("stats")} />}
+            {tab === "stats" && <StatsTab player={player} />}
+            {tab === "gamelog" && (
+              <>
+                <Highs player={player} />
+                <Splits player={player} />
+                <GameLog player={player} />
+              </>
+            )}
+            {tab === "awards" && <AwardsTab player={player} />}
+            {tab === "scouting" && <Scouting player={player} />}
+          </div>
         </div>
 
         <aside className="rail">

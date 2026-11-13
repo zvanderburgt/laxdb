@@ -107,6 +107,9 @@ export default function Versus() {
       {games === null ? (
         <SkeletonCard title="Meetings" sub="Reading the results feed" rows={5} cols={3} />
       ) : meetings.length ? (
+        /* the series arrives when the results feed resolves: it settles in once
+           instead of replacing the skeleton between two frames */
+        <div className="panel-in">
         <Card padded={false} className="standings-card">
           <div className="table-scroll">
             <table className="data-table">
@@ -138,6 +141,7 @@ export default function Versus() {
             home for the higher seed.
           </div>
         </Card>
+        </div>
       ) : null}
 
       <p className="muted small">

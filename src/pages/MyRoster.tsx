@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "../lib/app";
+import { useFlipRows } from "../lib/motion";
 import { careerTotals, currentSeason, leagueById, teamById } from "../lib/data";
 import { toggleSaved, useRoster } from "../lib/storage";
 import { downloadCsv } from "../lib/export";
@@ -7,6 +8,10 @@ import { Card, Empty, PlayerAvatar, PositionBadge, Term } from "../components/ui
 
 export default function MyRoster() {
   const players = useRoster();
+  /* removing a bookmark closes the row out of the table instead of the list
+     snapping up under the pointer */
+  const roster = React.useRef<HTMLTableSectionElement>(null);
+  useFlipRows(roster, [players.length], { max: 40 });
 
   if (!players.length) {
     return (
@@ -88,12 +93,12 @@ export default function MyRoster() {
                 <th />
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={roster}>
               {players.map((p) => {
                 const s = currentSeason(p);
                 const team = teamById.get(p.teamId);
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} data-k={p.id}>
                     <td>
                       <Link to={`/player/${p.slug}`} className="cell-player">
                         <PlayerAvatar player={p} size={28} />

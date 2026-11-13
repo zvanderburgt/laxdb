@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { useFlipRows } from "../lib/motion";
 import { Link, useRoute } from "../lib/app";
 import {
   careerTotals,
@@ -159,7 +160,7 @@ function RatingsCard({ league }: { league: League }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.teamId}>
+              <tr key={r.teamId} data-k={r.teamId}>
                 <td className="c num muted">{r.rank}</td>
                 <td>
                   <Link to={`/team/${r.team?.slug}`} className="team-link">
@@ -415,6 +416,7 @@ function StandingsCard({ league }: { league: League }) {
         </div>
       </div>
       <BlockList
+        motionKey="standings"
         rows={rows.map((r) => {
           const team = teamById.get(r.teamId);
           return {
@@ -488,6 +490,11 @@ export function LeaguePage() {
   const [pos, setPos] = useState<string>("all");
   const [sortKey, setSortKey] = useState<"val" | "gp" | "g" | "a" | "pts" | "ppg">("val");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+
+  /* sorting or switching the ranked stat re-orders the same teams in place */
+  const board = useRef<HTMLTableSectionElement>(null);
+  const motionKey = `${stat}|${sortKey}|${sortDir}`;
+  useFlipRows(board, [motionKey], { max: 30 });
 
   // the position menu is the league's own vocabulary: field leagues hold A/M/D/FO/LSM,
   // box leagues hold Forward / Transition / Defense / Runner. A code carried over from
@@ -629,6 +636,7 @@ export function LeaguePage() {
               <Segmented size="sm" ariaLabel="Stat" options={STATS.map((s) => ({ value: s.value, label: s.label }))} value={stat} onChange={setStat} />
             </div>
             <BlockList
+              motionKey={`${stat}|${sortKey}|${sortDir}`}
               rows={rows.map((r, i) => {
                 const team = teamById.get(r.p.teamId);
                 const sortable = (k: typeof sortKey, label: React.ReactNode, value: React.ReactNode, strong?: boolean) => ({
@@ -687,18 +695,31 @@ export function LeaguePage() {
                   {th("pts", <Term k="pts" />)}
                   {th("ppg", <Term k="ppg" />, "col-ppg")}
                   {stat === "gb" || stat === "ct" || stat === "svp" ? (
-                    <th className={`r sortable ${sortKey === "val" ? "is-sorted" : ""}`} onClick={() => sortBy("val")}>
+                    <th
+                      className={`r sortable ${sortKey === "val" ? "is-sorted" : ""}`}
+                      aria-sort={sortKey === "val" ? (sortDir === "desc" ? "descending" : "ascending") : "none"}
+                      tabIndex={0}
+                      onClick={() => sortBy("val")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          sortBy("val");
+                        }
+                      }}
+                    >
                       {stat === "svp" ? <Term k="svp" /> : stat === "gb" ? <Term k="gb" /> : <Term k="ct" />}
-                      <span className="sort-caret">{sortKey === "val" ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
+                      <span className="sort-caret" aria-hidden="true">
+                        {sortKey === "val" ? (sortDir === "desc" ? "↓" : "↑") : ""}
+                      </span>
                     </th>
                   ) : null}
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={board}>
                 {rows.map((r, i) => {
                   const team = teamById.get(r.p.teamId);
                   return (
-                    <tr key={r.p.id}>
+                    <tr key={r.p.id} data-k={r.p.id}>
                       <td className="c num muted">{i + 1}</td>
                       <td>
                         <Link to={`/player/${r.p.slug}`} className="cell-player">

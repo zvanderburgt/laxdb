@@ -60,6 +60,9 @@ function RecordBook() {
           options={METRICS}
         />
       </div>
+      {/* scope and metric replace the whole book, so it settles in rather than
+          cutting between two tables of different heights */}
+      <div className="panel-in" key={`${scope}|${metric}`}>
       <BlockList
         rows={section.rows.slice(0, 12).map((r, i) => {
           const nameText = r.Player ?? r.University ?? "";
@@ -143,6 +146,7 @@ function RecordBook() {
             })}
           </tbody>
         </table>
+      </div>
       </div>
       <div className="table-note">
         These lists reach back to the 1970s. Anyone we hold a profile for is linked; the rest

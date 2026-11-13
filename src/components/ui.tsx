@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "../lib/app";
+import { useFlipRows, useTrackedRect } from "../lib/motion";
 import type { Player, Team } from "../lib/types";
 import { positionLabel, teamById } from "../lib/data";
 
@@ -129,8 +130,20 @@ export function Segmented<T extends string>({
   size?: "sm" | "md";
   ariaLabel?: string;
 }) {
+  // one pill follows the selection instead of the background blinking between two
+  // buttons: the control reads as one object moving, not two states swapping
+  const track = React.useRef<HTMLDivElement>(null);
+  const ink = useTrackedRect(track, '[aria-selected="true"]', [value, options.length, size]);
+
   return (
-    <div className={`segmented seg-${size}`} role="tablist" aria-label={ariaLabel}>
+    <div ref={track} className={`segmented seg-${size}`} role="tablist" aria-label={ariaLabel}>
+      {ink ? (
+        <span
+          className="seg-ink"
+          aria-hidden="true"
+          style={{ transform: `translateX(${ink.x}px)`, width: `${ink.width}px` }}
+        />
+      ) : null}
       {options.map((o) => (
         <button
           key={o.value}
@@ -447,20 +460,25 @@ function BlockCells({ cells }: { cells: BlockCell[] }) {
 export function BlockList({
   rows,
   foot,
+  motionKey,
 }: {
   rows: BlockRow[];
   foot?: { caption: React.ReactNode; cells: BlockCell[] };
+  /** any string that changes with the filter/sort: re-orders the rows in place */
+  motionKey?: string;
 }) {
+  const list = React.useRef<HTMLDivElement>(null);
+  useFlipRows(list, [motionKey], { max: 40 });
   let lastGroup: string | undefined;
   return (
-    <div className="block-list">
+    <div className="block-list" ref={list}>
       {rows.map((r) => {
         const divider = r.group !== undefined && r.group !== lastGroup ? r.group : null;
         lastGroup = r.group;
         return (
           <React.Fragment key={r.key}>
             {divider ? <div className="block-group">{divider}</div> : null}
-            <div className="block-row">
+            <div className="block-row" data-k={r.key}>
               <div className="block-head">
                 {r.rank !== undefined ? <span className="block-rank num">{r.rank}</span> : null}
                 <span className="block-primary">{r.primary}</span>

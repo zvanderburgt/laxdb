@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { useFlipRows } from "../lib/motion";
 import { Link } from "../lib/app";
 import { data, teamById } from "../lib/data";
 import { region, regionCode } from "../lib/geo";
@@ -67,6 +68,9 @@ export default function Origins() {
 
   const sorted = [...rows].sort((a, b) => (metric === "players" ? b.players - a.players : b.per100k - a.per100k));
   const max = Math.max(...sorted.map((r) => (metric === "players" ? r.players : r.per100k)));
+  /* switching players ↔ per-100k re-ranks the same states: they trade places */
+  const body = useRef<HTMLTableSectionElement>(null);
+  useFlipRows(body, [metric], { max: 30 });
   const byRate = [...rows].sort((a, b) => b.per100k - a.per100k);
   const schools = (() => {
     const d1 = data.players.filter((p) => p.leagueId === "ncaa-d1" && p.highSchool);
@@ -129,6 +133,7 @@ export default function Origins() {
           </div>
         </div>
         <BlockList
+          motionKey={metric}
           rows={sorted.map((r, i) => ({
             key: r.code,
             rank: i + 1,
@@ -166,9 +171,9 @@ export default function Origins() {
                 <th className="col-programs">Top programs</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={body}>
               {sorted.map((r, i) => (
-                <tr key={r.code}>
+                <tr key={r.code} data-k={r.code}>
                   <td className="c num muted">{i + 1}</td>
                   <td>
                     <span className="strong">{r.name}</span>

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Link, useRoute, useCompare } from "../lib/app";
+import { useFlipRows } from "../lib/motion";
 import {
   data,
   teamById,
@@ -101,6 +102,14 @@ export default function Players() {
     return list;
   }, [q, pos, league, year, state, hs, minGp, sort, dir]);
 
+  /* every row on this page is keyed, so a filter or a sort re-orders in place
+     instead of the list cutting to a new arrangement */
+  const body = useRef<HTMLTableSectionElement>(null);
+  const cards = useRef<HTMLDivElement>(null);
+  const motionKey = `${q}|${pos.join(",")}|${league}|${year}|${state}|${minGp}|${hs}|${sort}|${dir}|${rows.length}`;
+  useFlipRows(body, [motionKey], { max: 40 });
+  useFlipRows(cards, [motionKey], { max: 40 });
+
   React.useEffect(() => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
@@ -131,9 +140,22 @@ export default function Players() {
     (minGp ? 1 : 0);
 
   const th = (k: SortKey, label: React.ReactNode, cls = "") => (
-    <th className={`${cls} ${sort === k ? "is-sorted" : ""}`} onClick={() => toggleSort(k)}>
+    <th
+      className={`sortable ${cls} ${sort === k ? "is-sorted" : ""}`}
+      aria-sort={sort === k ? (dir === "desc" ? "descending" : "ascending") : "none"}
+      tabIndex={0}
+      onClick={() => toggleSort(k)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleSort(k);
+        }
+      }}
+    >
       {label}
-      <span className="sort-caret">{sort === k ? (dir === "desc" ? "↓" : "↑") : ""}</span>
+      <span className="sort-caret" aria-hidden="true">
+        {sort === k ? (dir === "desc" ? "↓" : "↑") : ""}
+      </span>
     </th>
   );
 
@@ -266,6 +288,7 @@ export default function Players() {
       ) : view === "table" ? (
         <div className="players-board">
         <BlockList
+          motionKey={motionKey}
           rows={rows.slice(0, 150).map(({ p, s }) => {
             const team = teamById.get(p.teamId);
             return {
@@ -329,11 +352,11 @@ export default function Players() {
                 <th className="r" aria-label="Compare" />
               </tr>
             </thead>
-            <tbody>
+            <tbody ref={body}>
               {rows.slice(0, 150).map(({ p, s }) => {
                 const team = teamById.get(p.teamId);
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} data-k={p.id}>
                     <td>
                       <Link to={`/player/${p.slug}`} className="cell-player">
                         <PlayerAvatar player={p} size={30} />
@@ -386,9 +409,9 @@ export default function Players() {
         ) : null}
         </div>
       ) : (
-        <div className="cards-grid">
+        <div className="cards-grid" ref={cards}>
           {rows.slice(0, 48).map(({ p }) => (
-            <Link key={p.id} to={`/player/${p.slug}`} className="mini-card">
+            <Link key={p.id} to={`/player/${p.slug}`} className="mini-card" data-k={`c-${p.id}`}>
               <PlayerAvatar player={p} size={46} />
               <div>
                 <div className="cell-name">{p.name}</div>

@@ -116,6 +116,9 @@ export default function Scores() {
         </div>
       </div>
 
+      {/* league and season replace the whole board; "show more" only appends, so
+          the key deliberately leaves `shown` out */}
+      <div className="panel-in" key={`${league}|${season ?? "latest"}`}>
       {byDate.slice(0, shown).map((day) => (
         <Card key={day.date} padded={false} className="standings-card">
           <div className="scores-day">
@@ -161,6 +164,7 @@ export default function Scores() {
           </ul>
         </Card>
       ))}
+      </div>
 
       {shown < byDate.length ? (
         <button className="btn btn-ghost" onClick={() => setShown((n) => n + 6)}>

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Link, useRoute } from "../lib/app";
+import { useFlipRows } from "../lib/motion";
 import { seriesFor } from "../lib/series";
 import { returningProduction } from "../lib/returning";
 import {
@@ -166,7 +167,7 @@ function SeriesCard({ team }: { team: Team }) {
   };
 
   return (
-    <Card padded={false} className="standings-card">
+    <Card padded={false} className="standings-card panel-in">
       <div className="card-toolbar">
         <div>
           <h3 className="card-title">Season series</h3>
@@ -219,12 +220,18 @@ export function TeamsPage() {
   const [q, setQ] = useState("");
   const [league, setLeague] = useState("all");
 
+  /* filtering the directory closes the gaps between the cards that stay */
+  const directory = useRef<HTMLDivElement>(null);
+  useFlipRows(directory, [`${q}|${league}`], { max: 60 });
+
   const teams = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return data.teams
       .filter((t) => (league === "all" ? true : t.leagueId === league))
       .filter((t) =>
-        needle ? t.name.toLowerCase().includes(needle) || t.city.toLowerCase().includes(needle) : true
+        // 390 of 471 teams carry no city, so the directory search threw on any
+        // keystroke until the field was allowed to be absent
+        needle ? t.name.toLowerCase().includes(needle) || (t.city ?? "").toLowerCase().includes(needle) : true
       )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [q, league]);
@@ -240,7 +247,7 @@ export function TeamsPage() {
   }, [teams]);
 
   return (
-    <div className="page">
+    <div className="page" ref={directory}>
       <div className="page-head">
         <div>
           <div className="eyebrow">Directory</div>
@@ -279,7 +286,7 @@ export function TeamsPage() {
               const roster = rosterOf(t.id);
               const pts = roster.reduce((n, p) => n + careerTotals(p).pts, 0);
               return (
-                <Link key={t.id} to={`/team/${t.slug}`} className="team-card">
+                <Link key={t.id} to={`/team/${t.slug}`} className="team-card" data-k={t.id}>
                   <span
                     className={`team-crest ${t.logo ? "has-logo" : ""}`}
                     style={{ background: `linear-gradient(150deg, ${t.colors[0]}, ${t.colors[1]})` }}

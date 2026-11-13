@@ -125,7 +125,7 @@ export default function Game() {
           ))}
         </div>
       ) : (
-        <div className="game-grid">
+        <div className="game-grid panel-in">
           {(["away", "home"] as const).map((side) => {
             const team = side === "home" ? home : away;
             const rows = lines[side];
