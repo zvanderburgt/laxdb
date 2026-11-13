@@ -1,0 +1,273 @@
+<!doctype html>
+<!--
+  CMS dock preview — a still of the editor surface, not a working editor.
+  Tokens are copied verbatim from src/styles.css so what you see is what the
+  build will render. Inter is loaded only because this box has no system SF/Segoe
+  face; the app itself uses the system stack, as DESIGN.md requires.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CMS dock — preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #fbfbfd; --bg-soft: #f5f5f7; --card: #ffffff; --card-2: #f5f5f7;
+  --text: #1d1d1f; --text-2: #5c5c62; --text-3: #6b6b71;
+  --hairline: rgba(0,0,0,.08); --hairline-strong: rgba(0,0,0,.14); --hover: rgba(0,0,0,.03);
+  --accent: #0071e3; --accent-hover: #0077ed; --accent-soft: rgba(0,113,227,.10); --accent-ink: #0062c4;
+  --green: #1d9a55; --red: #e0322c; --amber: #b26a00; --amber-ink: #8a5200;
+  --nav-bg: rgba(251,251,253,.78);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04), 0 4px 14px -8px rgba(0,0,0,.14);
+  --shadow-md: 0 2px 4px rgba(0,0,0,.04), 0 18px 40px -24px rgba(0,0,0,.28);
+  --shadow-lg: 0 30px 70px -30px rgba(0,0,0,.35), 0 2px 8px rgba(0,0,0,.06);
+  --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 26px;
+  --ease: cubic-bezier(.22,1,.36,1); --ease-out: cubic-bezier(.16,1,.3,1);
+  --maxw: 1180px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.47; -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; }
+.label { font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); }
+
+/* ------------------------------- nav ------------------------------------ */
+.nav {
+  position: sticky; top: 0; height: 54px; display: flex; align-items: center; gap: 20px;
+  padding: 0 24px; background: var(--nav-bg); border-bottom: 1px solid var(--hairline);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); z-index: 60;
+}
+.wordmark { font-weight: 700; font-size: 16px; letter-spacing: -.02em; }
+.wordmark span {
+  background: linear-gradient(135deg, #0071e3, #6a4cf0); -webkit-background-clip: text;
+  background-clip: text; color: transparent;
+}
+.nav a { font-size: 13.5px; font-weight: 500; color: var(--text-2); text-decoration: none; padding: 6px 11px; border-radius: 6px; }
+.nav a.on { color: var(--text); background: var(--hover); font-weight: 600; }
+.nav .spacer { flex: 1; }
+
+/* ------------------------------- page ----------------------------------- */
+main { max-width: var(--maxw); margin: 0 auto; padding: 44px 24px 120px; }
+.crumbs { font-size: 12.5px; color: var(--text-3); margin-bottom: 14px; }
+.crumbs b { color: var(--text-2); font-weight: 500; }
+h1 { font-size: clamp(34px, 4.2vw, 48px); font-weight: 600; letter-spacing: -.035em; line-height: 1.08; margin: 0 0 10px; }
+.hero-meta { display: flex; gap: 10px; align-items: center; color: var(--text-2); font-size: 14px; }
+.pos {
+  display: inline-flex; align-items: center; height: 21px; padding: 0 6px; border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent-ink); font-size: 10.5px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.strip {
+  display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card);
+  border: 1px solid var(--hairline); border-radius: var(--r-md); box-shadow: var(--shadow-sm);
+  margin: 24px 0; overflow: hidden;
+}
+.strip div { padding: 16px 20px; border-right: 1px solid var(--hairline); }
+.strip div:last-child { border-right: 0; }
+.strip b { display: block; font-size: 26px; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: 1.6fr .9fr; gap: 16px; align-items: start; }
+.card { background: var(--card); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow-sm); }
+.card h2 { font-size: 17px; font-weight: 600; letter-spacing: -.02em; margin: 0 0 14px; }
+.row { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 9px 0; border-top: 1px solid var(--hairline); font-size: 14px; }
+.row:first-of-type { border-top: 0; }
+.row .k { color: var(--text-3); font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; padding-top: 3px; }
+.prose { font-size: 14.5px; line-height: 1.62; color: var(--text); }
+.muted { color: var(--text-2); }
+
+/* ---------------------------- editable field ---------------------------- */
+.ed { position: relative; border-radius: 6px; }
+.ed.hot { outline: 2px solid var(--accent-soft); outline-offset: 3px; }
+.field-tip {
+  position: absolute; top: -30px; left: -3px; display: flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px; border-radius: 6px; background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 600; letter-spacing: .02em; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.14);
+}
+.field-tip i { width: 5px; height: 5px; border-radius: 50%; background: #fff; opacity: .75; }
+.ed.dirty .field-tip { background: var(--amber); }
+/* anchor is top-right by default; the dock flips it under the box when the
+   element sits within 60px of the viewport top (see docs/cms.md 1.2) */
+.ed.dirty::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 8px;
+  border: 1px dashed rgba(178,106,0,.5); pointer-events: none;
+}
+.shadow-input {
+  display: block; width: 100%; min-height: 92px; padding: 10px 12px; border-radius: 11px;
+  background: var(--card); border: 1px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  font-size: 14px; line-height: 1.55; color: var(--text);
+}
+.caret { display: inline-block; width: 1px; height: 17px; margin-left: 1px; vertical-align: -3px; background: var(--accent); animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.edit-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.hint { font-size: 11px; color: var(--text-3); }
+kbd {
+  font: inherit; font-size: 10.5px; font-weight: 600; padding: 1px 5px; border-radius: 4px;
+  border: 1px solid var(--hairline-strong); background: var(--card-2); color: var(--text-2);
+}
+
+/* -------------------------------- tray ---------------------------------- */
+.tray {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 80;
+  display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 12px;
+  background: var(--nav-bg); -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px); border: 1px solid var(--hairline-strong);
+  border-radius: 16px; box-shadow: var(--shadow-lg); max-width: calc(100vw - 24px);
+}
+.tray-people { display: flex; gap: 8px; overflow-x: auto; }
+.tray-person { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; }
+.tray-x { border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+.tray-actions { display: flex; gap: 6px; }
+.av { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg,#0f2b4d,#2f6f9f); color: #fff; display: grid; place-items: center; font-size: 10px; font-weight: 700; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px; padding: 0 18px; border-radius: 980px; border: 1px solid transparent; font: inherit; font-size: 14px; font-weight: 500; letter-spacing: -.01em; cursor: pointer; }
+.btn-sm { height: 32px; padding: 0 14px; font-size: 13px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-ghost { background: transparent; color: var(--text-2); }
+.btn-secondary { background: var(--card); color: var(--text); border-color: var(--hairline-strong); }
+
+/* the compare tray, shifted up so both bars are visible */
+/* the dock is 50px tall at rest: 18 + 50 + 18 of air clears it */
+.tray.shifted { bottom: 86px; }
+
+/* ------------------------------ dock (cms) ------------------------------ */
+.tray-cms { padding-right: 10px; }
+.cms-mode { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+.cms-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cms-sep { width: 1px; height: 22px; background: var(--hairline); }
+.cms-stack { display: flex; gap: 8px; overflow: visible; align-items: center; height: 32px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 10px;
+  border-radius: 980px; border: 1px solid var(--hairline-strong); background: var(--card);
+  font-size: 12.5px; font-weight: 500; white-space: nowrap;
+}
+.chip em { font-style: normal; color: var(--text-3); font-weight: 400; }
+.chip .x { color: var(--text-3); font-size: 14px; line-height: 1; cursor: pointer; }
+.count { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+/* the Tint Rule: amber copy uses the ink step, never the fill hue */
+.count b { color: var(--amber-ink); font-weight: 600; }
+.tray-cms .tray-actions { flex: 0 0 auto; }
+.tray-cms .cms-mode { flex: 0 0 auto; }
+
+/* the tray's phone behaviour, one step earlier because the dock carries more */
+@media (max-width: 900px) {
+  .cms-stack, .cms-sep { display: none; }
+  /* the real site collapses its link row into a sheet here; a still only needs the shape */
+  .nav a { display: none; }
+  .nav a.menu { display: inline-block; }
+}
+@media (max-width: 640px) {
+  .tray { left: 12px; right: 12px; transform: none; max-width: none; }
+  .tray-cms { padding: 8px 10px; }
+  .tray-cms .count { margin-left: auto; }
+  .tray-cms .tray-actions { gap: 4px; }
+  .tray.shifted .tray-people { display: none; }
+  /* the stack is gone, so the dock keeps only what has no other home */
+  .tray-cms .btn-discard { display: none; }
+  .strip { grid-template-columns: repeat(2, 1fr); }
+  .strip div:nth-child(2) { border-right: 0; }
+  .strip div:nth-child(-n+2) { border-bottom: 1px solid var(--hairline); }
+  .grid { grid-template-columns: 1fr; }
+  .row { grid-template-columns: 96px 1fr; }
+  main { padding: 24px 16px 120px; }
+  .nav { padding: 0 16px; }
+  .hero-meta { flex-wrap: wrap; }
+  .tray.shifted { bottom: 86px; }
+}
+
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="wordmark">LAX<span>DB</span></span>
+  <a class="menu" href="#">Menu</a><a href="#">Players</a><a href="#">Teams</a><a class="on" href="#">Leagues</a><a href="#">Leaders</a><a href="#">History</a>
+  <span class="spacer"></span>
+  <a href="#">Search</a><a href="#">Theme</a>
+</nav>
+
+<main>
+  <div class="crumbs">Players / Cornell Big Red / <b>Zach Miller</b></div>
+
+  <div class="ed hot" style="display:inline-block; margin-top: 30px">
+    <div class="field-tip"><i></i>Name</div>
+    <h1>Zach Miller</h1>
+  </div>
+
+  <div class="hero-meta">
+    <span class="pos">Midfield</span>
+    <span>Cornell Big Red · D1</span>
+    <span>·</span>
+    <span class="num">No. 22</span>
+    <span>·</span>
+    <span>Left</span>
+  </div>
+
+  <div class="strip">
+    <div><span class="label">Points</span><b>67</b><span class="hint">peak season</span></div>
+    <div><span class="label">Goals</span><b>34</b><span class="hint">2026</span></div>
+    <div><span class="label">Assists</span><b>33</b><span class="hint">2026</span></div>
+    <div><span class="label">GP</span><b>16</b><span class="hint">career</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Bio</h2>
+
+      <div class="ed dirty" style="margin-bottom:20px">
+        <div class="field-tip"><i></i>Bio · edited</div>
+        <div class="shadow-input">Two-way midfielder out of Garden City, N.Y. — first-team All-Ivy in 2026 after switching to a run-first midfield role. Best in transition; half-field offense still developing.<span class="caret"></span></div>
+        <div class="edit-foot">
+          <span class="hint">142 / 2,000</span>
+          <span class="hint"><kbd>esc</kbd> cancel &nbsp; <kbd>⌘</kbd><kbd>↵</kbd> save</span>
+        </div>
+      </div>
+
+      <div class="row"><span class="k">Hometown</span><span class="ed">Garden City, N.Y.</span></div>
+      <div class="row"><span class="k">High school</span><span class="ed">Garden City</span></div>
+      <div class="row"><span class="k">Height / weight</span><span class="ed num">6'0" · 185 lb</span></div>
+      <div class="row"><span class="k">Date of birth</span><span class="ed num">Mar 14, 2003 <span class="muted">· 23</span></span></div>
+      <div class="row"><span class="k">Class</span><span class="ed">Senior</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Scouting report</h2>
+      <p class="prose muted">Left-handed midfielder who wins his matchup north-south. Best when he starts the break; half-field offense is still developing.</p>
+      <p class="hint" style="margin-top:14px">Draft · PLL, 2026, round 2, pick 11</p>
+    </div>
+  </div>
+</main>
+
+<!-- both trays, to show the stacking rule -->
+<div class="tray shifted">
+  <div class="tray-people">
+    <div class="tray-person"><span class="av">CK</span>Kirst<button class="tray-x">×</button></div>
+    <div class="tray-person"><span class="av">JO</span>O'Neill<button class="tray-x">×</button></div>
+  </div>
+  <div class="tray-actions">
+    <button class="btn btn-ghost btn-sm">Clear</button>
+    <button class="btn btn-primary btn-sm">Compare 2 players</button>
+  </div>
+</div>
+
+<div class="tray tray-cms">
+  <div class="cms-mode"><span class="cms-dot"></span>Editing</div>
+  <div class="cms-sep"></div>
+  <div class="cms-stack">
+    <span class="chip">Zach Miller <em>· bio</em> <span class="x">×</span></span>
+    <span class="chip">Zach Miller <em>· photo</em> <span class="x">×</span></span>
+    <span class="chip">Cornell <em>· colors</em> <span class="x">×</span></span>
+  </div>
+  <span class="count"><b>3</b> unsaved</span>
+  <div class="tray-actions">
+    <button class="btn btn-ghost btn-sm">Undo</button>
+    <button class="btn btn-ghost btn-sm btn-discard">Discard</button>
+    <button class="btn btn-primary btn-sm">Review · 3</button>
+  </div>
+</div>
+
+</body>
+</html>

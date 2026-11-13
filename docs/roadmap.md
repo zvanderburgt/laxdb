@@ -64,6 +64,14 @@ Judged and dropped from this tier: **home/away splits** (the box scores we parse
 **TV listings** (USA Lacrosse publishes them, but a broadcast schedule goes stale within days and
 this is a static site).
 
+## Next — the admin CMS
+
+An in-place editor behind admin auth: navigate the live pages, one floating dock along the bottom (the
+compare tray's twin), click any editorial field and change it where it sits. It writes an override
+layer keyed by entity id and never touches `data.json`, so a re-import cannot cost a correction.
+Plan, field registry, auth model, infrastructure and phases: **`docs/cms.md`**; still of the surface:
+`docs/cms-preview.html`.
+
 ## Next — needs a precompute pass
 
 1. ~~Opponent-adjusted scoring~~ — shipped on the game-log tab: output weighted by opponent Elo,
