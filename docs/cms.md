@@ -13,6 +13,12 @@ bio, both bars stacked) and `docs/cms-dock-desktop.png` / `docs/cms-dock-phone.p
 at 1440 and 390. Measured from those: the dock is 846×50 at 1440 and 366×50 at 390 — the same 50px as
 the tray — and `scrollWidth === clientWidth` at both widths.
 
+**Status.** Phase 0 (auth + deploy plumbing) and Phase 1 (the override layer, draft → preview →
+publish, revert, history) are built and verified — locally against a filesystem store, and against a
+deployed draft on real Netlify Blobs. The dock itself (Phase 2) is next: `src/lib/cms-registry.ts`,
+`src/lib/overrides.ts`, `netlify/functions/api.ts` and `netlify/lib/*` exist; `src/components/cms/*`
+does not.
+
 **The one constraint everything else follows from:** `public/data.json` is generated. It is rebuilt
 by `scripts/rebuild-all.sh` from feeds, and a raw re-import already resets logos and headshots. The
 CMS therefore never writes to the dataset. It writes a small **override layer** keyed by stable
@@ -178,35 +184,56 @@ banner. These have no feed at all, which makes them the first thing that proves 
 
 ## 3. Data flow
 
+Publishing is **draft → preview → publish**: what an editor sees on the page is their draft, and what
+a visitor sees is the last promoted document. Nothing an editor does is public until they say so.
+
 ```
-      feeds ──► scripts/rebuild-all.sh ──► public/data.json ──┐
-                                                              ├─► loadDataset()
-   editor ──► dock (pending map, in memory, live-previewed) ──┤        │
-                │ publish                                     │        ▼
-                ▼                                             │   applyOverrides(data)
-     POST /.netlify/functions/edits ──► Blobs "overrides" ─────┘        │
-                                         + Blobs "revisions"           ▼
-                                                                   render
+   feeds ──► scripts/rebuild-all.sh ──► public/data.json ──┐
+                                                           │
+   editor ──► dock (pending, in memory, live-previewed) ───┤
+                │ POST /api/draft                           │
+                ▼                                           │
+        Blobs "draft" ─────────────────────────────────┐   │
+                │ POST /api/publish                   │   │
+                ▼                                     │   │
+        Blobs "overrides" + versions/v<n>.json ───┐   │   │
+                                                  │   │   │
+   visitor ──► GET /api/overrides ────────────────┴───┴───┼──► loadDataset()
+                (edge-cached 60s)                          │        │
+                                                           │        ▼
+                                              applyOverrides(data) ──► render
 ```
 
 **Boot.** `loadDataset()` → `loadOverrides()` → render. The overrides fetch is its own tiny request
-with a 1.2s ceiling; on failure the app renders the feed data and says nothing. It must never join
-the `data.json` request — that file is already the slowest paint on the site.
+with a 1.2s ceiling; on failure the app renders the feed data and says nothing. It must never join the
+`data.json` request — that file is already the slowest paint on the site.
 
-**Applying.** `applyOverrides()` is a pure function used in two places: once at boot for the whole
-store, and once per commit so the page under the editor updates immediately without a refetch. A path
-is `entity.field.subfield`; `undefined` means "no override, use the feed value", which is also how a
-revert is expressed.
+**Applying.** `applyOverrides(doc)` mutates the entity objects in place, once at boot for the published
+document and again for the draft when the browser is signed in. In place, because every page, memo and
+derived index already holds those references: copying would leave peers, similarity and the leaders
+boards reading the feed value while the hero shows the edit. A path is `entity.field.subfield`;
+`undefined` means "no override, use the feed value", which is also how a revert is expressed.
 
-**Publishing.** One `POST /edits` carries the batch. The function validates each patch against the
-registry (known path, correct type, length and range caps), writes the entity's key, appends a
-revision record, and returns the new version. The client then clears pending and refetches
-`/overrides?v=<version>` once. Public visitors pick it up from the edge cache within 60s — no
-rebuild, no deploy.
+**Drafting.** One `POST /api/draft` per field carries `{patch}`. The function validates against the
+registry (known path, type, range, length), sets the field on `draft` and returns the pending count.
+The client updates its own copy immediately, so the page under the editor shows the change before any
+round trip.
 
-**Revisions.** Append-only: `{v, at, by, entity, id, path, before, after}`. Undo is either "drop this
-path" (back to the feed) or "reapply revision N". Both are one row in the inspector, and neither is
-possible from a mutable "current value" store — which is why the log exists before the UI needs it.
+**Preview.** `GET /api/overrides?draft=1` returns published + draft merged, and only answers a valid
+session. The editor's browser reads that instead of the public document, so the page they are editing
+*is* the preview — there is no second preview surface to keep in sync.
+
+**Publishing.** `POST /api/publish` promotes the whole draft in one Blob write: merge into `overrides`,
+bump `version`, write `versions/v<n>.json`, clear `draft`. Public visitors pick it up from the edge
+cache within 60s — no rebuild, no deploy. The draft records the `baseVersion` it started from, so a
+second tab (or device) that published in between gets a 409 and keeps its draft rather than silently
+clobbering.
+
+**Revisions.** Every publish and every revert writes a full snapshot (`versions/v<n>.json`, last 20
+kept) plus a row in `versions/index`. Revert is `POST /api/revert {entity, id, path?}`: dropping the
+override *is* the feed value, and it publishes a version like any other change, so the history shows
+the revert instead of the override quietly disappearing. "Restore version N" is the same document with
+a higher version number.
 
 ### Override shape
 
@@ -274,22 +301,32 @@ disagreeing usefully.
 
 ### 5.1 Function surface
 
-Netlify Functions v2 (Web `Request`/`Response`, Node 20), one handler per route:
+**Built.** One Netlify Functions v2 module (`netlify/functions/api.ts`, `config.path = "/api/*"`) with
+an internal router — one entry point keeps the bundle single and lets the same handlers run under a
+plain Node server locally.
 
 | Route | Method | Auth | Purpose |
 | --- | --- | --- | --- |
-| `/session` | POST | passphrase | sign in |
-| `/session` | GET | cookie | `{ exp, csrf }` — the dock's probe; 401 when signed out |
-| `/session` | DELETE | cookie | sign out |
-| `/overrides` | GET | none | the whole store, `ETag` + `Cache-Control: public, max-age=60, s-maxage=60, stale-while-revalidate=600` |
-| `/edits` | POST | cookie | validate + publish a batch, append revisions |
-| `/edits` | GET | cookie | revisions for one entity (`?entity=player:zach-miller-2`) |
-| `/media` | POST | cookie | image upload → `{ url }` |
-| `/flags` | POST | cookie | flag a feed field for the next data pass |
+| `/api/session` | POST | passphrase | sign in; 429 while rate-limited, 503 when unconfigured |
+| `/api/session` | GET | cookie | `{ exp, csrf }` — the dock's probe; 401 when signed out |
+| `/api/session` | DELETE | cookie | sign out |
+| `/api/overrides` | GET | none | the published document, `ETag` + `s-maxage=60` |
+| `/api/overrides?draft=1` | GET | cookie | published + draft merged — the editor's preview |
+| `/api/draft` | GET | cookie | draft alone: `{ draft, fields, baseVersion }` |
+| `/api/draft` | POST | cookie + csrf | stage one field `{ patch }` |
+| `/api/draft` | DELETE | cookie + csrf | throw the draft away |
+| `/api/publish` | POST | cookie + csrf | promote draft → published; 409 on empty or version conflict |
+| `/api/revert` | POST | cookie + csrf | drop one field (or an entity's fields) back to the feed |
+| `/api/history` | GET | cookie | version index, or `?version=n` for one snapshot |
+| `/api/entity` | GET | cookie | every field set on one entity (`?key=player:p-…`) |
+| `/api/meta` | GET | none | field count + store backend; a cheap liveness probe |
+| `/api/media` | POST | cookie + csrf | image upload → `{ url }` — **phase 3** |
+| `/api/flags` | POST | cookie + csrf | flag a feed field for the next data pass — **phase 4** |
 
-Shared `_lib/`: `auth.ts` (sign/verify/rate-limit), `store.ts` (one interface, two backends — Blobs in
-production, a filesystem dir in dev), `schema.ts` (the registry mirrored as a validator, generated from
-`src/lib/cms-registry.ts` so there is exactly one field list), `http.ts` (JSON, CORS-off, error shape).
+Shared `netlify/lib/`: `auth.ts` (scrypt verify, HMAC session, cookie, rate limit, `configured()`),
+`store.ts` (one `KV` interface, Blobs or a filesystem dir), `doc.ts` (the document, draft, publish,
+revert, versions). The field list and the validator are the same file the client imports
+(`src/lib/cms-registry.ts`), so there is exactly one field table and no schema to drift.
 
 ### 5.2 Where the bytes live
 
@@ -322,20 +359,32 @@ fix that missed half the assets because two writers did their own resizing.
 
 ### 5.5 Deploy plumbing
 
-`scripts/deploy-netlify.py` zips `dist/` and posts it. Functions are not part of that zip today, so
-the deploy grows one step:
+**The zip path cannot ship this API — verified, not assumed.** Posting a zip of `dist/` to
+`/sites/{id}/deploys` publishes anything at `netlify/functions/*` inside the zip as a *static file*:
+`GET /netlify/functions/api.mjs` returned 200 with the bundle, `/api/session` 404'd, and the deploy
+object still reported `available_functions: []`. The Functions v2 module (`export default`,
+`config.path`) needs Netlify to package it, which only the CLI or a build does.
 
-1. `node scripts/build-functions.mjs` — esbuild each `netlify/functions/*.ts` to
-   `netlify/functions-build/*.mjs`, bundling `@netlify/blobs`, externalising nothing else.
-2. `deploy-netlify.py` adds those files to the zip under `netlify/functions/` (and refuses to deploy
-   if the build directory is missing while `netlify.toml` declares functions — a silent
-   function-less deploy is the failure mode that costs an evening).
-3. After a successful deploy, smoke-test: `GET /.netlify/functions/session` must be `401`, and
-   `GET /.netlify/functions/overrides` must parse. Non-401/200 fails the deploy.
+So the deploy is two steps and `deploy-netlify.py` does both:
 
-Alternative if the zip route refuses to register functions: enable build-from-Git on the site and let
-Netlify run `npm run build`. That changes the data workflow (a 16 MB `data.json` in git becomes the
-build input), so take it only if the zip path genuinely dead-ends.
+1. `node scripts/build-functions.mjs` — esbuild `netlify/functions/api.ts` to
+   `netlify/functions-build/api.mjs`, bundling `@netlify/blobs` (a zip deploy installs no
+   `node_modules`, so the dependency has to travel inside the file).
+2. `netlify deploy --dir dist --functions netlify/functions-build [--prod]` via
+   `node_modules/.bin/netlify`, run by the script when a build exists. Without a functions build it
+   falls back to the pure-API zip, which is still right for a site-only deploy.
+3. After the deploy, `GET <deploy>/api/session` must answer `401`. A production deploy that misses it
+   exits non-zero; a draft only warns.
+
+`rebuild-all.sh` gained two steps before the build: `cms-snapshot.py` (write the published document to
+`public/overrides.json`, the client's fallback) and `build-functions.mjs`.
+
+**Environment variables** (`ADMIN_PASSPHRASE_HASH`, `ADMIN_SESSION_SECRET`, both generated by
+`scripts/cms-secret.mjs --netlify`): set in the Netlify UI or through the account env API, then
+redeploy — a function reads its environment at deploy time. On the Free plan they cannot be *marked*
+secret (`is_secret: true` returns 422 for the `post_processing` scope) and env *scopes* are a paid
+feature, so they live as ordinary site env vars. That is fine for a hash and a signing key on a
+one-person account; on a paid plan, mark both secret and scope them to functions.
 
 ### 5.6 Local development
 
@@ -350,14 +399,16 @@ touch production overrides. No second copy of the handlers, no mock server to dr
 Each phase ships on its own and leaves the site working for visitors. The acceptance test is the line
 that decides it is done.
 
-**Phase 0 — plumbing (½ session).** Env vars + `cms-secret.mjs`; `/session` POST/GET/DELETE;
-`build-functions.mjs` + zip packaging; smoke test in the deploy script. *Done when* a signed-out
-`curl` gets 401, a signed-in browser keeps a cookie, and a fresh deploy reports the function present.
+**Phase 0 — plumbing. ✅ shipped.** `cms-secret.mjs`; `/session` POST/GET/DELETE with scrypt, HMAC
+cookie, rate limit and csrf; `build-functions.mjs` + the CLI deploy path; `cms-smoke.mjs` (30 checks)
+wired into the deploy. Verified against a deployed draft: sign-in sets an HttpOnly SameSite=Strict
+cookie, every anonymous write is 401, and Netlify Blobs is reachable from the function.
 
-**Phase 1 — the override layer, read-only (1 session).** `src/lib/overrides.ts`, `applyOverrides()` in
-`loadDataset()`, `/overrides` with edge cache, `public/overrides.json` fallback, `cms-snapshot.py`.
-No UI. *Done when* a hand-written `overrides.json` with one player bio and one team colour renders on
-the live site, and `rebuild-all.sh` leaves it in place.
+**Phase 1 — the override layer. ✅ shipped (read path).** `src/lib/overrides.ts`, `applyOverrides()` in
+`loadDataset()`, `/overrides` with edge cache, `public/overrides.json` fallback, `cms-snapshot.py`,
+plus the draft/publish/revert endpoints it needs. No UI. Verified locally: a published `site.heroTail`
+and `player.heightIn` render on Home and the profile (6'7" from 79 in), and the full draft → publish →
+revert cycle passes end-to-end on a deployed draft with real Blobs.
 
 **Phase 2 — the dock + text fields (1–2 sessions).** `.tray-cms`, mode chip, change stack, select mode,
 shadow input, `POST /edits` with validation and revisions. Fields: player `name`/`bio`/`highSchool`,
@@ -409,12 +460,22 @@ without the CSRF header is rejected.
 
 ---
 
-## 8. Open questions
+## 8. Decisions and open questions
 
-1. **Publish model.** Immediate publish (as designed) or draft → preview → publish with a second
-   cookie-gated read (`?draft=1`) so the live page only ever shows reviewed copy? Draft adds a state
-   machine and roughly a session; immediate is what an in-place editor usually means.
-2. **Which copy.** Phase 2 starts with player bio + hero headline. Teams, leagues and the site banner
-   are Phase 3 — should any of them come earlier?
-3. **Media storage.** Blobs (same origin, no new account) versus the repo (`public/media/`, committed —
-   free CDN, but every upload is a commit and a deploy). Blobs is assumed here.
+Settled before Phase 0, and reflected above:
+
+1. **Publish model: draft → preview → publish.** Staging is the default; a visitor only sees promoted
+   work. `baseVersion` guards against a second tab or device publishing over the top (409, draft kept).
+2. **Field order confirmed.** Player bio + hero copy first (Phase 2), teams/leagues/banner with the
+   structured controls (Phase 3).
+3. **Media in Netlify Blobs**, served from the site's own origin, cropped through the same 224×224 path
+   the importer uses.
+
+Still open:
+
+1. **Who else edits.** One passphrase means one editor and `by: "editor"` in the history. A second
+   person needs the cookie to carry a `sub` and the review sheet to show who changed what.
+2. **Retention.** Snapshots are the last 20 versions; the revision *index* is unbounded. Fine for
+   years at this volume — worth a cap when the first hundred versions land.
+3. **Multi-tab preview.** Two tabs editing the same field both stage into one draft; last write wins
+   inside the draft. The publish guard does not help there — a per-field `stagedAt` would.
