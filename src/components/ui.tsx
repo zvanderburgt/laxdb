@@ -146,13 +146,144 @@ export function Segmented<T extends string>({
   );
 }
 
+/* ------------------------------ abbreviations ----------------------------- */
+/* Table headers print abbreviations, so each one carries the sentence a reader needs.
+   A single fixed node is reused for the tooltip: cards are `overflow: hidden`, so an
+   absolutely positioned tip would be clipped by the card it lives in. */
+
+type TermEntry = { label: string; full: string; note?: string };
+
+const TERMS: Record<string, TermEntry> = {
+  gp: { label: "GP", full: "Games played" },
+  gs: { label: "GS", full: "Games started" },
+  g: { label: "G", full: "Goals" },
+  a: { label: "AST", full: "Assists" },
+  pts: { label: "PTS", full: "Points", note: "goals plus assists" },
+  ppg: { label: "PTS/G", full: "Points per game" },
+  sh: { label: "SH", full: "Shots" },
+  shp: { label: "SH%", full: "Shooting percentage", note: "goals divided by shots" },
+  gb: { label: "GB", full: "Ground balls" },
+  lb: { label: "LB", full: "Loose balls", note: "the box count that replaces ground balls" },
+  to: { label: "TO", full: "Turnovers" },
+  ct: { label: "CT", full: "Caused turnovers" },
+  fo: { label: "FO%", full: "Faceoff percentage", note: "wins divided by attempts" },
+  pim: { label: "PIM", full: "Penalty minutes" },
+  sv: { label: "SV", full: "Saves" },
+  ga: { label: "GA", full: "Goals against" },
+  gaa: { label: "GAA", full: "Goals against average", note: "per 60 minutes" },
+  svp: { label: "SV%", full: "Save percentage" },
+  min: { label: "MIN", full: "Minutes played" },
+  w: { label: "W", full: "Wins" },
+  l: { label: "L", full: "Losses" },
+  t: { label: "T", full: "Ties" },
+  wl: { label: "W–L", full: "Wins and losses" },
+  pct: { label: "PCT", full: "Winning percentage" },
+  gf: { label: "GF", full: "Goals for" },
+  diff: { label: "DIFF", full: "Goal differential", note: "goals for minus goals against" },
+  conf: { label: "CONF", full: "Conference record" },
+  elo: { label: "ELO", full: "Elo rating", note: "1500 to start, this season only" },
+  sos: { label: "SOS", full: "Strength of schedule", note: "average opponent rating" },
+  consensus: { label: "CONSENSUS", full: "Consensus rank", note: "average of the poll ranks and the Elo rank, ± the spread" },
+  pos: { label: "POS", full: "Position" },
+  record: { label: "RECORD", full: "Wins and losses this season" },
+  titles: { label: "TITLES", full: "National titles" },
+  seasons: { label: "SEASONS", full: "Seasons on record" },
+  first: { label: "FIRST", full: "First season" },
+  players: { label: "PLAYERS", full: "Players", note: "with a birthplace on file" },
+  share: { label: "SHARE", full: "Share of all players with a birthplace" },
+  per100k: { label: "PER 100K", full: "Players per 100,000 residents" },
+  idx: { label: "IDX", full: "Points index", note: "points per game against the league average, ×100" },
+};
+
+export function termLabel(k: string): string {
+  return TERMS[k]?.label ?? k;
+}
+
+let tipNode: HTMLDivElement | null = null;
+
+function hideTip() {
+  tipNode?.classList.remove("is-on");
+}
+
+function showTip(target: HTMLElement, text: string) {
+  if (!tipNode) {
+    tipNode = document.createElement("div");
+    tipNode.className = "abbr-tip";
+    tipNode.setAttribute("role", "tooltip");
+    document.body.appendChild(tipNode);
+    window.addEventListener("scroll", hideTip, true);
+    window.addEventListener("resize", hideTip);
+    document.addEventListener("pointerdown", (e) => {
+      const t = e.target as HTMLElement | null;
+      if (!t?.closest(".abbr")) hideTip();
+    }, true);
+  }
+  tipNode.textContent = text;
+  tipNode.classList.add("is-on");
+  const r = target.getBoundingClientRect();
+  const box = tipNode.getBoundingClientRect();
+  const pad = 8;
+  const left = Math.max(pad, Math.min(r.left + r.width / 2 - box.width / 2, window.innerWidth - box.width - pad));
+  // a block's label sits directly under its value, so opening upward would hide the number
+  // the reader tapped: below the label in the lower half of the screen, above it up top
+  const below = r.top > window.innerHeight * 0.55;
+  let top = below ? r.bottom + 6 : r.top - box.height - 6;
+  if (top + box.height > window.innerHeight - pad) top = r.top - box.height - 6;
+  if (top < pad) top = r.bottom + 6;
+  tipNode.style.left = `${Math.round(left)}px`;
+  tipNode.style.top = `${Math.round(top)}px`;
+}
+
+/** An abbreviation that explains itself on hover, focus and tap. */
+export function Term({ k, children }: { k: string; children?: React.ReactNode }) {
+  const entry = TERMS[k];
+  const text = entry ? `${entry.full}${entry.note ? ` — ${entry.note}` : ""}` : k;
+  return (
+    <abbr
+      className="abbr"
+      aria-label={text}
+      tabIndex={0}
+      onMouseEnter={(e) => showTip(e.currentTarget, text)}
+      onMouseLeave={hideTip}
+      onFocus={(e) => showTip(e.currentTarget, text)}
+      onBlur={hideTip}
+      /* a tap on a phone opens the tip; inside a sortable header or a sort button the tap
+         already means "sort this column", so those keep their behaviour */
+      onPointerDown={(e) => {
+        if (e.pointerType === "mouse") return;
+        const el = e.currentTarget;
+        if (el.closest("th") || el.closest("button")) return;
+        showTip(el, text);
+      }}
+    >
+      {children ?? entry?.label ?? k}
+    </abbr>
+  );
+}
+
+const LABEL_TO_KEY: Record<string, string> = {
+  GP: "gp", GS: "gs", G: "g", A: "a", AST: "a", PTS: "pts", "PTS/G": "ppg",
+  SH: "sh", "SH%": "shp", GB: "gb", LB: "lb", TO: "to", CT: "ct", FO: "fo", "FO%": "fo",
+  PIM: "pim", SV: "sv", GA: "ga", GAA: "gaa", "SV%": "svp", MIN: "min",
+  W: "w", L: "l", T: "t", "W–L": "wl", "W-L": "wl", PCT: "pct", GF: "gf", DIFF: "diff",
+  CONF: "conf", ELO: "elo", Elo: "elo", SOS: "sos", POS: "pos", RECORD: "record",
+  TITLES: "titles", SEASONS: "seasons", FIRST: "first", PLAYERS: "players",
+  SHARE: "share", "PER 100K": "per100k", IDX: "idx", CONSENSUS: "consensus",
+};
+
+/** For labels that arrive as text (feeds, maps, column descriptors). */
+export function TermFor({ text }: { text: string }) {
+  const key = LABEL_TO_KEY[text];
+  return key ? <Term k={key} /> : <>{text}</>;
+}
+
 /* --------------------------- mobile block rows ---------------------------- */
 /* A table with seven or more columns cannot fit a phone without sideways scrolling, so
    each row also renders as a block under 640px: identity on the first line, then every
    number with its column label underneath. The table stays for wide screens. */
 
 export type BlockCell = {
-  label: string;
+  label: React.ReactNode;
   value: React.ReactNode;
   strong?: boolean;
   /** makes the cell a sort button, for tables whose headers sort the list */
@@ -181,7 +312,7 @@ function BlockCells({ cells }: { cells: BlockCell[] }) {
   const cols = Math.max(1, Math.ceil(cells.length / Math.max(1, rows)));
   return (
     <div className="block-cells" style={{ "--block-cols": cols } as React.CSSProperties}>
-      {cells.map((c) => {
+      {cells.map((c, i) => {
         const body = (
           <>
             <b className={c.strong ? "num strong" : "num"}>{c.value}</b>
@@ -191,7 +322,7 @@ function BlockCells({ cells }: { cells: BlockCell[] }) {
         return c.onSort ? (
           <button
             type="button"
-            key={c.label}
+            key={i}
             className={`block-cell is-sortable${c.sorted ? " is-sorted" : ""}`}
             onClick={c.onSort}
             aria-label={`Sort by ${c.label}`}
@@ -200,7 +331,7 @@ function BlockCells({ cells }: { cells: BlockCell[] }) {
             {c.sorted ? <span className="block-sort" aria-hidden="true">{c.sorted === "desc" ? "↓" : "↑"}</span> : null}
           </button>
         ) : (
-          <span key={c.label} className="block-cell">
+          <span key={i} className="block-cell">
             {body}
           </span>
         );

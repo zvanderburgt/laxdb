@@ -12,7 +12,7 @@ import {
   positionLabel,
   positionOrder,
 } from "../lib/data";
-import { Avatar, BlockList, Empty, PositionBadge, Segmented, PlayerAvatar } from "../components/ui";
+import { Avatar, BlockList, Empty, PositionBadge, Segmented, PlayerAvatar, Term } from "../components/ui";
 
 type SortKey =
   | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
@@ -130,7 +130,7 @@ export default function Players() {
     (hs.trim() ? 1 : 0) +
     (minGp ? 1 : 0);
 
-  const th = (k: SortKey, label: string, cls = "") => (
+  const th = (k: SortKey, label: React.ReactNode, cls = "") => (
     <th className={`${cls} ${sort === k ? "is-sorted" : ""}`} onClick={() => toggleSort(k)}>
       {label}
       <span className="sort-caret">{sort === k ? (dir === "desc" ? "↓" : "↑") : ""}</span>
@@ -300,7 +300,7 @@ export default function Players() {
                 </button>
               ),
               cells: [
-                { label: "Pos", value: p.position ?? "—" },
+                { label: <Term k="pos" />, value: p.position ?? "—" },
                 { label: "GP", value: s.gp },
                 { label: "G", value: s.g },
                 { label: "AST", value: s.a },
@@ -316,7 +316,7 @@ export default function Players() {
             <thead>
               <tr>
                 {th("name", "Player")}
-                {th("position", "Pos", "c")}
+                {th("position", <Term k="pos" />, "c")}
                 {th("team", "Team")}
                 <th>League</th>
                 {th("classYear", "Class", "c")}

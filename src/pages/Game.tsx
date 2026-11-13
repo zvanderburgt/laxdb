@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "../lib/app";
 import { data, teamBySlug } from "../lib/data";
-import { Card, Empty, PlayerAvatar, TeamLogo } from "../components/ui";
+import { Card, Empty, PlayerAvatar, Term, TeamLogo } from "../components/ui";
 import type { GameRow } from "../lib/types";
 
 /**
@@ -133,11 +133,11 @@ export default function Game() {
                       <thead>
                         <tr>
                           <th>Player</th>
-                          <th className="r">G</th>
-                          <th className="r">A</th>
-                          <th className="r">PTS</th>
-                          <th className="r">GB</th>
-                          <th className="r">CT</th>
+                          <th className="r"><Term k="g" /></th>
+                          <th className="r"><Term k="a" /></th>
+                          <th className="r"><Term k="pts" /></th>
+                          <th className="r"><Term k="gb" /></th>
+                          <th className="r"><Term k="ct" /></th>
                         </tr>
                       </thead>
                       <tbody>

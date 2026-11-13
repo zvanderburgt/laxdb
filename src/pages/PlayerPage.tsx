@@ -37,6 +37,8 @@ import {
   Sparkline,
   Stat,
   PlayerAvatar,
+  Term,
+  TermFor,
   TeamLogo,
 } from "../components/ui";
 
@@ -581,22 +583,22 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
               <th>Season</th>
               <th>Team</th>
               <th className="col-league">League</th>
-              <th className="r">GP</th>
+              <th className="r"><Term k="gp" /></th>
               {isGoal ? (
                 <>
-                  <th className="r">MIN</th>
-                  <th className="r">SV</th>
-                  <th className="r">GA</th>
-                  <th className="r">SV%</th>
-                  <th className="r">GAA</th>
+                  <th className="r"><Term k="min" /></th>
+                  <th className="r"><Term k="sv" /></th>
+                  <th className="r"><Term k="ga" /></th>
+                  <th className="r"><Term k="svp" /></th>
+                  <th className="r"><Term k="gaa" /></th>
                 </>
               ) : (
                 <>
-                  <th className="r col-detail">G</th>
-                  <th className="r col-detail">AST</th>
-                  <th className="r">PTS</th>
-                  <th className="r col-detail">PTS/G</th>
-                  <th className="r">{summaryBoxOnly ? "PIM" : "GB"}</th>
+                  <th className="r col-detail"><Term k="g" /></th>
+                  <th className="r col-detail"><Term k="a" /></th>
+                  <th className="r"><Term k="pts" /></th>
+                  <th className="r col-detail"><Term k="ppg" /></th>
+                  <th className="r">{summaryBoxOnly ? <Term k="pim" /> : <Term k="gb" />}</th>
                 </>
               )}
             </tr>
@@ -706,8 +708,8 @@ function SeasonBoard({
         <span>Team</span>
         <span>League</span>
         <span className="season-cells">
-          {totals.map((c) => (
-            <span key={c.label}>{c.label}</span>
+          {totals.map((c, i) => (
+            <span key={i}><TermFor text={c.label} /></span>
           ))}
         </span>
       </div>
@@ -717,10 +719,10 @@ function SeasonBoard({
           <span className="season-team">{ln.team}</span>
           <span className="season-league muted">{ln.league}</span>
           <span className="season-cells">
-            {ln.cells.map((c) => (
-              <span key={c.label}>
+            {ln.cells.map((c, i) => (
+              <span key={i}>
                 <b className={c.strong ? "num strong" : "num"}>{c.value}</b>
-                <i>{c.label}</i>
+                <i><TermFor text={c.label} /></i>
               </span>
             ))}
           </span>
@@ -731,10 +733,10 @@ function SeasonBoard({
         <span className="season-team" />
         <span className="season-league" />
         <span className="season-cells">
-          {totals.map((c) => (
-            <span key={c.label}>
+          {totals.map((c, i) => (
+            <span key={i}>
               <b className="num strong">{c.value}</b>
-              <i>{c.label}</i>
+              <i><TermFor text={c.label} /></i>
             </span>
           ))}
         </span>
@@ -1101,11 +1103,11 @@ function Splits({ player }: { player: Player }) {
               <thead>
                 <tr>
                   <th />
-                  <th className="r">GP</th>
-                  <th className="r">G</th>
-                  <th className="r">A</th>
-                  <th className="r">PTS</th>
-                  <th className="r">PTS/G</th>
+                  <th className="r"><Term k="gp" /></th>
+                  <th className="r"><Term k="g" /></th>
+                  <th className="r"><Term k="a" /></th>
+                  <th className="r"><Term k="pts" /></th>
+                  <th className="r"><Term k="ppg" /></th>
                 </tr>
               </thead>
               <tbody>
@@ -1261,18 +1263,18 @@ function GameLog({ player }: { player: Player }) {
               <th className="c">Result</th>
               {isGoal ? (
                 <>
-                  <th className="r">SV</th>
-                  <th className="r">GA</th>
-                  <th className="r">SV%</th>
+                  <th className="r"><Term k="sv" /></th>
+                  <th className="r"><Term k="ga" /></th>
+                  <th className="r"><Term k="svp" /></th>
                 </>
               ) : (
                 <>
-                  <th className="r">G</th>
-                  <th className="r">AST</th>
-                  <th className="r">PTS</th>
-                  <th className="r">GB</th>
-                  <th className="r">CT</th>
-                  {player.position === "FO" ? <th className="r">FO</th> : null}
+                  <th className="r"><Term k="g" /></th>
+                  <th className="r"><Term k="a" /></th>
+                  <th className="r"><Term k="pts" /></th>
+                  <th className="r"><Term k="gb" /></th>
+                  <th className="r"><Term k="ct" /></th>
+                  {player.position === "FO" ? <th className="r"><Term k="fo" /></th> : null}
                 </>
               )}
             </tr>

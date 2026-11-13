@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "../lib/app";
 import { data, leagueById, teamById, teamByName } from "../lib/data";
-import { BlockList, Card, PlayerAvatar, Segmented } from "../components/ui";
+import { BlockList, Card, PlayerAvatar, Segmented, Term } from "../components/ui";
 import type { Player } from "../lib/types";
 
 /**
@@ -167,6 +167,20 @@ export default function Leaders() {
 
   const league = leagueById.get(leagueId);
 
+  // the ranked statistic is the headline column; the fixed G / AST / PTS columns skip it,
+  // because "Points" beside "PTS" printed the same number twice
+  const catTerm = cat.key === "fop" ? "fo" : cat.key;
+  const leads = !["g", "a", "pts"].includes(cat.key);
+  const headKeys = ["gp", ...(leads ? [catTerm] : []), "g", "a", "pts"];
+  const rowCells = (r: (typeof board.list)[number]["r"], v: number) => {
+    const cells: { k: string; value: React.ReactNode; strong?: boolean }[] = [{ k: "gp", value: r.gp }];
+    if (leads) cells.push({ k: catTerm, value: cat.format(v), strong: true });
+    cells.push({ k: "g", value: r.g, strong: cat.key === "g" });
+    cells.push({ k: "a", value: r.a, strong: cat.key === "a" });
+    cells.push({ k: "pts", value: r.pts, strong: cat.key === "pts" });
+    return cells;
+  };
+
   return (
     <div className="page">
       <div className="page-head">
@@ -265,13 +279,7 @@ export default function Leaders() {
               </Link>
             ),
             meta: linkTeam(r.team),
-            cells: [
-              { label: "GP", value: r.gp },
-              { label: cat.label, value: cat.format(v), strong: true },
-              { label: "G", value: r.g },
-              { label: "AST", value: r.a },
-              { label: "PTS", value: r.pts },
-            ],
+            cells: rowCells(r, v).map((c) => ({ label: <Term k={c.k} />, value: c.value, strong: c.strong })),
           }))}
         />
         <div className="table-scroll hide-sm">
@@ -281,11 +289,11 @@ export default function Leaders() {
                 <th className="c">#</th>
                 <th>Player</th>
                 <th>Team</th>
-                <th className="r">GP</th>
-                <th className="r">{cat.label}</th>
-                <th className="r">G</th>
-                <th className="r">A</th>
-                <th className="r">PTS</th>
+                {headKeys.map((k) => (
+                  <th key={k} className="r">
+                    <Term k={k} />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -299,11 +307,11 @@ export default function Leaders() {
                     </Link>
                   </td>
                   <td className="muted small">{linkTeam(r.team)}</td>
-                  <td className="r num">{r.gp}</td>
-                  <td className="r num strong">{cat.format(v)}</td>
-                  <td className="r num">{r.g}</td>
-                  <td className="r num">{r.a}</td>
-                  <td className="r num">{r.pts}</td>
+                  {rowCells(r, v).map((c) => (
+                    <td key={c.k} className={`r num${c.strong ? " strong" : ""}`}>
+                      {c.value}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

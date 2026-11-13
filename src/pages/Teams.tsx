@@ -18,7 +18,7 @@ import {
   teamBySlug,
   teamOf,
 } from "../lib/data";
-import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, Term, TermFor, TeamLogo } from "../components/ui";
 import type { Team } from "../lib/types";
 
 function ReturningCard({ team }: { team: Team }) {
@@ -180,7 +180,7 @@ function SeriesCard({ team }: { team: Team }) {
           key: r.opponent,
           primary: opponentCell(r.opponent),
           cells: [
-            { label: "W–L", value: `${r.w}–${r.l}`, strong: true },
+            { label: <Term k="wl" />, value: `${r.w}–${r.l}`, strong: true },
             { label: "Last meeting", value: r.last },
             { label: "Score", value: scoreCell(r.opponent, r.result) },
           ],
@@ -191,7 +191,7 @@ function SeriesCard({ team }: { team: Team }) {
           <thead>
             <tr>
               <th>Opponent</th>
-              <th className="r">W–L</th>
+              <th className="r"><Term k="wl" /></th>
               <th className="r">Last meeting</th>
               <th className="r">Score</th>
             </tr>
@@ -489,12 +489,12 @@ export function TeamPage() {
                 key: h.season,
                 primary: <span className="num strong">{h.season}</span>,
                 cells: [
-                  { label: "W", value: h.w },
-                  { label: "L", value: h.l },
-                  { label: "GF", value: h.gf },
-                  { label: "GA", value: h.ga },
+                  { label: <Term k="w" />, value: h.w },
+                  { label: <Term k="l" />, value: h.l },
+                  { label: <Term k="gf" />, value: h.gf },
+                  { label: <Term k="ga" />, value: h.ga },
                   {
-                    label: "Diff",
+                    label: <Term k="diff" />,
                     value: `${h.gf - h.ga > 0 ? "+" : ""}${h.gf - h.ga}`,
                     strong: true,
                   },
@@ -506,11 +506,11 @@ export function TeamPage() {
                 <thead>
                   <tr>
                     <th>Season</th>
-                    <th className="r">W</th>
-                    <th className="r">L</th>
-                    <th className="r">GF</th>
-                    <th className="r">GA</th>
-                    <th className="r">Diff</th>
+                    <th className="r"><Term k="w" /></th>
+                    <th className="r"><Term k="l" /></th>
+                    <th className="r"><Term k="gf" /></th>
+                    <th className="r"><Term k="ga" /></th>
+                    <th className="r"><Term k="diff" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -566,11 +566,11 @@ export function TeamPage() {
                 <span className="roster-pos">Pos</span>
                 <span className="roster-class">Class</span>
                 <span className="roster-stats">
-                  <span>GP</span>
-                  <span>G</span>
-                  <span>AST</span>
-                  <span>PTS</span>
-                  <span>{lastCol}</span>
+                  <span><Term k="gp" /></span>
+                  <span><Term k="g" /></span>
+                  <span><Term k="a" /></span>
+                  <span><Term k="pts" /></span>
+                  <span><Term k={lastCol === "PIM" ? "pim" : "gb"} /></span>
                 </span>
               </div>
               {roster.map((p) => {
@@ -585,13 +585,13 @@ export function TeamPage() {
                     <span className="roster-pos"><PositionBadge pos={p.position} /></span>
                     <span className="roster-class muted">{p.classYear ?? "—"}</span>
                     <span className="roster-stats">
-                      <span><b className="num">{s.gp}</b><i>GP</i></span>
-                      <span><b className="num">{isG ? "—" : s.g}</b><i>G</i></span>
-                      <span><b className="num">{isG ? "—" : s.a}</b><i>A</i></span>
-                      <span><b className="num strong">{isG ? "—" : s.pts}</b><i>PTS</i></span>
+                      <span><b className="num">{s.gp}</b><i><Term k="gp" /></i></span>
+                      <span><b className="num">{isG ? "—" : s.g}</b><i><Term k="g" /></i></span>
+                      <span><b className="num">{isG ? "—" : s.a}</b><i><Term k="a" /></i></span>
+                      <span><b className="num strong">{isG ? "—" : s.pts}</b><i><Term k="pts" /></i></span>
                       <span>
                         <b className="num">{box ? s.pen ?? 0 : s.gb}</b>
-                        <i>{lastCol}</i>
+                        <i><Term k={lastCol === "PIM" ? "pim" : "gb"} /></i>
                       </span>
                     </span>
                   </div>

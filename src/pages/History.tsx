@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById, teamByName, playerByName } from "../lib/data";
-import { BlockList, Card, Empty, Segmented, TeamLogo } from "../components/ui";
+import { BlockList, Card, Empty, Segmented, TermFor, TeamLogo } from "../components/ui";
 
 const METRICS = [
   { value: "points", label: "Points" },
@@ -85,7 +85,7 @@ function RecordBook() {
             ),
             cells: [
               { label: scope === "season" ? "Year" : "Years", value: r.Year ?? r.Years ?? "—" },
-              ...statCols.map((c) => ({ label: head(c), value: r[c], strong: true })),
+              ...statCols.map((c) => ({ label: <TermFor text={head(c)} />, value: r[c], strong: true })),
             ],
           };
         })}
@@ -100,7 +100,7 @@ function RecordBook() {
               <th className="r">{scope === "season" ? "Year" : "Years"}</th>
               {statCols.map((c) => (
                 <th key={c} className="r">
-                  {head(c)}
+                  <TermFor text={head(c)} />
                 </th>
               ))}
             </tr>

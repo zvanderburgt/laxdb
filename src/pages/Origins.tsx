@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById } from "../lib/data";
 import { region, regionCode } from "../lib/geo";
-import { BlockList, Card, Empty, Segmented, TeamLogo } from "../components/ui";
+import { BlockList, Card, Empty, Segmented, Term, TeamLogo } from "../components/ui";
 
 type Row = {
   code: string;
@@ -135,9 +135,9 @@ export default function Origins() {
             primary: <span className="strong">{r.name}</span>,
             meta: r.code,
             cells: [
-              { label: "Players", value: r.players, strong: true },
-              { label: "Share", value: `${r.share.toFixed(1)}%` },
-              { label: "Per 100k", value: r.per100k.toFixed(1) },
+              { label: <Term k="players" />, value: r.players, strong: true },
+              { label: <Term k="share" />, value: `${r.share.toFixed(1)}%` },
+              { label: <Term k="per100k" />, value: r.per100k.toFixed(1) },
             ],
             note: (
               <span className="origin-programs">
@@ -160,9 +160,9 @@ export default function Origins() {
               <tr>
                 <th className="c">#</th>
                 <th>State</th>
-                <th className="r">Players</th>
-                <th className="r col-share">Share</th>
-                <th className="r">Per 100k</th>
+                <th className="r"><Term k="players" /></th>
+                <th className="r col-share"><Term k="share" /></th>
+                <th className="r"><Term k="per100k" /></th>
                 <th className="col-programs">Top programs</th>
               </tr>
             </thead>
@@ -221,7 +221,7 @@ export default function Origins() {
               rank: i + 1,
               primary: <span className="strong">{r.name}</span>,
               meta: r.state,
-              cells: [{ label: "Players", value: r.players, strong: true }],
+              cells: [{ label: <Term k="players" />, value: r.players, strong: true }],
               note: (
                 <span className="origin-programs">
                   {r.programs.map(([id, n]) => {
@@ -244,7 +244,7 @@ export default function Origins() {
                 <tr>
                   <th className="c">#</th>
                   <th>High school</th>
-                  <th className="r">Players</th>
+                  <th className="r"><Term k="players" /></th>
                   <th className="col-programs">Top programs</th>
                 </tr>
               </thead>

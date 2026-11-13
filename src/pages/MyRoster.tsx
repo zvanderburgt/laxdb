@@ -3,7 +3,7 @@ import { Link } from "../lib/app";
 import { careerTotals, currentSeason, leagueById, teamById } from "../lib/data";
 import { toggleSaved, useRoster } from "../lib/storage";
 import { downloadCsv } from "../lib/export";
-import { Card, Empty, PlayerAvatar, PositionBadge } from "../components/ui";
+import { Card, Empty, PlayerAvatar, PositionBadge, Term } from "../components/ui";
 
 export default function MyRoster() {
   const players = useRoster();
@@ -77,13 +77,13 @@ export default function MyRoster() {
             <thead>
               <tr>
                 <th>Player</th>
-                <th className="c">Pos</th>
+                <th className="c"><Term k="pos" /></th>
                 <th>Team</th>
                 <th className="c">League</th>
-                <th className="r">GP</th>
-                <th className="r">G</th>
-                <th className="r">A</th>
-                <th className="r">PTS</th>
+                <th className="r"><Term k="gp" /></th>
+                <th className="r"><Term k="g" /></th>
+                <th className="r"><Term k="a" /></th>
+                <th className="r"><Term k="pts" /></th>
                 <th className="r">Career</th>
                 <th />
               </tr>

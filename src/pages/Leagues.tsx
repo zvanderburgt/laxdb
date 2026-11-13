@@ -15,7 +15,7 @@ import {
   teamById,
   teamOf,
 } from "../lib/data";
-import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, Term, TeamLogo } from "../components/ui";
 import type { League, Team } from "../lib/types";
 
 export function LeaguesPage() {
@@ -134,13 +134,13 @@ function RatingsCard({ league }: { league: League }) {
               </Link>
             ),
             cells: [
-              { label: "Elo", value: r.elo, strong: true },
-              { label: "SOS", value: r.sos },
+              { label: <Term k="elo" />, value: r.elo, strong: true },
+              { label: <Term k="sos" />, value: r.sos },
               {
-                label: "Consensus",
+                label: <Term k="consensus" />,
                 value: c ? `${c.mean.toFixed(1)} ±${c.spread}` : "—",
               },
-              { label: "W–L", value: r.team?.record ? `${r.team.record.w}–${r.team.record.l}` : "—" },
+              { label: <Term k="wl" />, value: r.team?.record ? `${r.team.record.w}–${r.team.record.l}` : "—" },
             ],
           };
         })}
@@ -151,10 +151,10 @@ function RatingsCard({ league }: { league: League }) {
             <tr>
               <th className="c">#</th>
               <th>Team</th>
-              <th className="r">Elo</th>
-              <th className="r">SOS</th>
-              <th className="r">Consensus</th>
-              <th className="r">W–L</th>
+              <th className="r"><Term k="elo" /></th>
+              <th className="r"><Term k="sos" /></th>
+              <th className="r"><Term k="consensus" /></th>
+              <th className="r"><Term k="wl" /></th>
             </tr>
           </thead>
           <tbody>
@@ -316,7 +316,7 @@ function PollCard({ league }: { league: League }) {
             ),
             cells: [
               {
-                label: hasRecord ? "Record" : "Points",
+                label: <Term k={hasRecord ? "record" : "pts"} />,
                 value: hasRecord ? r.record ?? "—" : r.extra ?? "—",
               },
             ],
@@ -330,7 +330,7 @@ function PollCard({ league }: { league: League }) {
               <th className="c">#</th>
               <th aria-label="Movement" />
               <th>Team</th>
-              <th className="r">{hasRecord ? "Record" : "Points"}</th>
+              <th className="r">{hasRecord ? <Term k="record" /> : <Term k="pts" />}</th>
             </tr>
           </thead>
           <tbody>
@@ -428,14 +428,14 @@ function StandingsCard({ league }: { league: League }) {
               </Link>
             ),
             cells: [
-              { label: "W", value: r.w, strong: true },
-              { label: "L", value: r.l },
-              ...(hasTies ? [{ label: "T", value: r.t }] : []),
-              { label: "PCT", value: r.pct ? r.pct.toFixed(3).replace(/^0/, "") : "—" },
-              { label: "GF", value: r.gf },
-              { label: "GA", value: r.ga },
+              { label: <Term k="w" />, value: r.w, strong: true },
+              { label: <Term k="l" />, value: r.l },
+              ...(hasTies ? [{ label: <Term k="t" />, value: r.t }] : []),
+              { label: <Term k="pct" />, value: r.pct ? r.pct.toFixed(3).replace(/^0/, "") : "—" },
+              { label: <Term k="gf" />, value: r.gf },
+              { label: <Term k="ga" />, value: r.ga },
               ...(hasConf
-                ? [{ label: "CONF", value: typeof r.confW === "number" ? `${r.confW}–${r.confL ?? 0}` : "—" }]
+                ? [{ label: <Term k="conf" />, value: typeof r.confW === "number" ? `${r.confW}–${r.confL ?? 0}` : "—" }]
                 : []),
             ],
           };
@@ -447,13 +447,13 @@ function StandingsCard({ league }: { league: League }) {
             <tr>
               <th className="c">#</th>
               <th>Team</th>
-              <th className="r">W</th>
-              <th className="r">L</th>
-              {hasTies ? <th className="r">T</th> : null}
-              <th className="r">PCT</th>
-              <th className="r">GF</th>
-              <th className="r">GA</th>
-              {hasConf ? <th className="r">CONF</th> : null}
+              <th className="r"><Term k="w" /></th>
+              <th className="r"><Term k="l" /></th>
+              {hasTies ? <th className="r"><Term k="t" /></th> : null}
+              <th className="r"><Term k="pct" /></th>
+              <th className="r"><Term k="gf" /></th>
+              <th className="r"><Term k="ga" /></th>
+              {hasConf ? <th className="r"><Term k="conf" /></th> : null}
             </tr>
           </thead>
           <tbody>
@@ -536,7 +536,7 @@ export function LeaguePage() {
     })
     .slice(0, 40);
 
-  const th = (k: typeof sortKey, label: string, cls = "") => (
+  const th = (k: typeof sortKey, label: React.ReactNode, cls = "") => (
     <th className={`r sortable ${cls} ${sortKey === k ? "is-sorted" : ""}`} onClick={() => sortBy(k)}>
       {label}
       <span className="sort-caret">{sortKey === k ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
@@ -618,7 +618,7 @@ export function LeaguePage() {
             <BlockList
               rows={rows.map((r, i) => {
                 const team = teamById.get(r.p.teamId);
-                const sortable = (k: typeof sortKey, label: string, value: React.ReactNode, strong?: boolean) => ({
+                const sortable = (k: typeof sortKey, label: React.ReactNode, value: React.ReactNode, strong?: boolean) => ({
                   label,
                   value,
                   strong,
@@ -641,16 +641,16 @@ export function LeaguePage() {
                     </Link>
                   ),
                   cells: [
-                    sortable("gp", "GP", r.s.gp),
-                    sortable("g", "G", r.s.g),
-                    sortable("a", "AST", r.s.a),
-                    sortable("pts", "PTS", r.s.pts ?? 0),
-                    sortable("ppg", "PTS/G", (r.s.gp ? (r.s.pts ?? 0) / r.s.gp : 0).toFixed(2)),
+                    sortable("gp", <Term k="gp" />, r.s.gp),
+                    sortable("g", <Term k="g" />, r.s.g),
+                    sortable("a", <Term k="a" />, r.s.a),
+                    sortable("pts", <Term k="pts" />, r.s.pts ?? 0),
+                    sortable("ppg", <Term k="ppg" />, (r.s.gp ? (r.s.pts ?? 0) / r.s.gp : 0).toFixed(2)),
                     ...(stat === "gb" || stat === "ct" || stat === "svp"
                       ? [
                           sortable(
                             "val",
-                            stat === "svp" ? "SV%" : stat === "gb" ? "GB" : "CT",
+                            stat === "svp" ? <Term k="svp" /> : stat === "gb" ? <Term k="gb" /> : <Term k="ct" />,
                             stat === "svp" ? r.val.toFixed(3).replace(/^0/, "") : r.val,
                             true,
                           ),
@@ -667,15 +667,15 @@ export function LeaguePage() {
                   <th className="c">#</th>
                   <th>Player</th>
                   <th className="col-team">Team</th>
-                  <th className="c col-pos">Pos</th>
-                  {th("gp", "GP")}
-                  {th("g", "G")}
-                  {th("a", "AST")}
-                  {th("pts", "PTS")}
-                  {th("ppg", "PTS/G", "col-ppg")}
+                  <th className="c col-pos"><Term k="pos" /></th>
+                  {th("gp", <Term k="gp" />)}
+                  {th("g", <Term k="g" />)}
+                  {th("a", <Term k="a" />)}
+                  {th("pts", <Term k="pts" />)}
+                  {th("ppg", <Term k="ppg" />, "col-ppg")}
                   {stat === "gb" || stat === "ct" || stat === "svp" ? (
                     <th className={`r sortable ${sortKey === "val" ? "is-sorted" : ""}`} onClick={() => sortBy("val")}>
-                      {stat === "svp" ? "SV%" : stat === "gb" ? "GB" : "CT"}
+                      {stat === "svp" ? <Term k="svp" /> : stat === "gb" ? <Term k="gb" /> : <Term k="ct" />}
                       <span className="sort-caret">{sortKey === "val" ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
                     </th>
                   ) : null}
