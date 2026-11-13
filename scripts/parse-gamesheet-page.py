@@ -180,6 +180,11 @@ def read_page(path: str) -> list[dict]:
         return rows
     # the payload is JSON-escaped twice inside self.__next_f.push([1,"…"])
     flat = raw.replace('\\"', '"')
+    # a club page saved on the wrong tab renders no roster table, but its payload carries
+    # the whole league's player list — reading that would match hundreds of strangers, so
+    # only a payload that actually contains shotHand (a player page) is trusted here
+    if '"shotHand"' not in flat:
+        return []
     players = [r for r in (row_at(flat, m.start(), m.group(1)[:1].upper())
                            for m in SHOT.finditer(flat)) if r]
     if players:
