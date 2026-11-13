@@ -37,6 +37,8 @@ import {
   Sparkline,
   Stat,
   PlayerAvatar,
+  Skeleton,
+  SkeletonRows,
   Term,
   TermFor,
   TeamLogo,
@@ -1137,9 +1139,14 @@ function GameLog({ player }: { player: Player }) {
 
   if (loaded === null) {
     return (
-      <Card>
-        <div className="eyebrow">Game log</div>
-        <p className="muted">Loading box scores…</p>
+      <Card padded={false} className="standings-card" aria-busy="true">
+        <div className="card-toolbar">
+          <div>
+            <h3 className="card-title">Game log</h3>
+            <p className="muted small"><Skeleton w={200} h={10} /></p>
+          </div>
+        </div>
+        <SkeletonRows rows={7} cols={6} />
       </Card>
     );
   }

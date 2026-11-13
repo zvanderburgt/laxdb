@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "../lib/app";
 import { data, teamBySlug } from "../lib/data";
-import { Card, Empty, TeamLogo } from "../components/ui";
+import { Card, Empty, SkeletonCard, TeamLogo } from "../components/ui";
 
 type Game = { date: string; home: string; away: string; hs: number; as: number };
 
@@ -104,7 +104,9 @@ export default function Versus() {
 
       <TeamPickers teams={teams} a={slugA} b={slugB} />
 
-      {meetings.length ? (
+      {games === null ? (
+        <SkeletonCard title="Meetings" sub="Reading the results feed" rows={5} cols={3} />
+      ) : meetings.length ? (
         <Card padded={false} className="standings-card">
           <div className="table-scroll">
             <table className="data-table">

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "../lib/app";
 import { teamByName } from "../lib/data";
-import { Card, Segmented } from "../components/ui";
+import { Card, Segmented , Skeleton, SkeletonRows } from "../components/ui";
 
 type Game = { date: string; home: string; away: string; hs: number; as: number; venue?: string };
 type Payload = { d1: Game[]; pll: Game[] };
@@ -51,14 +51,23 @@ export default function Scores() {
 
   if (!payload) {
     return (
-      <div className="page">
+      <div className="page" aria-busy="true">
         <div className="page-head">
           <div>
             <div className="eyebrow">Scores</div>
             <h1>Final scores</h1>
-            <p className="muted">Loading…</p>
+            <p className="muted"><Skeleton w={260} h={11} /></p>
           </div>
         </div>
+        {[0, 1].map((i) => (
+          <Card key={i} padded={false} className="standings-card">
+            <div className="scores-day">
+              <Skeleton w={120} h={12} />
+              <Skeleton w={54} h={10} />
+            </div>
+            <SkeletonRows rows={4} cols={4} />
+          </Card>
+        ))}
       </div>
     );
   }

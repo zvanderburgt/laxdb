@@ -2627,3 +2627,87 @@ a.vs-team:hover { color: var(--accent); }
   top: -9999px;
 }
 .abbr-tip.is-on { opacity: 1; transform: none; }
+
+/* -------------------------------- skeletons -------------------------------- */
+/* A block of placeholder shapes while a fetch resolves. Motion is a slow sweep; readers
+   who ask for reduced motion get a flat tint instead. */
+.skel {
+  display: block;
+  background: linear-gradient(100deg, var(--bg-soft) 20%, var(--hairline) 38%, var(--bg-soft) 56%);
+  background-size: 300% 100%;
+  animation: skel-sweep 1.5s ease-in-out infinite;
+}
+@keyframes skel-sweep {
+  from { background-position: 140% 0; }
+  to { background-position: -40% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; background: var(--bg-soft); }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skel-rows { display: flex; flex-direction: column; }
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.skel-row:last-child { border-bottom: 0; }
+.skel-row-head { height: 38px; padding-block: 0; background: var(--card); }
+.skel-row > .skel:first-child { flex: 1 1 auto; }
+.skel-row > .skel + .skel { flex: 0 0 26px; }
+
+/* the shell, before data.json lands */
+.skel-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 60px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--hairline);
+}
+.skel-nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+  width: 100%;
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.skel-nav-links { display: flex; gap: 18px; flex: 1 1 auto; }
+.skel-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%; /* auto margins on a flex item shrink-to-fit, which crushed the skeleton */
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 44px 24px 88px;
+}
+.skel-hero { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; margin-top: 26px; }
+.skel-hero-side { display: flex; flex-direction: column; gap: 16px; }
+.skel-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+
+@media (max-width: 900px) {
+  .skel-nav-links { display: none; }
+  .skel-nav-inner { justify-content: space-between; }
+  .skel-main { padding: 36px 16px 48px; }
+  .skel-hero { grid-template-columns: minmax(0, 1fr); }
+  .skel-hero-side { flex-direction: row; }
+  .skel-cards { grid-template-columns: minmax(0, 1fr); }
+}

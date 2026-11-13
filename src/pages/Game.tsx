@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "../lib/app";
 import { data, teamBySlug } from "../lib/data";
-import { Card, Empty, PlayerAvatar, Term, TeamLogo } from "../components/ui";
+import { Card, Empty, PlayerAvatar, Skeleton, SkeletonRows, Term, TeamLogo } from "../components/ui";
 import type { GameRow } from "../lib/types";
 
 /**
@@ -111,7 +111,19 @@ export default function Game() {
       </div>
 
       {!logs ? (
-        <p className="muted">Loading the box score…</p>
+        <div className="game-grid" aria-busy="true">
+          {[0, 1].map((i) => (
+            <Card key={i} padded={false} className="standings-card">
+              <div className="card-toolbar">
+                <div>
+                  <h3 className="card-title"><Skeleton w={140} h={15} /></h3>
+                  <p className="muted small"><Skeleton w={110} h={10} /></p>
+                </div>
+              </div>
+              <SkeletonRows rows={6} cols={6} />
+            </Card>
+          ))}
+        </div>
       ) : (
         <div className="game-grid">
           {(["away", "home"] as const).map((side) => {

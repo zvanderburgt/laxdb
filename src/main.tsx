@@ -2,9 +2,26 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { loadDataset } from "./lib/data";
+import { AppSkeleton } from "./components/ui";
 import "./styles.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
+
+// the dataset is several megabytes, so the shell paints before it lands: theme first (or a
+// dark-mode reader gets a white flash), then a skeleton shaped like the page
+const saved = localStorage.getItem("laxdb-theme");
+document.documentElement.dataset.theme =
+  saved === "dark" || saved === "light"
+    ? saved
+    : window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+
+root.render(
+  <React.StrictMode>
+    <AppSkeleton />
+  </React.StrictMode>
+);
 
 loadDataset()
   .then(() => {

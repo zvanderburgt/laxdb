@@ -146,6 +146,110 @@ export function Segmented<T extends string>({
   );
 }
 
+/* -------------------------------- skeletons -------------------------------- */
+/* Shapes that stand in for the layout while a fetch resolves, so nothing jumps when the
+   real rows land. The whole block is decorative; the wrapper announces the wait once. */
+
+export function Skeleton({
+  w,
+  h = 12,
+  r = 6,
+  className = "",
+}: {
+  w?: number | string;
+  h?: number | string;
+  r?: number;
+  className?: string;
+}) {
+  return <span className={`skel ${className}`} style={{ width: w, height: h, borderRadius: r }} aria-hidden="true" />;
+}
+
+/** Table-shaped placeholder: a header line and n rows, with ragged name widths. */
+export function SkeletonRows({ rows = 6, cols = 5 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="skel-rows">
+      <div className="skel-row skel-row-head">
+        {Array.from({ length: cols }).map((_, i) => (
+          <Skeleton key={i} h={9} w={i === 0 ? "46%" : 22} />
+        ))}
+      </div>
+      {Array.from({ length: rows }).map((_, r) => (
+        <div className="skel-row" key={r}>
+          {Array.from({ length: cols }).map((_, c) => (
+            <Skeleton
+              key={c}
+              h={13}
+              w={c === 0 ? `${54 + ((r * 13) % 26)}%` : 24}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A card with its real title, holding rows that are still on the way. */
+export function SkeletonCard({
+  title,
+  sub,
+  rows = 5,
+  cols = 4,
+}: {
+  title: string;
+  sub?: string;
+  rows?: number;
+  cols?: number;
+}) {
+  return (
+    <Card padded={false} className="standings-card" aria-busy="true">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">{title}</h3>
+          <p className="muted small">{sub ?? <Skeleton h={10} w={180} />}</p>
+        </div>
+      </div>
+      <SkeletonRows rows={rows} cols={cols} />
+    </Card>
+  );
+}
+
+/** The first paint: the shell, before data.json has even arrived. */
+export function AppSkeleton() {
+  return (
+    <div className="app" aria-busy="true">
+      <span className="sr-only" role="status">Loading the player database</span>
+      <div className="skel-nav" aria-hidden="true">
+        <div className="skel-nav-inner">
+          <Skeleton w={96} h={22} r={7} />
+          <div className="skel-nav-links">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} w={48 + (i % 3) * 12} h={11} />
+            ))}
+          </div>
+          <Skeleton w={180} h={30} r={9} />
+        </div>
+      </div>
+      <main className="skel-main" aria-hidden="true">
+        <Skeleton w={64} h={10} />
+        <Skeleton w="min(520px, 72%)" h={44} r={10} />
+        <Skeleton w="min(420px, 60%)" h={13} />
+        <div className="skel-hero">
+          <Skeleton w="100%" h={190} r={18} />
+          <div className="skel-hero-side">
+            <Skeleton w="100%" h={88} r={16} />
+            <Skeleton w="100%" h={88} r={16} />
+          </div>
+        </div>
+        <div className="skel-cards">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} w="100%" h={176} r={16} />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
+
 /* ------------------------------ abbreviations ----------------------------- */
 /* Table headers print abbreviations, so each one carries the sentence a reader needs.
    A single fixed node is reused for the tooltip: cards are `overflow: hidden`, so an
@@ -405,12 +509,17 @@ export function Card({
   children,
   className = "",
   padded = true,
+  ...rest
 }: {
   children: React.ReactNode;
   className?: string;
   padded?: boolean;
-}) {
-  return <div className={`card ${padded ? "pad" : ""} ${className}`}>{children}</div>;
+} & React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={`card ${padded ? "pad" : ""} ${className}`} {...rest}>
+      {children}
+    </div>
+  );
 }
 
 export function SectionHead({

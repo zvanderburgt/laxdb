@@ -18,7 +18,7 @@ import {
   teamBySlug,
   teamOf,
 } from "../lib/data";
-import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, Term, TermFor, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, SkeletonCard, Stat, PlayerAvatar, Term, TermFor, TeamLogo } from "../components/ui";
 import type { Team } from "../lib/types";
 
 function ReturningCard({ team }: { team: Team }) {
@@ -137,7 +137,8 @@ function SeriesCard({ team }: { team: Team }) {
     };
   }, [team.id]);
 
-  if (!result || result.rows.length < 3) return null;
+  if (!result) return <SkeletonCard title="Season series" sub="Rebuilding from the box scores" rows={5} cols={4} />;
+  if (result.rows.length < 3) return null;
 
   // one lookup per cell, shared by the table and the phone block, so they cannot drift
   const norm = (x: string) => x.toLowerCase().replace(/[^a-z]/g, "");
