@@ -178,6 +178,16 @@ def read_page(path: str) -> list[dict]:
     rows = read_tables(raw)
     if rows:
         return rows
+    # a club page always renders a NAME-headed table, even when the club has filled no
+    # bios (every cell is "--"). In that case the answer is "nothing here" — never a
+    # reason to read the league-wide player list out of the payload.
+    has_roster = any(
+        "NAME" in [html_unescape(re.sub(r"<[^>]+>", "", h)).strip().replace(" ↑", "").upper()
+                   for h in re.findall(r"<th[^>]*>(.*?)</th>", block, re.S)]
+        for block in re.findall(r"<table[^>]*>(.*?)</table>", raw, re.S)
+    )
+    if has_roster:
+        return []
     # the payload is JSON-escaped twice inside self.__next_f.push([1,"…"])
     flat = raw.replace('\\"', '"')
     # a club page saved on the wrong tab renders no roster table, but its payload carries
