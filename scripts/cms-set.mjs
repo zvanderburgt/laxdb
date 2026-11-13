@@ -16,10 +16,12 @@ import { existsSync } from "node:fs";
 const args = process.argv.slice(2);
 const base = args.includes("--base") ? args[args.indexOf("--base") + 1] : "http://localhost:8787";
 const publish = args.includes("--publish");
-const rest = args.filter((a, i) => !["--publish", "--draft", "--base"].includes(a) && args[i - 1] !== "--base");
+const revert = args.includes("--revert");
+const rest = args.filter((a, i) => !["--publish", "--draft", "--revert", "--base"].includes(a) && args[i - 1] !== "--base");
 
-if (rest.length !== 3) {
+if (!revert && rest.length !== 3) {
   console.error("usage: node scripts/cms-set.mjs <entity:id> <path> <json-value> [--publish] [--base url]");
+  console.error("       node scripts/cms-set.mjs <entity:id> [path] --revert   # back to the feed value");
   process.exit(1);
 }
 
@@ -68,6 +70,20 @@ if (signin.status !== 200) {
   process.exit(1);
 }
 const csrf = signin.body.csrf;
+
+if (revert) {
+  const done = await call("/api/revert", {
+    method: "POST",
+    headers: { "x-cms-csrf": csrf },
+    body: JSON.stringify({ entity, id, path: rest[1] }),
+  });
+  if (done.status !== 200) {
+    console.error(`revert failed: ${done.status} ${JSON.stringify(done.body)}`);
+    process.exit(1);
+  }
+  console.log(`reverted ${entity}:${id}${rest[1] ? ` ${rest[1]}` : " (all fields)"} — now ${done.body.fields} field(s), ${done.body.entities} entity(ies)`);
+  process.exit(0);
+}
 
 const staged = await call("/api/draft", {
   method: "POST",

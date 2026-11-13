@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { CompareProvider, Link, RouterProvider, ThemeProvider, useRoute } from "./lib/app";
 import { leagueById, playerBySlug, teamBySlug } from "./lib/data";
 import { CompareTray, Footer, Nav } from "./components/Chrome";
@@ -16,6 +16,36 @@ import Scores from "./pages/Scores";
 import Versus from "./pages/Versus";
 import Game from "./pages/Game";
 import { Empty } from "./components/ui";
+import { startEditing, stopEditing, useCms, useDataRevision } from "./lib/cms";
+
+// the editor surface is lazily loaded: an anonymous visitor never downloads it
+const Editor = React.lazy(() => import("./components/cms/Editor"));
+
+/** The way in: ⌘⇧E anywhere, or a `?edit=1` query on any route. */
+function Cms() {
+  const cms = useCms();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        if (cms.mode === "off") startEditing();
+        else stopEditing();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    const query = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+    if (query.get("edit") === "1") startEditing();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cms.mode]);
+
+  if (cms.mode === "off") return null;
+  return (
+    <Suspense fallback={null}>
+      <Editor />
+    </Suspense>
+  );
+}
 
 function titleFor(path: string) {
   const seg = path.split("/").filter(Boolean);
@@ -32,6 +62,8 @@ function titleFor(path: string) {
 
 function Routes() {
   const { path } = useRoute();
+  // the editor mutates the dataset in place; this is what tells React to paint the new value
+  useDataRevision();
   const seg = path.split("/").filter(Boolean);
 
   useEffect(() => {
@@ -69,6 +101,7 @@ function Routes() {
       <Nav />
       <main key={path}>{page}</main>
       <CompareTray />
+      <Cms />
       <Footer />
     </div>
   );

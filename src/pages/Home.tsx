@@ -159,11 +159,12 @@ export default function Home() {
         <div className="hero-glow" aria-hidden="true" />
         <div className="hero-inner">
           <div className="hero-copy">
-            <div className="eyebrow reveal">{site.heroEyebrow}</div>
+            <div className="eyebrow reveal" data-cms="site.heroEyebrow" data-cms-id="site">{site.heroEyebrow}</div>
             <h1 className="reveal">
-              {PLAYER_COUNT.toLocaleString()} players. <span className="shine">{site.heroTail}</span>
+              {PLAYER_COUNT.toLocaleString()} players.{" "}
+              <span className="shine" data-cms="site.heroTail" data-cms-id="site">{site.heroTail}</span>
             </h1>
-            <p className="hero-sub reveal">{site.heroLede}</p>
+            <p className="hero-sub reveal" data-cms="site.heroLede" data-cms-id="site">{site.heroLede}</p>
             <form
               className="hero-search reveal"
               onSubmit={(e) => {

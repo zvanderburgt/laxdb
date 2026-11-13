@@ -40,6 +40,7 @@ import {
   published,
   revert,
   stage,
+  unstage,
   versionDoc,
   versions,
   withDraft,
@@ -81,11 +82,27 @@ function csrfOk(req: Request, token: string | null): boolean {
   return Boolean(sent) && sent === csrfFor(token);
 }
 
+/**
+ * Same-origin writes only.
+ *
+ * The host has to come from the `host`/`x-forwarded-host` header rather than the request URL: behind
+ * the local dev proxy the function sees `localhost:8787` while the browser sends
+ * `Origin: localhost:5173`, and on Netlify the forwarded host is the site the visitor typed.
+ */
 const originOk = (req: Request): boolean => {
   const origin = req.headers.get("origin");
   if (!origin) return true; // same-origin fetch may omit it; the cookie is SameSite=Strict either way
+  const hosts = new Set<string>();
+  for (const h of [req.headers.get("host"), req.headers.get("x-forwarded-host")]) {
+    if (h) hosts.add(h.toLowerCase());
+  }
   try {
-    return new URL(origin).host === new URL(req.url).host;
+    hosts.add(new URL(req.url).host.toLowerCase());
+  } catch {
+    /* ignore a malformed url */
+  }
+  try {
+    return hosts.has(new URL(origin).host.toLowerCase());
   } catch {
     return false;
   }
@@ -184,6 +201,23 @@ export default async function handler(req: Request): Promise<Response> {
     if (method === "POST") {
       const body = await readBody(req);
       if (!body) return fail(413, "body missing or too large");
+
+      // drop a staged field: the dock's chip ×, its Undo, and the review sheet's "Drop"
+      if (body.remove && typeof body.remove === "object") {
+        const r = body.remove as Record<string, unknown>;
+        const entity = typeof r.entity === "string" ? r.entity : "";
+        const id = typeof r.id === "string" ? r.id : "";
+        const path = typeof r.path === "string" ? r.path : "";
+        if (!["player", "team", "league", "site"].includes(entity) || !id || !fieldFor(entity, path)) {
+          return fail(422, "bad remove target");
+        }
+        const next = await unstage(entity, id, path);
+        return json(
+          { fields: fieldCount(next), baseVersion: next?.baseVersion ?? 0, generated: next?.generated ?? "" },
+          { headers: { "cache-control": "no-store" } }
+        );
+      }
+
       const parsed = validatePatch(body.patch);
       if (!parsed.ok) return fail(422, parsed.error);
       const next = await stage(parsed.value);

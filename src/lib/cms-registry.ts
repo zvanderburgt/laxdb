@@ -35,11 +35,25 @@ export interface FieldDef {
   min?: number;
   maxNum?: number;
   options?: readonly string[];
+  /** display text per option, when the stored code is not the label ("L" → "Left") */
+  labels?: Record<string, string>;
   /** keys every entry of a `people` array carries */
   item?: readonly string[];
 }
 
 const POSITIONS = ["A", "M", "D", "G", "FO", "LSM", "F", "T", "R"] as const;
+
+const POSITION_LABELS: Record<string, string> = {
+  A: "Attack",
+  M: "Midfield",
+  D: "Defense",
+  G: "Goalie",
+  FO: "Faceoff",
+  LSM: "LSM",
+  F: "Forward",
+  T: "Transition",
+  R: "Runner",
+};
 
 export const FIELDS: readonly FieldDef[] = [
   // ------------------------------- player ---------------------------------
@@ -56,13 +70,12 @@ export const FIELDS: readonly FieldDef[] = [
   { key: "player.birthplace.state", entity: "player", path: "birthplace.state", type: "text", label: "State / province", max: 40 },
   { key: "player.birthplace.country", entity: "player", path: "birthplace.country", type: "text", label: "Country", max: 40 },
   { key: "player.dob", entity: "player", path: "dob", type: "date", label: "Date of birth" },
-  { key: "player.hand", entity: "player", path: "hand", type: "select", label: "Shoots", options: ["Left", "Right", ""] },
+  { key: "player.hand", entity: "player", path: "hand", type: "select", label: "Shoots", options: ["L", "R", ""], labels: { L: "Left", R: "Right", "": "Not set" } },
   { key: "player.heightIn", entity: "player", path: "heightIn", type: "number", label: "Height (in)", min: 55, maxNum: 96 },
   { key: "player.weightLb", entity: "player", path: "weightLb", type: "number", label: "Weight (lb)", min: 100, maxNum: 350 },
   { key: "player.jersey", entity: "player", path: "jersey", type: "number", label: "Jersey", min: 0, maxNum: 99 },
-  { key: "player.position", entity: "player", path: "position", type: "select", label: "Position", options: POSITIONS },
+  { key: "player.position", entity: "player", path: "position", type: "select", label: "Position", options: POSITIONS, labels: POSITION_LABELS },
   { key: "player.classYear", entity: "player", path: "classYear", type: "number", label: "Class of", min: 1950, maxNum: 2100 },
-  { key: "player.status", entity: "player", path: "status", type: "text", label: "Status", max: 24 },
   { key: "player.awards", entity: "player", path: "awards", type: "people", label: "Awards", item: ["year", "title", "team"] },
   { key: "player.photo", entity: "player", path: "photo", type: "image", label: "Headshot" },
 

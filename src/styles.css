@@ -1507,8 +1507,13 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .tray {
   position: fixed;
   bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
+  /* centred by inset + auto margins, never by transform: the arrival animation ends on a transform
+     and `animation-fill-mode: both` keeps that final keyframe pinned, which silently beat the phone
+     tier's `transform: none` and pushed both trays off the left of a 390px screen */
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: fit-content;
   z-index: 80;
   display: flex;
   align-items: center;
@@ -1523,12 +1528,134 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   animation: trayin 0.28s var(--ease) both;
   max-width: calc(100vw - 24px);
 }
-@keyframes trayin { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes trayin { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .tray-people { display: flex; gap: 8px; overflow-x: auto; }
 .tray-person { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; }
 .tray-x { border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
 .tray-x:hover { color: var(--red); }
 .tray-actions { display: flex; gap: 6px; }
+
+/* ------------------------------- cms editor -------------------------------- */
+/* The dock is the compare tray's twin — same geometry, surface, shadow and entrance. Only its
+   contents differ. See docs/cms.md §1.1. */
+
+.tray-cms { padding-right: 10px; }
+.tray-cms .tray-actions { flex: 0 0 auto; }
+.cms-mode { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; flex: 0 0 auto; }
+.cms-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cms-dot.is-bad { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent); }
+.cms-sep { width: 1px; height: 22px; background: var(--hairline); flex: 0 0 auto; }
+.cms-stack { display: flex; gap: 8px; align-items: center; height: 32px; min-width: 0; overflow: hidden; }
+.cms-stack .chip { max-width: 240px; overflow: hidden; }
+.cms-stack .chip em { font-style: normal; color: var(--text-3); font-weight: 400; }
+.cms-chip-x { border: 0; background: transparent; color: var(--text-3); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+.cms-chip-x:hover { color: var(--red); }
+.tray-cms .count { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.tray-cms .count b { color: var(--amber-ink); font-weight: 600; }
+
+/* both bars can be on screen at once: the dock owns the bottom slot */
+.app:has(.tray-cms) .tray:not(.tray-cms) { bottom: 86px; }
+
+/* the hover outline and its label: one fixed box painted over the target, never inside it, so a
+   card's overflow:hidden cannot clip it */
+.cms-outline {
+  position: fixed; z-index: 70; pointer-events: none; border-radius: 6px;
+  outline: 2px solid var(--accent-soft); outline-offset: 3px;
+}
+.cms-tip {
+  position: absolute; top: -30px; left: -3px; height: 22px; display: inline-flex; align-items: center;
+  gap: 6px; padding: 0 8px; border-radius: 6px; background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+.cms-tip::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #fff; opacity: 0.75; }
+.cms-outline.tip-below .cms-tip { top: auto; bottom: -30px; }
+[data-cms-dirty] { box-shadow: inset 0 -1.5px 0 var(--amber); }
+
+/* the shadow input: a real control positioned over the element's own box */
+.cms-field {
+  position: fixed; z-index: 82; display: grid; gap: 6px; padding: 10px;
+  background: var(--card); border: 1px solid var(--hairline-strong); border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+}
+.cms-field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cms-field-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); }
+.cms-field-hint { font-size: 11px; color: var(--text-3); }
+.cms-input {
+  width: 100%; height: 38px; padding: 0 11px; border: 1px solid var(--accent);
+  border-radius: 11px; background: var(--card); color: var(--text); font: inherit; font-size: 14px;
+  box-shadow: 0 0 0 3px var(--accent-soft); outline: none;
+}
+.cms-textarea { height: auto; min-height: 92px; padding: 9px 11px; line-height: 1.55; resize: vertical; }
+.cms-field-foot { display: flex; justify-content: flex-end; gap: 6px; }
+
+/* sign in */
+.cms-signin {
+  position: fixed; z-index: 81; bottom: 86px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; max-width: calc(100vw - 24px);
+  background: var(--nav-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+  border: 1px solid var(--hairline-strong); border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+}
+.cms-signin-label { font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.cms-signin .cms-input { width: 210px; box-shadow: 0 0 0 3px var(--accent-soft); }
+.cms-signin-err { font-size: 12px; color: var(--red); white-space: nowrap; }
+
+/* review sheet: the command palette's geometry */
+.cms-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px;
+  background: rgba(0, 0, 0, 0.28); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.cms-sheet {
+  width: min(560px, 100%); max-height: min(70vh, 620px); display: flex; flex-direction: column;
+  background: var(--card); border: 1px solid var(--hairline); border-radius: 18px; box-shadow: var(--shadow-lg);
+  animation: trayin 0.28s var(--ease) both;
+}
+.cms-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px 12px; }
+.cms-sheet-head h2 { margin: 2px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.cms-sheet-empty { margin: 0; padding: 4px 20px 20px; color: var(--text-2); font-size: 14px; }
+.cms-rows { list-style: none; margin: 0; padding: 0 8px; overflow-y: auto; }
+.cms-rows li { padding: 10px 12px; border-top: 1px solid var(--hairline); }
+.cms-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.cms-row-where { font-size: 13.5px; font-weight: 500; }
+.cms-row-field { color: var(--text-3); font-weight: 400; }
+.cms-row-field::before { content: "· "; }
+.cms-row-drop { border: 0; background: transparent; color: var(--text-3); font: inherit; font-size: 12px; cursor: pointer; padding: 2px 4px; }
+.cms-row-drop:hover { color: var(--red); }
+.cms-row-diff { display: flex; gap: 8px; align-items: baseline; margin-top: 4px; font-size: 12.5px; }
+.cms-before { color: var(--text-3); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--text-3) 50%, transparent); }
+.cms-arrow { color: var(--text-3); }
+.cms-after { color: var(--text); font-weight: 500; }
+.cms-row-err { margin-top: 4px; font-size: 12px; color: var(--red); }
+.cms-rows li.is-err { background: color-mix(in srgb, var(--red) 6%, transparent); }
+.cms-sheet-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 20px 16px; border-top: 1px solid var(--hairline); margin-top: 8px;
+}
+.cms-foot-note { font-size: 12px; color: var(--text-3); }
+.cms-notice.is-ok { color: var(--green); }
+.cms-notice.is-bad, .cms-toast.is-bad { color: var(--red); }
+.cms-foot-actions { display: flex; gap: 6px; }
+.cms-toast {
+  position: fixed; z-index: 85; bottom: 86px; left: 0; right: 0; margin-inline: auto; width: fit-content;
+  padding: 8px 14px; border-radius: 980px; background: var(--card); border: 1px solid var(--hairline-strong);
+  box-shadow: var(--shadow-md); font-size: 12.5px; color: var(--text-2); max-width: calc(100vw - 32px);
+  animation: trayin 0.28s var(--ease) both;
+}
+.cms-toast.is-ok { color: var(--green); }
+
+@media (max-width: 900px) {
+  .cms-stack, .cms-sep { display: none; }
+}
+@media (max-width: 640px) {
+  .tray-cms { padding: 8px 10px; }
+  .tray-cms .count { margin-left: auto; }
+  .tray-cms .tray-actions { gap: 4px; }
+  .tray-cms .btn-discard { display: none; }
+  .app:has(.tray-cms) .tray:not(.tray-cms) { bottom: 88px; }
+  .cms-signin { left: 12px; right: 12px; transform: none; flex-wrap: wrap; }
+  .cms-signin .cms-input { width: 100%; order: 3; }
+  .cms-field { left: 12px !important; right: 12px; width: auto !important; }
+  .cms-toast { bottom: 88px; }
+}
 
 /* -------------------------------- footer --------------------------------- */
 
@@ -1599,7 +1726,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   .profile-sub { gap: 4px 10px; }
   .footer-inner { gap: 32px; }
   .footer-cols { gap: 32px; }
-  .tray { left: 12px; right: 12px; transform: none; max-width: none; }
+  .tray { left: 12px; right: 12px; margin-inline: 0; width: auto; transform: none; max-width: none; }
   .tray-people { display: none; }
   .tray-actions { width: 100%; justify-content: space-between; }
 }
