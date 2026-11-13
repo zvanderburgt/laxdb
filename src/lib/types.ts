@@ -1,4 +1,4 @@
-export type Position = "A" | "M" | "D" | "G" | "FO" | "LSM";
+export type Position = "A" | "M" | "D" | "G" | "FO" | "LSM" | "F" | "T" | "R";
 
 export interface StandingRow {
   teamId: string;

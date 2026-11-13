@@ -9,10 +9,11 @@ import {
   currentSeason,
   statesList,
   teamOf,
+  positionLabel,
+  positionOrder,
 } from "../lib/data";
 import { Avatar, Empty, PositionBadge, Segmented, PlayerAvatar } from "../components/ui";
 
-const POSITIONS = ["A", "M", "D", "G", "FO", "LSM"];
 type SortKey =
   | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
   | "shp" | "fop" | "svp";
@@ -36,6 +37,19 @@ export default function Players() {
   const [view, setView] = useState<"table" | "cards">(() =>
     typeof window !== "undefined" && window.innerWidth < 700 ? "cards" : "table",
   );
+
+  // only the positions this scope actually holds: a box league offers Forward /
+  // Transition / Defense / Runner, a college league keeps Attack / Midfield / …
+  const posOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const p of data.players) {
+      if (league !== "all" && p.leagueId !== league) continue;
+      if (p.position) seen.add(p.position);
+    }
+    const opts: string[] = positionOrder.filter((c) => seen.has(c));
+    for (const c of pos) if (!opts.includes(c)) opts.push(c);
+    return opts;
+  }, [league, pos]);
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -162,10 +176,12 @@ export default function Players() {
         </div>
 
         <div className="pos-pills">
-          {POSITIONS.map((p) => (
+          {posOptions.map((p) => (
             <button
               key={p}
               className={`pill ${pos.includes(p) ? "is-on" : ""}`}
+              title={positionLabel[p] ?? p}
+              aria-label={positionLabel[p] ?? p}
               onClick={() => setPos((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]))}
             >
               {p}

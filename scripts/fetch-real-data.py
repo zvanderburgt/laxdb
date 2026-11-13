@@ -210,7 +210,9 @@ POS_MAP = {
     "MF": "M", "DM": "M", "D": "D", "DEF": "D", "DEFENSE": "D", "LSM": "LSM", "G": "G",
     "GK": "G", "GOALIE": "G", "FO": "FO", "FOS": "FO", "FO/M": "FO",
 }
-POS_NAME = {"A": "Attack", "M": "Midfield", "D": "Defense", "G": "Goalie", "FO": "Faceoff", "LSM": "LSM"}
+POS_NAME = {"A": "Attack", "M": "Midfield", "D": "Defense", "G": "Goalie", "FO": "Faceoff", "LSM": "LSM",
+            # box: forward / transition / defense are published, a bare skater is a runner
+            "F": "Forward", "T": "Transition", "R": "Runner", "T/D": "Transition"}
 YEAR_TO_CLASS = {"fr.": 2029, "fr": 2029, "so.": 2028, "so": 2028, "jr.": 2027, "jr": 2027,
                  "sr.": 2026, "sr": 2026, "gr.": 2026, "gr": 2026, "r-fr.": 2029,
                  "r-so.": 2028, "r-jr.": 2027, "r-sr.": 2026, "5th": 2026}
@@ -758,7 +760,7 @@ def parse_mcla_stats(html, tid):
                 row["min"] = 0
                 row["to"] = 0
             else:
-                row["position"] = pos_hint or "F"
+                row["position"] = pos_hint or "R"
                 row["ga"] = row["sv"] = row["min"] = row["to"] = 0
             row["pts"] = row["g"] + row["a"]
             rows.append(row)
@@ -828,7 +830,8 @@ def build_mcla(seasons=("2026", "2025")):
                 "id": pid, "slug": slugify(p["name"]), "firstName": p["name"].split(" ")[0],
                 "lastName": " ".join(p["name"].split(" ")[1:]), "name": p["name"],
                 "position": pos,
-                "positionName": {"G": "Goalie", "F": "Field player"}.get(pos, POS_NAME.get(pos, "Field player")),
+                "positionName": {"G": "Goalie", "F": "Field player", "R": "Field player"}.get(
+                    pos, POS_NAME.get(pos, "Field player")),
                 "hand": "", "heightIn": 0, "weightLb": 0, "dob": "",
                 "birthplace": {"city": "", "state": "", "country": "USA"},
                 "classYear": p["classYear"], "gradYear": p["classYear"] or 2026,
@@ -1004,7 +1007,7 @@ def build_netfront():
             })
             merged = {}
             for row in skaters:
-                p = merged.setdefault((norm_name(row["name"]), "F"), {"name": row["name"], "position": "F", "seasons": []})
+                p = merged.setdefault((norm_name(row["name"]), "R"), {"name": row["name"], "position": "R", "seasons": []})
                 p["seasons"].append({
                     "season": row["season"], "teamId": tid, "leagueId": lid, "type": "regular",
                     "gp": row["gp"], "gs": row["gp"], "g": row["g"], "a": row["a"], "pts": row["pts"],
@@ -1045,7 +1048,7 @@ def build_netfront():
                 "slug": slugify(p["name"]), "firstName": p["name"].split(" ")[0],
                 "lastName": " ".join(p["name"].split(" ")[1:]), "name": p["name"],
                 "position": p["position"],
-                "positionName": "Goalie" if p["position"] == "G" else "Runner",
+                "positionName": POS_NAME.get(p["position"], "Runner"),
                 "hand": "", "heightIn": 0, "weightLb": 0, "dob": "",
                 "birthplace": {"city": "", "state": "", "country": "CAN"},
                 "classYear": None, "gradYear": 2026, "highSchool": "",
@@ -2104,7 +2107,21 @@ def build_all_americans(teams):
 # Duplicate players: one person, many teams
 # --------------------------------------------------------------------------- #
 POS_GROUP = {"A": "attack", "F": "attack", "M": "mid", "D": "def", "LSM": "def",
-             "FO": "faceoff", "G": "goal"}
+             "FO": "faceoff", "G": "goal", "T": "mid", "R": "any"}
+
+
+def pos_compatible(gpa, gpb):
+    """Two position groups that could be the same person.
+
+    Box feeds leave most skaters as a bare "Runner" (any), and the same player is a
+    forward in Junior B and a bare skater in Junior A, so an unknown group must never
+    block a merge. A known goalie is still a different person from a known skater.
+    """
+    if not gpa or not gpb:
+        return True
+    if "any" in (gpa, gpb):
+        return "goal" not in (gpa, gpb) or gpa == gpb
+    return gpa == gpb
 
 LEAGUE_RANK = {"pll": 9, "ncaa-d1": 8, "nfl": 7, "nf-nll": 7, "mcla": 6}
 
@@ -2220,14 +2237,14 @@ def same_person(a, b, team_names, strict=False):
         return False
     # box prints the forward as "F" where field prints "A"/"M", so different groups are
     # normal for one pro. A goalie is still never the same person as an attackman.
-    if gpa and gpb and gpa != gpb and not (pro_pair or college_pro):
+    if gpa and gpb and not pos_compatible(gpa, gpb) and not (pro_pair or college_pro):
         return False
-    if (pro_pair or college_pro) and "goal" in (gpa, gpb) and gpa != gpb:
+    if (pro_pair or college_pro) and "goal" in (gpa, gpb) and gpa != gpb and "any" not in (gpa, gpb):
         return False
 
     fa, fb = league_family(la), league_family(lb)
     if fa == fb and fa in BOX_FAMILIES:
-        return gpa == gpb                                # same province ladder, next rung
+        return pos_compatible(gpa, gpb)                   # same province ladder, next rung
     if pro_pair or college_pro:
         # two teammates can share a name, so never fold two records on the same club
         return a.get("teamId") != b.get("teamId")

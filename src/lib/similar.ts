@@ -14,6 +14,7 @@ type Group = "G" | "D" | "M" | "A" | "FO";
 
 const GROUP_OF: Record<string, Group> = {
   G: "G", D: "D", LSM: "D", M: "M", SSDM: "M", FO: "FO", A: "A",
+  F: "A", T: "M", R: "M",
 };
 
 type Features = Record<string, number | null>;

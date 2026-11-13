@@ -11,9 +11,14 @@ export type PeerRank = { label: string; rank: number; pool: number; value: strin
 
 const GROUPS: Record<string, string[]> = {
   A: ["A"],
+  F: ["F"],
+  T: ["T", "M"],
   M: ["M", "SSDM"],
   D: ["D", "LSM"],
   FO: ["FO"],
+  // a runner is a box skater whose feed never printed a position, so his peer pool is
+  // every skater in the league rather than one code we cannot prove
+  R: ["R", "F", "T", "D"],
   G: ["G"],
 };
 

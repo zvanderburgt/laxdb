@@ -128,7 +128,13 @@ export const positionLabel: Record<string, string> = {
   G: "Goalie",
   FO: "Faceoff",
   LSM: "LSM",
+  F: "Forward",
+  T: "Transition",
+  R: "Runner",       // a box skater whose feed does not publish a position
 };
+
+/** Every position code we can render, in the order a filter row should read. */
+export const positionOrder = ["A", "F", "T", "M", "D", "R", "LSM", "FO", "G"] as const;
 
 export const teamOf = (p: Player): Team | undefined => teamById.get(p.teamId);
 export const leagueOf = (p: Player): League | undefined => leagueById.get(p.leagueId);

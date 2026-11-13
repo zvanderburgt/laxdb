@@ -675,8 +675,12 @@ kbd {
 .pos-g { background: rgba(122, 92, 250, 0.16); color: #6a4cf0; }
 .pos-fo { background: rgba(255, 45, 85, 0.13); color: #d61f4a; }
 .pos-lsm { background: rgba(90, 200, 250, 0.18); color: #0071a8; }
-.pos-f { background: rgba(120, 120, 128, 0.16); color: #5c5c62; }
-[data-theme="dark"] .pos-f { color: #c7c7cc; }
+.pos-f { background: rgba(94, 92, 230, 0.14); color: #4b49c9; }
+.pos-t { background: rgba(255, 196, 10, 0.2); color: #8a6a00; }
+.pos-r { background: rgba(120, 120, 128, 0.16); color: #5c5c62; }
+[data-theme="dark"] .pos-f { color: #a5a3ff; }
+[data-theme="dark"] .pos-t { color: #ffd60a; }
+[data-theme="dark"] .pos-r { color: #c7c7cc; }
 [data-theme="dark"] .pos-a { color: #5ac8fa; }
 [data-theme="dark"] .pos-m { color: #30d158; }
 [data-theme="dark"] .pos-d { color: #ffb340; }
@@ -895,7 +899,7 @@ select {
 }
 select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
-.pos-pills { display: flex; gap: 5px; }
+.pos-pills { display: flex; gap: 5px; flex-wrap: wrap; }
 .pill {
   height: 38px;
   min-width: 42px;

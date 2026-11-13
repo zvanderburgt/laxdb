@@ -9,6 +9,8 @@ import {
   POLL_LABELS,
   leaguePlayerCount,
   leagueTeams,
+  positionLabel,
+  positionOrder,
   ratedTeams,
   teamById,
   teamOf,
@@ -407,6 +409,16 @@ export function LeaguePage() {
   const [sortKey, setSortKey] = useState<"val" | "gp" | "g" | "a" | "pts" | "ppg">("val");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
+  // the position menu is the league's own vocabulary: field leagues hold A/M/D/FO/LSM,
+  // box leagues hold Forward / Transition / Defense / Runner. A code carried over from
+  // the previous league page falls back to "all" instead of emptying the table.
+  const posOptions = useMemo<string[]>(() => {
+    const seen = new Set<string>();
+    for (const p of data.players) if (p.leagueId === league?.id && p.position) seen.add(p.position);
+    return positionOrder.filter((c) => seen.has(c));
+  }, [league?.id]);
+  const activePos = pos === "all" || posOptions.includes(pos) ? pos : "all";
+
   if (!league) {
     return (
       <div className="page">
@@ -416,7 +428,7 @@ export function LeaguePage() {
     );
   }
 
-  const pool = data.players.filter((p) => p.leagueId === league.id && (pos === "all" ? true : p.position === pos));
+  const pool = data.players.filter((p) => p.leagueId === league.id && (activePos === "all" ? true : p.position === activePos));
   const rows = pool
     .map((p) => {
       const s = currentSeason(p);
@@ -512,10 +524,10 @@ export function LeaguePage() {
                 <p className="muted small">{data.meta.season} regular season</p>
               </div>
               <div className="head-controls">
-                <select value={pos} onChange={(e) => setPos(e.target.value)} aria-label="Position">
+                <select value={activePos} onChange={(e) => setPos(e.target.value)} aria-label="Position">
                   <option value="all">All positions</option>
-                  {["A", "M", "D", "FO", "LSM", "G"].map((p) => (
-                    <option key={p} value={p}>{p}</option>
+                  {posOptions.map((p) => (
+                    <option key={p} value={p}>{positionLabel[p] ?? p}</option>
                   ))}
                 </select>
               </div>

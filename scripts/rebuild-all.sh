@@ -35,6 +35,9 @@ python3 scripts/fetch-franchises.py --apply || true
 echo "── re-merge duplicates now that dobs and club identity are known"
 python3 scripts/merge-now.py
 
+echo "── box positions (Forward / Transition / Defense from GameSheet + Digitalshift)"
+python3 scripts/fetch-positions.py --apply
+
 echo "── previous-season records"
 python3 scripts/fetch-historical-results.py 2026 2025 2024 2023 || true
 python3 scripts/attach-history.py
