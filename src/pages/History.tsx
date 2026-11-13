@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById, teamByName, playerByName } from "../lib/data";
-import { Card, Empty, Segmented, TeamLogo } from "../components/ui";
+import { BlockList, Card, Empty, Segmented, TeamLogo } from "../components/ui";
 
 const METRICS = [
   { value: "points", label: "Points" },
@@ -60,7 +60,37 @@ function RecordBook() {
           options={METRICS}
         />
       </div>
-      <div className="table-scroll">
+      <BlockList
+        rows={section.rows.slice(0, 12).map((r, i) => {
+          const nameText = r.Player ?? r.University ?? "";
+          const teamText = r.Team ?? r["Initial Season"] ?? "";
+          const player = r.Player ? playerByName(r.Player) : undefined;
+          const club = r.Team ? teamByName(r.Team) : undefined;
+          return {
+            key: `${nameText}-${i}`,
+            rank: i + 1,
+            primary: player ? (
+              <Link to={`/player/${player.slug}`} className="cell-link">
+                {nameText}
+              </Link>
+            ) : (
+              <span className="strong">{nameText}</span>
+            ),
+            meta: club ? (
+              <Link to={`/team/${club.slug}`} className="cell-link">
+                {club.shortName}
+              </Link>
+            ) : (
+              teamText
+            ),
+            cells: [
+              { label: scope === "season" ? "Year" : "Years", value: r.Year ?? r.Years ?? "—" },
+              ...statCols.map((c) => ({ label: head(c), value: r[c], strong: true })),
+            ],
+          };
+        })}
+      />
+      <div className="table-scroll hide-sm">
         <table className="data-table record-table">
           <thead>
             <tr>

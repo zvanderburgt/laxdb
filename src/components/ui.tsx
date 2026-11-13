@@ -146,6 +146,110 @@ export function Segmented<T extends string>({
   );
 }
 
+/* --------------------------- mobile block rows ---------------------------- */
+/* A table with seven or more columns cannot fit a phone without sideways scrolling, so
+   each row also renders as a block under 640px: identity on the first line, then every
+   number with its column label underneath. The table stays for wide screens. */
+
+export type BlockCell = {
+  label: string;
+  value: React.ReactNode;
+  strong?: boolean;
+  /** makes the cell a sort button, for tables whose headers sort the list */
+  onSort?: () => void;
+  sorted?: "asc" | "desc";
+};
+
+export type BlockRow = {
+  key: string;
+  rank?: React.ReactNode;
+  primary: React.ReactNode;
+  meta?: React.ReactNode;
+  cells: BlockCell[];
+  /** a control that belongs on the identity line — a bookmark, a compare toggle */
+  action?: React.ReactNode;
+  /** a full-width line under the numbers — programs, notes */
+  note?: React.ReactNode;
+  /** renders a divider whenever it changes from the previous row */
+  group?: string;
+};
+
+function BlockCells({ cells }: { cells: BlockCell[] }) {
+  // four across at most, but the last line must not be an orphan: five cells split 3+2,
+  // six 3+3, seven 4+3 — same height as 4+1 and 4+3, without the ragged edge
+  const rows = Math.ceil(cells.length / 4);
+  const cols = Math.max(1, Math.ceil(cells.length / Math.max(1, rows)));
+  return (
+    <div className="block-cells" style={{ "--block-cols": cols } as React.CSSProperties}>
+      {cells.map((c) => {
+        const body = (
+          <>
+            <b className={c.strong ? "num strong" : "num"}>{c.value}</b>
+            <i>{c.label}</i>
+          </>
+        );
+        return c.onSort ? (
+          <button
+            type="button"
+            key={c.label}
+            className={`block-cell is-sortable${c.sorted ? " is-sorted" : ""}`}
+            onClick={c.onSort}
+            aria-label={`Sort by ${c.label}`}
+          >
+            {body}
+            {c.sorted ? <span className="block-sort" aria-hidden="true">{c.sorted === "desc" ? "↓" : "↑"}</span> : null}
+          </button>
+        ) : (
+          <span key={c.label} className="block-cell">
+            {body}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+export function BlockList({
+  rows,
+  foot,
+}: {
+  rows: BlockRow[];
+  foot?: { caption: React.ReactNode; cells: BlockCell[] };
+}) {
+  let lastGroup: string | undefined;
+  return (
+    <div className="block-list">
+      {rows.map((r) => {
+        const divider = r.group !== undefined && r.group !== lastGroup ? r.group : null;
+        lastGroup = r.group;
+        return (
+          <React.Fragment key={r.key}>
+            {divider ? <div className="block-group">{divider}</div> : null}
+            <div className="block-row">
+              <div className="block-head">
+                {r.rank !== undefined ? <span className="block-rank num">{r.rank}</span> : null}
+                <span className="block-primary">{r.primary}</span>
+                {r.meta ? <span className="block-meta muted">{r.meta}</span> : null}
+                {r.action ? <span className="block-action">{r.action}</span> : null}
+              </div>
+              <BlockCells cells={r.cells} />
+              {r.note ? <div className="block-note">{r.note}</div> : null}
+            </div>
+          </React.Fragment>
+        );
+      })}
+      {foot ? (
+        <div className="block-row block-total">
+          <div className="block-head">
+            <span className="block-primary strong">{foot.caption}</span>
+          </div>
+          <BlockCells cells={foot.cells} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function Stat({
   label,
   value,

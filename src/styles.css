@@ -2472,3 +2472,125 @@ a.vs-team:hover { color: var(--accent); }
     padding-top: 4px;
   }
 }
+
+/* --------------------------- mobile block rows ---------------------------- */
+/* Seven-column tables could not fit a phone, so every wide table also renders its rows
+   as blocks below 640px: identity on the first line, the numbers beneath with the column
+   label under each value. The table itself is hidden there (`.hide-sm`) and still used
+   above the breakpoint, so desktop density is unchanged. */
+
+.block-list { display: none; }
+.block-row { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.block-row:last-child { border-bottom: 0; }
+.block-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; font-size: 14px; }
+.block-rank { flex: none; min-width: 18px; font-size: 12.5px; color: var(--text-3); }
+.block-primary { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-primary .cell-player,
+.block-primary .team-link { min-width: 0; max-width: 100%; }
+.block-primary .cell-name,
+.block-primary .team-link span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block-action { flex: none; }
+.block-meta { flex: 0 1 auto; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; text-align: right; }
+.block-cells {
+  display: grid;
+  grid-template-columns: repeat(var(--block-cols, 4), minmax(0, 1fr));
+  gap: 9px 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+.block-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.block-cell b { font-size: 14.5px; font-weight: 500; }
+.block-cell b.strong { font-weight: 600; }
+.block-cell i {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.block-cell.is-sortable { cursor: pointer; }
+.block-cell.is-sorted b { color: var(--accent); }
+.block-sort { margin-left: 2px; font-size: 10px; color: var(--accent); }
+.block-note { margin-top: 10px; }
+.block-group {
+  padding: 14px 16px 6px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.block-total { background: var(--bg-soft); border-top: 1px solid var(--hairline-strong); }
+
+.hide-lg { display: none; }
+
+@media (max-width: 640px) {
+  .block-list { display: block; }
+  .hide-sm { display: none !important; }
+  .hide-lg { display: block; }
+}
+
+/* controls that scrolled sideways: a wrapping pill row reads better than a clipped one */
+@media (max-width: 640px) {
+  .segmented { flex-wrap: wrap; overflow: visible; }
+  .record-metrics { flex-wrap: wrap; overflow: visible; }
+  .stat-tabs .segmented { flex-wrap: wrap; overflow: visible; }
+  .rail-teams > * { min-width: 0; }
+  /* the -8px hover bleed is what made the vertical team rail scroll sideways */
+  .rail-team { margin-inline: 0; }
+  .rail-teams .rail-team > span:last-child > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* the league leaderboard is nine columns in a card that tops out near 710px, so it bled
+   past the card edge on every desktop width. Tighter cell padding buys the room; below
+   1200 the position badge goes, below 1040 the team (it is on the player page). */
+.leader-table .data-table th,
+.leader-table .data-table td { padding-inline: 9px; }
+@media (max-width: 1200px) {
+  .leader-table .data-table .col-pos { display: none; }
+}
+@media (max-width: 1040px) {
+  .leader-table .data-table .col-team { display: none; }
+}
+/* the vertical team rail on a league page must not become a sideways scroller because
+   of its hover bleed */
+.rail-teams { overflow-x: hidden; }
+/* the leaders board is eight columns; at 700px the card is 620 and the table needed 647,
+   so the same tighter padding the leaderboard uses buys the last 60px */
+.leaders-table th, .leaders-table td { padding-inline: 7px; }
+/* the conference blocks sit two-up in a 320px column; a long club name widened the table
+   past the card and the card clipped it. The name truncates instead. */
+.conf-block .data-table { table-layout: fixed; width: 100%; }
+.conf-block .data-table .team-link { min-width: 0; max-width: 100%; }
+.conf-block .data-table .t-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conf-block .data-table td:first-child { overflow: hidden; }
+
+/* the extra per-game column is what pushed the leaderboard over below 820px */
+@media (max-width: 820px) {
+  .leader-table .data-table .col-ppg { display: none; }
+}
+/* the players list is twelve columns and 1313px wide: it cannot fit a tablet either, so
+   the block rows run to 820 there and the table view starts where it actually fits */
+@media (max-width: 820px) {
+  .players-board .block-list { display: block; }
+  .players-board .table-wrap { display: none; }
+}

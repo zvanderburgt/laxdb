@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById } from "../lib/data";
 import { region, regionCode } from "../lib/geo";
-import { Card, Empty, Segmented, TeamLogo } from "../components/ui";
+import { BlockList, Card, Empty, Segmented, TeamLogo } from "../components/ui";
 
 type Row = {
   code: string;
@@ -128,7 +128,33 @@ export default function Origins() {
             </p>
           </div>
         </div>
-        <div className="table-scroll origins-scroll">
+        <BlockList
+          rows={sorted.map((r, i) => ({
+            key: r.code,
+            rank: i + 1,
+            primary: <span className="strong">{r.name}</span>,
+            meta: r.code,
+            cells: [
+              { label: "Players", value: r.players, strong: true },
+              { label: "Share", value: `${r.share.toFixed(1)}%` },
+              { label: "Per 100k", value: r.per100k.toFixed(1) },
+            ],
+            note: (
+              <span className="origin-programs">
+                {r.programs.map((pr) => {
+                  const team = teamById.get(pr.id);
+                  return team ? (
+                    <Link key={pr.id} to={`/team/${team.slug}`} className="team-link">
+                      <TeamLogo team={team} size={16} />
+                      {team.shortName}
+                    </Link>
+                  ) : null;
+                })}
+              </span>
+            ),
+          }))}
+        />
+        <div className="table-scroll origins-scroll hide-sm">
           <table className="data-table">
             <thead>
               <tr>
@@ -189,7 +215,30 @@ export default function Origins() {
               </p>
             </div>
           </div>
-          <div className="table-scroll">
+          <BlockList
+            rows={schools.map((r, i) => ({
+              key: r.name,
+              rank: i + 1,
+              primary: <span className="strong">{r.name}</span>,
+              meta: r.state,
+              cells: [{ label: "Players", value: r.players, strong: true }],
+              note: (
+                <span className="origin-programs">
+                  {r.programs.map(([id, n]) => {
+                    const team = teamById.get(id);
+                    return team ? (
+                      <Link key={id} to={`/team/${team.slug}`} className="team-link">
+                        <TeamLogo team={team} size={16} />
+                        {team.shortName}
+                        <span className="muted small"> {n}</span>
+                      </Link>
+                    ) : null;
+                  })}
+                </span>
+              ),
+            }))}
+          />
+          <div className="table-scroll hide-sm">
             <table className="data-table">
               <thead>
                 <tr>

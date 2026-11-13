@@ -18,7 +18,7 @@ import {
   teamBySlug,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 import type { Team } from "../lib/types";
 
 function ReturningCard({ team }: { team: Team }) {
@@ -139,6 +139,31 @@ function SeriesCard({ team }: { team: Team }) {
 
   if (!result || result.rows.length < 3) return null;
 
+  // one lookup per cell, shared by the table and the phone block, so they cannot drift
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z]/g, "");
+  const scoreCell = (opponent: string, fallback: string) => {
+    const key = [...scores.keys()].find(
+      (k) => norm(k).startsWith(norm(opponent)) || norm(opponent).startsWith(norm(k)),
+    );
+    const s = key ? scores.get(key) : undefined;
+    if (!s) return fallback;
+    return (
+      <span className={s.us > s.them ? "strong" : ""}>
+        {s.us}–{s.them}
+      </span>
+    );
+  };
+  const opponentCell = (name: string) => {
+    const opp = teamByName(name);
+    return opp ? (
+      <Link to={`/team/${opp.slug}`} className="cell-link">
+        {opp.shortName}
+      </Link>
+    ) : (
+      name
+    );
+  };
+
   return (
     <Card padded={false} className="standings-card">
       <div className="card-toolbar">
@@ -150,7 +175,18 @@ function SeriesCard({ team }: { team: Team }) {
           </p>
         </div>
       </div>
-      <div className="table-scroll">
+      <BlockList
+        rows={result.rows.map((r) => ({
+          key: r.opponent,
+          primary: opponentCell(r.opponent),
+          cells: [
+            { label: "W–L", value: `${r.w}–${r.l}`, strong: true },
+            { label: "Last meeting", value: r.last },
+            { label: "Score", value: scoreCell(r.opponent, r.result) },
+          ],
+        }))}
+      />
+      <div className="table-scroll hide-sm">
         <table className="data-table">
           <thead>
             <tr>
@@ -163,39 +199,12 @@ function SeriesCard({ team }: { team: Team }) {
           <tbody>
             {result.rows.map((r) => (
               <tr key={r.opponent}>
-                <td>
-                  {(() => {
-                    const opp = teamByName(r.opponent);
-                    return opp ? (
-                      <Link to={`/team/${opp.slug}`} className="cell-link">
-                        {opp.shortName}
-                      </Link>
-                    ) : (
-                      r.opponent
-                    );
-                  })()}
-                </td>
+                <td>{opponentCell(r.opponent)}</td>
                 <td className="r num strong">
                   {r.w}–{r.l}
                 </td>
                 <td className="r num muted">{r.last}</td>
-                <td className="r num">
-                  {(() => {
-                    const key = [...scores.keys()].find((k) =>
-                      k.toLowerCase().replace(/[^a-z]/g, "").startsWith(r.opponent.toLowerCase().replace(/[^a-z]/g, "")) ||
-                      r.opponent.toLowerCase().replace(/[^a-z]/g, "").startsWith(k.toLowerCase().replace(/[^a-z]/g, "")),
-                    );
-                    const s = key ? scores.get(key) : undefined;
-                    if (s) {
-                      return (
-                        <span className={s.us > s.them ? "strong" : ""}>
-                          {s.us}–{s.them}
-                        </span>
-                      );
-                    }
-                    return r.result;
-                  })()}
-                </td>
+                <td className="r num">{scoreCell(r.opponent, r.result)}</td>
               </tr>
             ))}
           </tbody>
@@ -475,7 +484,24 @@ export function TeamPage() {
                 <p className="muted small">Final regular-season record, from ESPN results</p>
               </div>
             </div>
-            <div className="table-scroll">
+            <BlockList
+              rows={team.history.map((h) => ({
+                key: h.season,
+                primary: <span className="num strong">{h.season}</span>,
+                cells: [
+                  { label: "W", value: h.w },
+                  { label: "L", value: h.l },
+                  { label: "GF", value: h.gf },
+                  { label: "GA", value: h.ga },
+                  {
+                    label: "Diff",
+                    value: `${h.gf - h.ga > 0 ? "+" : ""}${h.gf - h.ga}`,
+                    strong: true,
+                  },
+                ],
+              }))}
+            />
+            <div className="table-scroll hide-sm">
               <table className="data-table">
                 <thead>
                   <tr>

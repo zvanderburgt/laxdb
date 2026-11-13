@@ -15,7 +15,7 @@ import {
   teamById,
   teamOf,
 } from "../lib/data";
-import { Avatar, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, TeamLogo } from "../components/ui";
 import type { League, Team } from "../lib/types";
 
 export function LeaguesPage() {
@@ -121,7 +121,31 @@ function RatingsCard({ league }: { league: League }) {
           </p>
         </div>
       </div>
-      <div className="table-scroll">
+      <BlockList
+        rows={rows.map((r) => {
+          const c = consensus(r.teamId, r.rank);
+          return {
+            key: r.teamId,
+            rank: r.rank,
+            primary: (
+              <Link to={`/team/${r.team?.slug}`} className="team-link">
+                <TeamLogo team={r.team} size={20} />
+                {r.team?.shortName}
+              </Link>
+            ),
+            cells: [
+              { label: "Elo", value: r.elo, strong: true },
+              { label: "SOS", value: r.sos },
+              {
+                label: "Consensus",
+                value: c ? `${c.mean.toFixed(1)} ±${c.spread}` : "—",
+              },
+              { label: "W–L", value: r.team?.record ? `${r.team.record.w}–${r.team.record.l}` : "—" },
+            ],
+          };
+        })}
+      />
+      <div className="table-scroll hide-sm">
         <table className="data-table">
           <thead>
             <tr>
@@ -229,7 +253,7 @@ function ConferenceCard({ league }: { league: League }) {
                     <td>
                       <Link to={`/team/${t.slug}`} className="team-link">
                         <TeamLogo team={t} size={16} />
-                        {t.shortName}
+                        <span className="t-name">{t.shortName}</span>
                       </Link>
                     </td>
                     <td className="r num">{t.record ? `${t.record.w}–${t.record.l}` : "—"}</td>
@@ -270,7 +294,36 @@ function PollCard({ league }: { league: League }) {
           options={polls.map((p) => ({ value: p.key, label: POLL_LABELS[p.key] ?? p.key }))}
         />
       </div>
-      <div className="table-scroll">
+      <BlockList
+        rows={current.rows.map((r) => {
+          const team = r.teamId ? teamById.get(r.teamId) : undefined;
+          return {
+            key: `${r.rank}-${r.name}`,
+            rank: (
+              <>
+                {r.rank}
+                {" "}
+                <Move prev={r.prev} rank={r.rank} />
+              </>
+            ),
+            primary: team ? (
+              <Link to={`/team/${team.slug}`} className="team-link">
+                <TeamLogo team={team} size={20} />
+                {team.shortName}
+              </Link>
+            ) : (
+              <span className="muted">{r.name}</span>
+            ),
+            cells: [
+              {
+                label: hasRecord ? "Record" : "Points",
+                value: hasRecord ? r.record ?? "—" : r.extra ?? "—",
+              },
+            ],
+          };
+        })}
+      />
+      <div className="table-scroll hide-sm">
         <table className="data-table">
           <thead>
             <tr>
@@ -361,7 +414,34 @@ function StandingsCard({ league }: { league: League }) {
           </p>
         </div>
       </div>
-      <div className="table-scroll">
+      <BlockList
+        rows={rows.map((r) => {
+          const team = teamById.get(r.teamId);
+          return {
+            key: r.teamId,
+            group: multi ? r.group || "" : undefined,
+            rank: multi ? r.groupRank ?? r.rank : r.rank,
+            primary: (
+              <Link to={`/team/${team?.slug}`} className="team-link">
+                <TeamLogo team={team} size={20} />
+                {team?.shortName ?? r.teamId}
+              </Link>
+            ),
+            cells: [
+              { label: "W", value: r.w, strong: true },
+              { label: "L", value: r.l },
+              ...(hasTies ? [{ label: "T", value: r.t }] : []),
+              { label: "PCT", value: r.pct ? r.pct.toFixed(3).replace(/^0/, "") : "—" },
+              { label: "GF", value: r.gf },
+              { label: "GA", value: r.ga },
+              ...(hasConf
+                ? [{ label: "CONF", value: typeof r.confW === "number" ? `${r.confW}–${r.confL ?? 0}` : "—" }]
+                : []),
+            ],
+          };
+        })}
+      />
+      <div className="table-scroll hide-sm">
         <table className="data-table">
           <thead>
             <tr>
@@ -456,8 +536,8 @@ export function LeaguePage() {
     })
     .slice(0, 40);
 
-  const th = (k: typeof sortKey, label: string) => (
-    <th className={`r sortable ${sortKey === k ? "is-sorted" : ""}`} onClick={() => sortBy(k)}>
+  const th = (k: typeof sortKey, label: string, cls = "") => (
+    <th className={`r sortable ${cls} ${sortKey === k ? "is-sorted" : ""}`} onClick={() => sortBy(k)}>
       {label}
       <span className="sort-caret">{sortKey === k ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
     </th>
@@ -535,18 +615,64 @@ export function LeaguePage() {
             <div className="stat-tabs">
               <Segmented size="sm" ariaLabel="Stat" options={STATS.map((s) => ({ value: s.value, label: s.label }))} value={stat} onChange={setStat} />
             </div>
+            <BlockList
+              rows={rows.map((r, i) => {
+                const team = teamById.get(r.p.teamId);
+                const sortable = (k: typeof sortKey, label: string, value: React.ReactNode, strong?: boolean) => ({
+                  label,
+                  value,
+                  strong,
+                  onSort: () => sortBy(k),
+                  sorted: sortKey === k ? sortDir : undefined,
+                });
+                return {
+                  key: r.p.id,
+                  rank: i + 1,
+                  primary: (
+                    <Link to={`/player/${r.p.slug}`} className="cell-player">
+                      <PlayerAvatar player={r.p} size={28} />
+                      <span className="cell-name">{r.p.name}</span>
+                    </Link>
+                  ),
+                  meta: (
+                    <Link to={`/team/${team?.slug}`} className="team-link">
+                      <TeamLogo team={team} size={16} />
+                      {team?.shortName}
+                    </Link>
+                  ),
+                  cells: [
+                    sortable("gp", "GP", r.s.gp),
+                    sortable("g", "G", r.s.g),
+                    sortable("a", "AST", r.s.a),
+                    sortable("pts", "PTS", r.s.pts ?? 0),
+                    sortable("ppg", "PTS/G", (r.s.gp ? (r.s.pts ?? 0) / r.s.gp : 0).toFixed(2)),
+                    ...(stat === "gb" || stat === "ct" || stat === "svp"
+                      ? [
+                          sortable(
+                            "val",
+                            stat === "svp" ? "SV%" : stat === "gb" ? "GB" : "CT",
+                            stat === "svp" ? r.val.toFixed(3).replace(/^0/, "") : r.val,
+                            true,
+                          ),
+                        ]
+                      : []),
+                  ],
+                };
+              })}
+            />
+            <div className="table-scroll hide-sm">
             <table className="data-table">
               <thead>
                 <tr>
                   <th className="c">#</th>
                   <th>Player</th>
-                  <th>Team</th>
-                  <th className="c">Pos</th>
+                  <th className="col-team">Team</th>
+                  <th className="c col-pos">Pos</th>
                   {th("gp", "GP")}
                   {th("g", "G")}
                   {th("a", "AST")}
                   {th("pts", "PTS")}
-                  {th("ppg", "PTS/G")}
+                  {th("ppg", "PTS/G", "col-ppg")}
                   {stat === "gb" || stat === "ct" || stat === "svp" ? (
                     <th className={`r sortable ${sortKey === "val" ? "is-sorted" : ""}`} onClick={() => sortBy("val")}>
                       {stat === "svp" ? "SV%" : stat === "gb" ? "GB" : "CT"}
@@ -567,18 +693,18 @@ export function LeaguePage() {
                           <span className="cell-name">{r.p.name}</span>
                         </Link>
                       </td>
-                      <td>
+                      <td className="col-team">
                         <Link to={`/team/${team?.slug}`} className="team-link">
                           <TeamLogo team={team} size={20} />
                           {team?.shortName}
                         </Link>
                       </td>
-                      <td className="c"><PositionBadge pos={r.p.position} /></td>
+                      <td className="c col-pos"><PositionBadge pos={r.p.position} /></td>
                       <td className="r num">{r.s.gp}</td>
                       <td className="r num">{r.s.g}</td>
                       <td className="r num">{r.s.a}</td>
                       <td className="r num">{r.s.pts ?? 0}</td>
-                      <td className="r num">{(r.s.gp ? (r.s.pts ?? 0) / r.s.gp : 0).toFixed(2)}</td>
+                      <td className="r num col-ppg">{(r.s.gp ? (r.s.pts ?? 0) / r.s.gp : 0).toFixed(2)}</td>
                       {stat === "gb" || stat === "ct" || stat === "svp" ? (
                         <td className="r num strong">
                           {stat === "svp" ? r.val.toFixed(3).replace(/^0/, "") : r.val}
@@ -589,6 +715,7 @@ export function LeaguePage() {
                 })}
               </tbody>
             </table>
+            </div>
             {rows.length === 0 ? <div className="table-note">No qualifying players for this filter.</div> : null}
           </Card>
 

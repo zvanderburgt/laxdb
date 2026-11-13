@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "../lib/app";
 import { data, leagueById, teamById, teamByName } from "../lib/data";
-import { Card, PlayerAvatar, Segmented } from "../components/ui";
+import { BlockList, Card, PlayerAvatar, Segmented } from "../components/ui";
 import type { Player } from "../lib/types";
 
 /**
@@ -254,8 +254,28 @@ export default function Leaders() {
       </Card>
 
       <Card padded={false} className="standings-card">
-        <div className="table-scroll">
-          <table className="data-table">
+        <BlockList
+          rows={board.list.map(({ r, v }, i) => ({
+            key: r.player.id,
+            rank: i + 1,
+            primary: (
+              <Link to={`/player/${r.player.slug}`} className="cell-player">
+                <PlayerAvatar player={r.player} size={26} />
+                <span className="cell-name">{r.player.name}</span>
+              </Link>
+            ),
+            meta: linkTeam(r.team),
+            cells: [
+              { label: "GP", value: r.gp },
+              { label: cat.label, value: cat.format(v), strong: true },
+              { label: "G", value: r.g },
+              { label: "AST", value: r.a },
+              { label: "PTS", value: r.pts },
+            ],
+          }))}
+        />
+        <div className="table-scroll hide-sm">
+          <table className="data-table leaders-table">
             <thead>
               <tr>
                 <th className="c">#</th>

@@ -12,7 +12,7 @@ import {
   positionLabel,
   positionOrder,
 } from "../lib/data";
-import { Avatar, Empty, PositionBadge, Segmented, PlayerAvatar } from "../components/ui";
+import { Avatar, BlockList, Empty, PositionBadge, Segmented, PlayerAvatar } from "../components/ui";
 
 type SortKey =
   | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
@@ -264,7 +264,54 @@ export default function Players() {
       {rows.length === 0 ? (
         <Empty title="No players match" body="Try clearing a filter or searching a different name." />
       ) : view === "table" ? (
-        <div className="table-wrap">
+        <div className="players-board">
+        <BlockList
+          rows={rows.slice(0, 150).map(({ p, s }) => {
+            const team = teamById.get(p.teamId);
+            return {
+              key: p.id,
+              primary: (
+                <Link to={`/player/${p.slug}`} className="cell-player">
+                  <PlayerAvatar player={p} size={30} />
+                  <span>
+                    <span className="cell-name">{p.name}</span>
+                    {[p.birthplace.city, p.birthplace.state].filter(Boolean).length ? (
+                      <span className="cell-sub">
+                        {[p.birthplace.city, p.birthplace.state].filter(Boolean).join(", ")}
+                      </span>
+                    ) : null}
+                  </span>
+                </Link>
+              ),
+              meta: (
+                <Link to={`/team/${team?.slug}`} className="team-link">
+                  <span className="team-dot" style={{ background: team?.colors[0] }} />
+                  {team?.shortName}
+                </Link>
+              ),
+              action: (
+                <button
+                  className={`cmp-btn ${has(p.id) ? "is-on" : ""}`}
+                  onClick={() => toggle(p.id)}
+                  aria-label={`Compare ${p.name}`}
+                  title="Add to comparison"
+                >
+                  +
+                </button>
+              ),
+              cells: [
+                { label: "Pos", value: p.position ?? "—" },
+                { label: "GP", value: s.gp },
+                { label: "G", value: s.g },
+                { label: "AST", value: s.a },
+                { label: "PTS", value: s.pts, strong: true },
+                { label: "GB", value: s.gb },
+                { label: "PTS/G", value: (s.gp ? ((s.pts ?? 0) / s.gp) : 0).toFixed(2) },
+              ],
+            };
+          })}
+        />
+        <div className="table-wrap hide-sm">
           <table className="data-table">
             <thead>
               <tr>
@@ -333,6 +380,10 @@ export default function Players() {
           {rows.length > 150 ? (
             <div className="table-note">Showing 150 of {rows.length}. Narrow the filters to see more.</div>
           ) : null}
+        </div>
+        {rows.length > 150 ? (
+          <div className="table-note hide-lg">Showing 150 of {rows.length}. Narrow the filters to see more.</div>
+        ) : null}
         </div>
       ) : (
         <div className="cards-grid">
