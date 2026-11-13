@@ -173,7 +173,12 @@ def main():
                             player["photo"] = f"players/ncaa/{fname}.webp"
                             filled["photo"] += 1
             if hits == 0:
-                print(f"  ? {name} {season}: page parsed {len(roster)} players, none matched")
+                # almost always a soft 404: the host serves the current roster for a year it
+                # never had (Iona's programme began in 2025, so 2022-2024 pages list 2025
+                # players). Worth saying out loud so it is not read as a parser failure.
+                have = on_team.get((team_id, str(season)))
+                why = "we hold no players for that club-season" if not have else "names did not match"
+                print(f"  ? {name} {season}: page parsed {len(roster)} players, none matched ({why})")
 
     print(f"\n{pages} roster pages · {matched} player-seasons matched")
     print("  " + " · ".join(f"{k} +{v}" for k, v in filled.items() if v))

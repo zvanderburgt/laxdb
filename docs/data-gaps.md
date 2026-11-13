@@ -39,6 +39,10 @@ third of the fixable ones sit in one league-season range (NCAA D1, 2022–2025).
 The remaining D1 gap is birth date (1%, no college source publishes it) and the ~32% of
 photos the archived pages don't carry.
 
+One school needs no work: **Iona**'s men's programme began in 2025 (first game
+2025-02-01), so its 2022–2024 roster URLs serve the current roster — a soft 404, not a
+parser failure. The script now says so instead of reporting a nameless "none matched".
+
 <details><summary>Original plan, kept for the repeatability notes</summary>
 
 **Gap:** 3,938 D1 players with no bio at all. Coverage by season explains why:
