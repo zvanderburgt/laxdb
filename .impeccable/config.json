@@ -11,6 +11,69 @@
         ],
         "createdAt": "2026-11-13T05:40:24.727Z",
         "reason": "DESIGN.md Elevation/Colors: the best-game row edge is a documented varsity-blue marker, not a card accent stripe"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:04:56.335Z",
+        "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:04:56.341Z",
+        "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:04:56.347Z",
+        "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:05:41.903Z",
+        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:05:41.909Z",
+        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
+      },
+      {
+        "rule": "overused-font",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:05:41.915Z",
+        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "docs/cms-preview.html"
+        ],
+        "createdAt": "2026-11-13T18:05:41.921Z",
+        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
       }
     ]
   }
