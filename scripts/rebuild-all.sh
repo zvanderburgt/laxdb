@@ -26,6 +26,9 @@ python3 scripts/fetch-d1-rosters.py --apply || true
 echo "── box bios (GameSheet: dob, hometown, height/weight, jersey, photos, club logos)"
 python3 scripts/fetch-gamesheet.py --apply || true
 
+echo "── 2026 rosters from saved GameSheet league pages (data/gs-pages)"
+python3 scripts/import-gs-pages.py --apply || true
+
 echo "── repair (negatives, duplicate clubs, orphan teams)"
 python3 scripts/repair-data.py
 
