@@ -31,6 +31,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "public", "data.json")
 
 SHOT = re.compile(r'"shotHand":"(left|right|both|switch)"', re.I)
+# a roster page lists every club player but carries no shotHand at all (OJBLL is configured
+# without it, OJLL with it), so those objects are still worth reading for bios
+FIRST = re.compile(r'"firstName":"([^"]{1,40})"')
 FIELD = {
     "first": re.compile(r'"firstName":"([^"]{1,40})"'),
     "last": re.compile(r'"lastName":"([^"]{1,40})"'),
@@ -40,6 +43,7 @@ FIELD = {
     "weight": re.compile(r'"weight":"(\d{2,3})"'),
     "hometown": re.compile(r'"hometown":"([^"]{2,40})"'),
     "team": re.compile(r'"team":\{"id":(\d{4,7}),"title":"([^"]{3,60})"'),
+    "jersey": re.compile(r'"jersey":"(\d{1,2})"'),
 }
 
 
@@ -59,38 +63,61 @@ def name_key(text: str) -> str:
     return re.sub(r"\s+", " ", key).strip()
 
 
+def merge_rows(rows: list[dict]) -> dict[int, dict]:
+    out: dict[int, dict] = {}
+    for row in rows:
+        prev = out.get(row["gsId"])
+        if prev is None:
+            out[row["gsId"]] = row
+        else:
+            # a player can appear on both his player page and a roster page; keep every fact
+            for k, v in row.items():
+                if v and not prev.get(k):
+                    prev[k] = v
+    return out
+
+
+def row_at(flat: str, pos: int, hand: str) -> dict | None:
+    window = flat[max(0, pos - 700): pos + 700]
+    found = {k: (v.search(window).group(1) if v.search(window) else "") for k, v in FIELD.items()}
+    team = FIELD["team"].search(window)
+    if not found["first"] or not found["last"] or not found["gsId"]:
+        return None
+    if "$undefined" in (found["first"], found["last"]):
+        return None
+    row = {
+        "first": found["first"].strip(),
+        "last": found["last"].strip(),
+        "gsId": int(found["gsId"]),
+        "hand": hand,
+        "club": team.group(2) if team else "",
+        "teamId": int(team.group(1)) if team else 0,
+    }
+    if found["dob"]:
+        row["dob"] = found["dob"]
+    h = FIELD["height"].search(window)
+    if h:
+        row["heightIn"] = int(h.group(1)) * 12 + int(h.group(2))
+    if found["weight"]:
+        row["weightLb"] = int(found["weight"])
+    if found["hometown"]:
+        row["hometown"] = found["hometown"].strip()
+    jersey = FIELD["jersey"].search(window)
+    if jersey:
+        row["jersey"] = int(jersey.group(1))
+    return row
+
+
 def read_page(path: str) -> list[dict]:
     raw = open(path, encoding="utf-8", errors="ignore").read()
     # the payload is JSON-escaped twice inside self.__next_f.push([1,"…"])
     flat = raw.replace('\\"', '"')
-    players = []
-    for m in SHOT.finditer(flat):
-        window = flat[max(0, m.start() - 700): m.end() + 700]
-        found = {k: (v.search(window).group(1) if v.search(window) else "") for k, v in FIELD.items()}
-        team = FIELD["team"].search(window)
-        if not found["first"] or not found["last"] or not found["gsId"]:
-            continue
-        if found["first"] == "$undefined" or found["last"] == "$undefined":
-            continue
-        row = {
-            "first": found["first"].strip(),
-            "last": found["last"].strip(),
-            "gsId": int(found["gsId"]),
-            "hand": m.group(1)[:1].upper(),
-            "club": team.group(2) if team else "",
-            "teamId": int(team.group(1)) if team else 0,
-        }
-        if found["dob"]:
-            row["dob"] = found["dob"]
-        h = FIELD["height"].search(window)
-        if h:
-            row["heightIn"] = int(h.group(1)) * 12 + int(h.group(2))
-        if found["weight"]:
-            row["weightLb"] = int(found["weight"])
-        if found["hometown"]:
-            row["hometown"] = found["hometown"].strip()
-        players.append(row)
-    return players
+    players = [r for r in (row_at(flat, m.start(), m.group(1)[:1].upper())
+                           for m in SHOT.finditer(flat)) if r]
+    if players:
+        return players
+    # a roster page: every club player, bios only
+    return [r for r in (row_at(flat, m.start(), "") for m in FIRST.finditer(flat)) if r]
 
 
 def main():
@@ -139,20 +166,24 @@ def main():
             # a shared name is not identity: the club must appear in his career
             if club and club not in clubs and not any(c and (c in club or club in c) for c in clubs):
                 continue
-            if p.get("hand"):
-                skipped += 1
-                break
-            for field in ("dob", "heightIn", "weightLb"):
+            touched = False
+            for field in ("dob", "heightIn", "weightLb", "jersey"):
                 if row.get(field) and not p.get(field):
                     if args.apply:
                         p[field] = row[field]
                     bios += 1
-            if args.apply:
-                p["hand"] = row["hand"]
-            filled += 1
-            break
+                    touched = True
+            if row.get("hand") and not p.get("hand"):
+                if args.apply:
+                    p["hand"] = row["hand"]
+                filled += 1
+                touched = True
+            elif p.get("hand"):
+                skipped += 1
+            if touched:
+                break
 
-    print(f"\n{len(seen)} players in {len(paths)} page(s) · {filled} matched"
+    print(f"\n{len(seen)} players in {len(paths)} page(s) · {filled} handedness written"
           f"{f' · {skipped} already had a hand' if skipped else ''}"
           f"{f' · {bios} bio fields filled' if bios else ''}")
     if not args.apply:
