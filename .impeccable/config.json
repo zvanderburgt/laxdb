@@ -1,80 +1,125 @@
 {
-  "detector": {
-    "ignoreRules": [],
-    "ignoreFiles": [],
-    "ignoreValues": [
-      {
-        "rule": "side-tab",
-        "value": "*",
-        "files": [
-          "src/styles.css"
-        ],
-        "createdAt": "2026-11-13T05:40:24.727Z",
-        "reason": "DESIGN.md Elevation/Colors: the best-game row edge is a documented varsity-blue marker, not a card accent stripe"
-      },
-      {
-        "rule": "gradient-text",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:04:56.335Z",
-        "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
-      },
-      {
-        "rule": "low-contrast",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:04:56.341Z",
-        "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
-      },
-      {
-        "rule": "tiny-text",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:04:56.347Z",
-        "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
-      },
-      {
-        "rule": "cramped-padding",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:05:41.903Z",
-        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
-      },
-      {
-        "rule": "undersized-ui-text",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:05:41.909Z",
-        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
-      },
-      {
-        "rule": "overused-font",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:05:41.915Z",
-        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
-      },
-      {
-        "rule": "nested-cards",
-        "value": "*",
-        "files": [
-          "docs/cms-preview.html"
-        ],
-        "createdAt": "2026-11-13T18:05:41.921Z",
-        "reason": "documentation fixture: reproduces DESIGN.md's documented label ramp (10.5-11.5px), chip padding and avatar initials verbatim; Inter stands in only because this box has no system SF/Segoe face"
-      }
-    ]
-  }
+ "detector": {
+  "ignoreRules": [],
+  "ignoreFiles": [],
+  "ignoreValues": [
+   {
+    "rule": "side-tab",
+    "value": "*",
+    "files": [
+     "src/styles.css"
+    ],
+    "createdAt": "2026-11-13T05:40:24.727Z",
+    "reason": "DESIGN.md Elevation/Colors: the best-game row edge is a documented varsity-blue marker, not a card accent stripe"
+   },
+   {
+    "rule": "low-contrast",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:04:56.341Z",
+    "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
+   },
+   {
+    "rule": "tiny-text",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:04:56.347Z",
+    "reason": "documentation fixture: tokens copied verbatim from DESIGN.md and src/styles.css to preview the CMS dock, not new UI"
+   },
+   {
+    "rule": "gradient-text",
+    "value": "*",
+    "files": [
+     "projects/laxdb/docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: the LAXDB wordmark gradient is DESIGN.md's authored 26px mark, reproduced not introduced"
+   },
+   {
+    "rule": "gradient-text",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: the LAXDB wordmark gradient is DESIGN.md's authored 26px mark, reproduced not introduced"
+   },
+   {
+    "rule": "cramped-padding",
+    "value": "*",
+    "files": [
+     "projects/laxdb/docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: .ed is a hover-outline wrapper (outline-offset 3px) with no fill of its own, so \"flush against the border\" is the focus-ring case, not a padded container"
+   },
+   {
+    "rule": "cramped-padding",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: .ed is a hover-outline wrapper (outline-offset 3px) with no fill of its own, so \"flush against the border\" is the focus-ring case, not a padded container"
+   },
+   {
+    "rule": "undersized-ui-text",
+    "value": "*",
+    "files": [
+     "projects/laxdb/docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: reproduces the site's own 10.5px table headers, stat labels and position badge verbatim from DESIGN.md; changing them would misrepresent the shipped design"
+   },
+   {
+    "rule": "undersized-ui-text",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: reproduces the site's own 10.5px table headers, stat labels and position badge verbatim from DESIGN.md; changing them would misrepresent the shipped design"
+   },
+   {
+    "rule": "overused-font",
+    "value": "*",
+    "files": [
+     "projects/laxdb/docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: Inter loads only because this render box has no SF Pro / Segoe UI face; src/ keeps the system stack"
+   },
+   {
+    "rule": "overused-font",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: Inter loads only because this render box has no SF Pro / Segoe UI face; src/ keeps the system stack"
+   },
+   {
+    "rule": "nested-cards",
+    "value": "*",
+    "files": [
+     "projects/laxdb/docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: the only nesting is the editable wrapper (.ed) inside a card, which is the subject of the picture"
+   },
+   {
+    "rule": "nested-cards",
+    "value": "*",
+    "files": [
+     "docs/cms-preview.html"
+    ],
+    "createdAt": "2026-11-13T18:30:00.000Z",
+    "reason": "documentation still: the only nesting is the editable wrapper (.ed) inside a card, which is the subject of the picture"
+   }
+  ]
+ }
 }
