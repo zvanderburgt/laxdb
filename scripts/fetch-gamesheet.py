@@ -24,7 +24,7 @@ import os
 import re
 import sys
 
-from gamesheet import GameSheet, full_name, norm, parse_height, parse_weight
+from gamesheet import GameSheet, full_name, name_key, norm, parse_height, parse_weight
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "public", "data.json")
@@ -81,6 +81,27 @@ LEAGUE_HINTS = {
 def load():
     with open(DATA) as f:
         return json.load(f)
+
+
+def sanitise_bios(data: dict) -> dict:
+    """Clear implausible heights and weights before refilling them.
+
+    The first parser read a centimetre height as inches (160 -> 160in) and a height string
+    sitting in the weight column as pounds ("5”10" -> 10lb). Those values are wrong however
+    they arrived, so they are removed rather than corrected in place: the fixed parsers
+    then refill from the same row.
+    """
+    cleared = {"heightIn": 0, "weightLb": 0}
+    for p in data["players"]:
+        height = p.get("heightIn") or 0
+        if height and not (55 <= height <= 96):
+            p["heightIn"] = 0
+            cleared["heightIn"] += 1
+        weight = p.get("weightLb") or 0
+        if weight and not (100 <= weight <= 350):
+            p["weightLb"] = 0
+            cleared["weightLb"] += 1
+    return cleared
 
 
 def discover(gs: GameSheet) -> dict:
@@ -170,13 +191,13 @@ def enrich_rows(rows: list[dict], data: dict, stats: dict, year: int | None = No
     by_name: dict[str, list[dict]] = {}
     team_by_id = {t["id"]: t for t in data["teams"]}
     for p in data["players"]:
-        by_name.setdefault(norm(p["name"]), []).append(p)
+        by_name.setdefault(name_key(p["name"]), []).append(p)
 
     updates: dict[str, dict] = {}
     logos: dict[str, str] = {}
     new_rows: list[tuple[str, dict]] = []
     for row in rows:
-        candidates = by_name.get(norm(full_name(row))) or []
+        candidates = by_name.get(name_key(full_name(row))) or []
         if not candidates:
             stats["name_miss"] += 1
             continue
@@ -415,6 +436,9 @@ def main():
 
     gs = GameSheet(refresh=args.refresh)
     data = load()
+    cleared = sanitise_bios(data)
+    if any(cleared.values()):
+        print(f"cleared implausible bios: height {cleared['heightIn']} · weight {cleared['weightLb']}")
     leagues = discover(gs) if args.discover else load_map(gs)
     mapping = match_leagues(leagues, data)
 

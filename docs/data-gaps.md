@@ -89,7 +89,58 @@ stat() per season. It is wired into `scripts/rebuild-all.sh` after the headshot 
 
 ---
 
-## Phase 2 — finish the box leagues GameSheet already covers
+## Phase 2 — finish the box leagues GameSheet already covers — SHIPPED 2026-11-12
+
+`scripts/gamesheet-gap.py` (diagnostic) + hardened parsers in `scripts/gamesheet.py`.
+
+**The estimate in this section was wrong, and the diagnostic is why.** Of the 1,979 players
+in GameSheet-covered leagues still short a photo or height:
+
+| bucket | players | meaning |
+| --- | --- | --- |
+| no GameSheet row at all | 1,123 (57%) | the club-season isn't in GameSheet — nothing to match |
+| row exists, carries no bio | 570 (29%) | OJCL especially: the row has a name and stats only |
+| same name, we missed it | 89 (4.5%) | real matching bugs |
+| "Parker Robbins AP" style names | 49 (2.5%) | affiliate/captain suffixes |
+| same jersey, different name | 148 (7.5%) | coincidence, not evidence; left alone |
+
+So the ceiling here was ~140 players, not the 1,000–1,500 predicted. Matching was already
+mostly right; GameSheet's *coverage* is the limit.
+
+**What was actually broken, and fixed:**
+
+- **Centimetre heights were discarded.** The junior feed publishes `height: 160`, which
+  needs converting (63in); the old parser only read feet-and-inches and silently produced 0.
+- **A height string in the weight column became pounds.** `weight: "5”10"` fell through to
+  `10`, and 21 players were listed at 10–11 lb. Weights are now range-gated to 100–350 lb
+  and any quote mark is refused outright; implausible values already in the dataset are
+  cleared on load and refilled from the corrected parser.
+- **`"511"`** (the feed's concatenated 5'11") is read as feet and inches.
+- **Affiliate and captain markers** — `PARKER ROBBINS AP`, `JACK WEBLEY(AP)`, `RYDER PERRY ☆`
+  — are stripped before name comparison, so those rows match.
+
+**Result**
+
+| | before | after |
+| --- | --- | --- |
+| OJBLL core | 57% | 61% |
+| NLL core | 13% | 19% |
+| MSL core | 19% | 21% |
+| OSL core | 10% | 11% |
+| OJCL core | 34% | 35% |
+| PLL core (merged careers) | 38% | 53% |
+| players with a height | 7,983 | 8,094 |
+| players with a photo | 6,088 | 6,127 |
+| implausible weight / height values | 21 / 4 | **0 / 0** |
+| empty profiles, whole site | 12,890 | **12,809** |
+
+**Repeatable:** `python3 scripts/fetch-gamesheet.py --apply` (cache under `scripts/.cache/gs`,
+`--no-seasons` for bios only, `--only <league>` to narrow). The gap diagnostic is
+`python3 scripts/gamesheet-gap.py` and costs nothing but disk reads on a warm cache.
+
+---
+
+## Phase 2 (original plan, kept for context)
 
 **Gap:** the box leagues we do enrich are still half empty — OJLL 62% core, OJBLL 57%,
 OJCL 34%, MSL 19%, NLL 13%, OSL 10%, RMLL Jr A 14%. The importer reports **14,601
@@ -178,7 +229,7 @@ After each phase, `scripts/coverage.py --save` should show:
 | --- | --- | --- | --- | --- | --- |
 | baseline 2026-11-12 | 16,811 | 20% | 18% | 73% | 52% |
 | **Phase 1 — done** | **12,890** | **28%** | **32%** | 73% | 52% |
-| Phase 2 | ~11,500 | 34% | 37% | 73% | 52% |
+| **Phase 2 — done** | **12,809** | **28%** | **37%** | 73% | 52% |
 | Phase 3 | ~9,800 | 40% | 42% | 95% | 80% |
 | Phase 4 (option 1) | ~9,800 + honest label | — | — | — | — |
 

@@ -50,21 +50,69 @@ def norm(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def name_key(text: str) -> str:
+    """Comparison key for a person, tolerant of how club feeds decorate a name.
+
+    GameSheet marks affiliate players "PARKER ROBBINS AP" or "JACK WEBLEY(AP)" and stars a
+    captain "RYDER PERRY ☆"; our own feeds carry "Jr." and hyphenated or apostrophe names.
+    """
+    key = norm(text)
+    key = re.sub(r"\b(a ?p|ap|affiliate|call ?up)\b\s*$", " ", key)
+    key = re.sub(r"\b(jr|sr|ii|iii|iv)\b", " ", key)
+    return re.sub(r"\s+", " ", key).strip()
+
+
 def parse_height(value: str) -> int:
-    """"5'11\\"" / "5’10”" / "6-2" -> inches."""
-    if not value:
+    """Feet and inches, centimetres, or a concatenated "511".
+
+    The Ontario Junior feed publishes height in centimetres and sometimes swaps the two
+    columns, so a bare number has to be read by range: 160 is centimetres (63in), 71 is
+    inches, 511 is 5'11". Anything else is refused rather than guessed.
+    """
+    if value in (None, ""):
         return 0
-    m = re.search(r"(\d)\s*['’\u2032\-\s]\s*(\d{1,2})?", str(value))
-    if not m:
+    text = str(value).strip().lower()
+    text = text.replace("\u2019", "'").replace("\u201d", '"').replace("\u2033", '"').replace("\u2032", "'")
+    if text.endswith("cm") and text[:-2].strip().isdigit():
+        return round(int(text[:-2].strip()) / 2.54)
+    if text.isdigit():
+        number = int(text)
+        if 100 <= number <= 250:                 # centimetres
+            return round(number / 2.54)
+        if 55 <= number <= 96:                   # bare inches; 53in is a child, not a player
+            return number
+        if 300 <= number <= 612:                 # "511" -> 5'11"
+            feet, inches = divmod(number, 100)
+            if 4 <= feet <= 6 and inches <= 11:
+                return feet * 12 + inches
         return 0
-    feet = int(m.group(1))
-    inches = int(m.group(2) or 0)
-    return feet * 12 + inches
+    match = re.search(r"(\d)\s*['\-\s]\s*(\d{1,2})?", text)
+    if not match:
+        return 0
+    inches = int(match.group(1)) * 12 + int(match.group(2) or 0)
+    return inches if 55 <= inches <= 96 else 0
 
 
 def parse_weight(value: str) -> int:
-    m = re.search(r"(\d{2,3})", str(value or ""))
-    return int(m.group(1)) if m else 0
+    """Pounds, in a plausible range. A height string is not a weight.
+
+    "5\u201d10" used to fall through the old regex and yield 10, which is how a handful of
+    players ended up listed at 10-11 lb. Anything outside 100-350 lb is refused.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return 0
+    if "'" in text or '"' in text or "\u2019" in text or "\u201d" in text:
+        return 0                                 # a height, in the weight column
+    match = re.search(r"(\d{2,3})", text)
+    if not match:
+        return 0
+    number = int(match.group(1))
+    if 100 <= number <= 350:
+        return number
+    if "kg" in text.lower() and 45 <= number <= 160:
+        return round(number * 2.20462)
+    return 0
 
 
 class GameSheet:
