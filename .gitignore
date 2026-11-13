@@ -6,3 +6,10 @@ scripts/.cache/
 .DS_Store
 tsconfig.tsbuildinfo
 public/players/pll/*.raw
+
+netlify/functions-build/
+data/cms-env.local
+data/cms-netlify-env.txt
+data/cms-store/
+data/cms-passphrase
+data/cms-passphrase.netlify

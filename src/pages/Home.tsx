@@ -13,6 +13,7 @@ import {
   teamOf,
 } from "../lib/data";
 import { Avatar, PlayerCard, PositionBadge, SectionHead, Segmented, Sparkline, PlayerAvatar } from "../components/ui";
+import { site } from "../lib/site";
 import type { Player } from "../lib/types";
 
 const STATS = [
@@ -158,15 +159,11 @@ export default function Home() {
         <div className="hero-glow" aria-hidden="true" />
         <div className="hero-inner">
           <div className="hero-copy">
-            <div className="eyebrow reveal">The lacrosse player database</div>
+            <div className="eyebrow reveal">{site.heroEyebrow}</div>
             <h1 className="reveal">
-              {PLAYER_COUNT.toLocaleString()} players. <span className="shine">One profile.</span>
+              {PLAYER_COUNT.toLocaleString()} players. <span className="shine">{site.heroTail}</span>
             </h1>
-            <p className="hero-sub reveal">
-              Field and box, from NCAA Division I, the MCLA and the PLL down through 16 Canadian
-              box leagues — Junior A, Junior B, Junior C, Senior and the NLL. Career histories,
-              position-aware metrics, side-by-side comparison.
-            </p>
+            <p className="hero-sub reveal">{site.heroLede}</p>
             <form
               className="hero-search reveal"
               onSubmit={(e) => {
