@@ -10,6 +10,8 @@ export default defineConfig({
     // (`npm run cms` starts both); in production /api/* is the deployed function
     proxy: {
       "/api": { target: "http://localhost:8787", changeOrigin: false },
+      // uploaded headshots and logos are served by the same function in production
+      "/media": { target: "http://localhost:8787", changeOrigin: false },
     },
   },
 });

@@ -15,7 +15,7 @@
  * One entry point rather than eight keeps the bundle single and lets the same handlers run under a
  * plain Node server locally (`scripts/cms-dev-server.mjs`) with a filesystem store.
  */
-import { FIELDS, fieldFor, validatePatch } from "../../src/lib/cms-registry";
+import { FIELDS, ID_RE, fieldFor, validatePatch } from "../../src/lib/cms-registry";
 import {
   clearCookie,
   clearFailures,
@@ -45,9 +45,11 @@ import {
   versions,
   withDraft,
 } from "../lib/doc";
-import { StoreError, usingFs } from "../lib/store";
+import { StoreError, store, usingFs } from "../lib/store";
 
-export const config = { path: "/api/*" };
+// `/media/*` is served by this function too: uploaded headshots and logos live in Blobs, on the
+// site's own origin, so no extra CDN, no CORS and no rewrite rule to keep in sync
+export const config = { path: ["/api/*", "/media/*"] };
 
 const MAX_BODY = 128 * 1024;
 
@@ -299,6 +301,47 @@ async function route(req: Request): Promise<Response> {
     const key = url.searchParams.get("key") ?? "";
     if (!/^[a-z]+:[a-z0-9][a-z0-9-]{0,79}$/.test(key)) return fail(400, "bad entity key");
     return json({ key, fields: await entityFields(key) }, { headers: { "cache-control": "no-store" } });
+  }
+
+  /* ---------------------------------- media --------------------------------- */
+
+  if (route.startsWith("/media/")) {
+    if (method !== "GET" && method !== "HEAD") return fail(405, "method not allowed");
+    const key = route.replace(/^\/media\//, "");
+    if (!/^(player|team)\/[a-z0-9][a-z0-9-]{0,79}\.webp$/.test(key)) return fail(404, "no such image");
+    const raw = await store("media").get(key);
+    if (!raw) return fail(404, "no such image");
+    const bytes = Buffer.from(raw, "base64");
+    return new Response(bytes, {
+      headers: {
+        "content-type": "image/webp",
+        "content-length": String(bytes.length),
+        // the filename carries no hash, so keep it short-lived at the edge: a re-upload must show
+        "cache-control": "public, max-age=60, s-maxage=60",
+      },
+    });
+  }
+
+  if (route === "/media") {
+    if (method !== "POST") return fail(405, "method not allowed");
+    if (!session || !token) return fail(401, "signed out");
+    if (!csrfOk(req, token)) return fail(403, "missing csrf header");
+
+    const body = await readBody(req);
+    const kind = body?.kind === "team" ? "team" : body?.kind === "player" ? "player" : "";
+    const id = typeof body?.id === "string" ? body.id : "";
+    const data = typeof body?.data === "string" ? body.data : "";
+    if (!kind || !ID_RE.test(id)) return fail(422, "bad upload target");
+    const match = /^data:image\/(webp|png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(data);
+    if (!match) return fail(422, "expected a base64 webp/png/jpeg data URL");
+    const bytes = Buffer.from(match[2], "base64");
+    // the client crops to 224×224 webp (~15 KB); this is the backstop, not the target
+    if (bytes.length > 600 * 1024) return fail(413, "image is too large");
+    if (bytes.length < 200) return fail(422, "image looks empty");
+
+    const key = `${kind}/${id}.webp`;
+    await store("media").set(key, bytes.toString("base64"));
+    return json({ url: `media/${key}`, bytes: bytes.length }, { headers: { "cache-control": "no-store" } });
   }
 
   /* ---------------------------------- meta ---------------------------------- */

@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Link, useRoute } from "../lib/app";
+import { clubInk } from "../lib/palette";
+import { Link, useRoute, useTheme } from "../lib/app";
 import { useFlipRows } from "../lib/motion";
 import { seriesFor } from "../lib/series";
 import { returningProduction } from "../lib/returning";
@@ -323,6 +324,8 @@ export function TeamPage() {
     );
   }
   const league = leagueById.get(team.leagueId);
+  const { theme } = useTheme();
+  const club = clubInk(team.colors, theme);
   const roster = rosterOf(team.id);
   const origins = teamOrigins(team.id);
   const stats = teamSeasonStats(team.id);
@@ -372,7 +375,7 @@ export function TeamPage() {
   };
 
   return (
-    <div className="profile">
+    <div className="profile" style={{ ["--club" as string]: club } as React.CSSProperties}>
       <div
         className="profile-hero team-hero"
         style={{ background: `radial-gradient(120% 160% at 0% 0%, ${team.colors[0]}2b, transparent 60%), radial-gradient(80% 120% at 100% 0%, ${team.colors[1]}22, transparent 55%)` }}
@@ -392,7 +395,9 @@ export function TeamPage() {
               data-cms-id={team.id}
               style={{ background: `linear-gradient(150deg, ${team.colors[0]}, ${team.colors[1]})` }}
             >
-              {team.logo ? <TeamLogo team={team} size={88} /> : team.shortName.slice(0, 2).toUpperCase()}
+              <span className="cms-logo" data-cms="team.logo" data-cms-id={team.id}>
+                {team.logo ? <TeamLogo team={team} size={88} /> : team.shortName.slice(0, 2).toUpperCase()}
+              </span>
             </span>
             <div className="profile-id">
               <div className="profile-tags">

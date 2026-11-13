@@ -436,7 +436,17 @@ strength pair renders as tags, an award row appears in career highlights, and th
 the team hero wash. The people-row string cap moved to 200 characters — a school's assistant-AD title
 is 150, and the 120 cap silently rejected the whole list.
 
-**Phase 3b — media (1–2 sessions).** number/date/select/people controls, `/media`
+**Phase 3b — media. ✅ shipped.** An `image` field opens a file picker; the browser crops the file to a
+224×224 square (30% from the top, the same contract `save_image()` uses), encodes WebP and posts a data
+URL to `POST /api/media`, which stores the bytes in the `media` Blobs store and answers the path to
+commit. `GET /media/<kind>/<id>.webp` is served by the same function (`config.path` now covers
+`/api/*` and `/media/*`), so the image is on the site's own origin: no extra CDN, no CORS, no rewrite
+to keep in sync. Wired to `player.photo` (the hero avatar) and `team.logo` (inside the crest, which
+carries `team.colors` — the innermost `data-cms` wins, so the mark edits the logo and the padding edits
+the colours). The filename carries no hash, so the response is edge-cached for 60s rather than
+immutable; a re-upload appears within the minute.
+
+**Phase 3c — club colour.** number/date/select/people controls, `/media`
 with the shared crop path, team and league fields, colour picker with a contrast warning. *Done when*
 a portrait uploaded through the dock is 224×224 and matches `save_image()`'s output byte-for-byte in
 dimensions, and a staff row can be added, reordered and removed in one publish.
@@ -510,3 +520,23 @@ Still open:
    years at this volume — worth a cap when the first hundred versions land.
 3. **Multi-tab preview.** Two tabs editing the same field both stage into one draft; last write wins
    inside the draft. The publish guard does not help there — a per-field `stagedAt` would.
+
+## 9. Club colours
+
+The stats graph was already club-coloured (one series per club/franchise, colours spread by
+`distinctEach` and lifted for the dark theme) — measuring a player page confirms it: Cornell's
+`#b31b1b` on the points line, the second club in a rotated hue, dashed bridges between seasons.
+
+What was missing was everything *else*. `clubInk(colors, theme)` in `src/lib/palette.ts` picks the
+first club colour that clears 3:1 against that theme's background (brand colours are authored for a
+white page — Cornell's secondary is `#ffffff` — so a pale mark would vanish), falling back to the
+primary and finally to `--accent`. Pages publish it as `--club` on their subtree; the marks that opt in
+read `var(--club, var(--accent))`:
+
+- the awards timeline dot, and the tints that go with it
+- the game log's best-game row (11% tint + the 2px inset edge)
+- the team page's returning-production meter
+
+Keep the primary action blue: the One Varsity Rule still owns buttons, selection and focus. Club colour
+is identity, not action — if a club-coloured surface and a blue button sit side by side, that is the
+intended reading.
