@@ -2377,12 +2377,12 @@ a.vs-team:hover { color: var(--accent); }
 .season-total .season-league { display: none; }
 .season-total .season-cells { grid-column: 4; }
 
-/* twelve stat columns plus season, team and league never fit on one line in a 724px
-   card, so a wide season keeps the labelled block at every width and gives the stats
-   their own full-width line. Nothing clips and nothing scrolls sideways. */
+/* seven or more stat columns do not fit beside season, team and league in the narrowest
+   desktop card (613px), so those seasons keep the labelled block at every width and give
+   the stats their own full-width line. Nothing clips and nothing scrolls sideways. */
 @media (min-width: 641px) {
-  .season-board.is-wide .season-head { display: none; }
-  .season-board.is-wide .season-row {
+  .season-board.is-block .season-head { display: none; }
+  .season-board.is-block .season-row {
     grid-template-columns: auto auto minmax(0, 1fr);
     grid-template-areas:
       "year league team"
@@ -2390,12 +2390,12 @@ a.vs-team:hover { color: var(--accent); }
     row-gap: 10px;
     padding: 12px 20px;
   }
-  .season-board.is-wide .season-year { grid-area: year; }
-  .season-board.is-wide .season-league { grid-area: league; white-space: nowrap; }
-  .season-board.is-wide .season-league::before { content: "\00b7\00a0"; }
-  .season-board.is-wide .season-league:empty { display: none; }
-  .season-board.is-wide .season-team { grid-area: team; justify-self: end; text-align: right; }
-  .season-board.is-wide .season-cells {
+  .season-board.is-block .season-year { grid-area: year; }
+  .season-board.is-block .season-league { grid-area: league; white-space: nowrap; }
+  .season-board.is-block .season-league::before { content: "\00b7\00a0"; }
+  .season-board.is-block .season-league:empty { display: none; }
+  .season-board.is-block .season-team { grid-area: team; justify-self: end; text-align: right; }
+  .season-board.is-block .season-cells {
     grid-area: cells;
     grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
     gap: 8px;
@@ -2403,8 +2403,8 @@ a.vs-team:hover { color: var(--accent); }
     border-top: 1px solid var(--hairline);
     text-align: left;
   }
-  .season-board.is-wide .season-cells > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .season-board.is-wide .season-cells i {
+  .season-board.is-block .season-cells > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .season-board.is-block .season-cells i {
     display: block;
     order: 2;
     font-size: 9.5px;
@@ -2412,14 +2412,14 @@ a.vs-team:hover { color: var(--accent); }
     letter-spacing: 0.08em;
     color: var(--text-3);
   }
-  .season-board.is-wide .season-row.season-total {
+  .season-board.is-block .season-row.season-total {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "year"
       "cells";
   }
-  .season-board.is-wide .season-total .season-year { grid-area: year; grid-column: auto; }
-  .season-board.is-wide .season-total .season-cells { grid-area: cells; grid-column: auto; border-top: 0; padding-top: 4px; }
+  .season-board.is-block .season-total .season-year { grid-area: year; grid-column: auto; }
+  .season-board.is-block .season-total .season-cells { grid-area: cells; grid-column: auto; border-top: 0; padding-top: 4px; }
 }
 
 @media (max-width: 640px) {

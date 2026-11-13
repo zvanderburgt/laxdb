@@ -700,7 +700,7 @@ function SeasonBoard({
   totalCaption: string;
 }) {
   return (
-    <div className={`season-board${totals.length >= 10 ? " is-wide" : ""}`}>
+    <div className={`season-board${totals.length > 6 ? " is-block" : ""}`}>
       <div className="season-head" aria-hidden="true">
         <span>Season</span>
         <span>Team</span>
