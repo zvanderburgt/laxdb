@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { loadDataset } from "./lib/data";
+import { loadOverrides } from "./lib/overrides";
 import { AppSkeleton } from "./components/ui";
 import "./styles.css";
 
@@ -24,6 +25,7 @@ root.render(
 );
 
 loadDataset()
+  .then(() => loadOverrides())
   .then(() => {
     root.render(
       <React.StrictMode>

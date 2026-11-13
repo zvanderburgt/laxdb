@@ -57,6 +57,12 @@ python3 scripts/fetch-scores.py 2026 2025 || true
 echo "── integrity check"
 python3 scripts/check-data.py
 
+echo "── editorial overrides (snapshot before the build: the site falls back to it)"
+python3 scripts/cms-snapshot.py || true
+
+echo "── admin API bundle (the API is deployed with the site)"
+node scripts/build-functions.mjs
+
 echo "── build"
 npm run build
 

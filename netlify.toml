@@ -21,3 +21,16 @@
   for = "/data.json"
   [headers.values]
     Cache-Control = "public, max-age=300, must-revalidate"
+
+# The admin API. Files here are already bundled by scripts/build-functions.mjs, so Netlify must not
+# bundle them again; the function exports `config.path = "/api/*"` for its own routing.
+[functions]
+  directory = "netlify/functions-build"
+  node_bundler = "none"
+
+# the published override document is a deploy-time snapshot as well, so the site still applies
+# editorial work if the function is unreachable
+[[headers]]
+  for = "/overrides.json"
+  [headers.values]
+    Cache-Control = "public, max-age=60, must-revalidate"

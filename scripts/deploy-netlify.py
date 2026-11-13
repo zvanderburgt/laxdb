@@ -11,7 +11,7 @@ Usage:
                                                    # leaves the live site on its current deploy
   python3 scripts/deploy-netlify.py --create laxdb # create (or reuse) a site named laxdb
 """
-import io, json, os, sys, time, urllib.request, zipfile
+import io, json, os, subprocess, sys, time, urllib.request, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API = "https://api.netlify.com/api/v1"
@@ -62,6 +62,57 @@ def zip_dist():
     return buf.getvalue()
 
 
+def deploy_via_cli(site_id, draft):
+    """
+    Site + functions in one deploy, through the Netlify CLI.
+
+    A plain zip upload cannot carry a Functions v2 module: the API publishes a
+    `netlify/functions/*.mjs` inside the zip as a static file (it lands at
+    /netlify/functions/api.mjs and /api/* 404s, with available_functions still []). The CLI uploads
+    the function properly, so it is the supported path whenever the API is part of the build.
+    """
+    cli = os.path.join(ROOT, "node_modules", ".bin", "netlify")
+    fns = os.path.join(ROOT, "netlify", "functions-build")
+    if not os.path.exists(cli) or not os.path.isdir(fns):
+        return None
+    cmd = [cli, "deploy", "--dir", "dist", "--functions", fns, "--site", site_id, "--json"]
+    if not draft:
+        cmd.append("--prod")
+    env = dict(os.environ, NETLIFY_AUTH_TOKEN=TOKEN, NETLIFY_SITE_ID=site_id)
+    print(f"deploying site + admin API with the Netlify CLI ({'draft' if draft else 'production'})…")
+    proc = subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, timeout=900)
+    out = proc.stdout or ""
+    if proc.returncode != 0:
+        print((proc.stderr or out)[-1500:])
+        sys.exit("cli deploy failed")
+    try:
+        payload = json.loads(out[out.index("{"): out.rindex("}") + 1])
+    except Exception:
+        print(out[-1500:])
+        sys.exit("could not read the cli deploy output")
+    url = payload.get("deploy_url") or payload.get("url")
+    print(f"deploy ready: {url}")
+    print(f"  {'live site unchanged (draft)' if draft else 'published'}")
+    return url
+
+
+def smoke(url):
+    """The API is the one part of a deploy that fails silently: check it answered."""
+    probe = (url or "").rstrip("/") + "/api/session"
+    req = urllib.request.Request(probe, headers={"User-Agent": "laxdb-deploy"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            code, body = r.status, r.read(200)
+    except urllib.error.HTTPError as e:
+        code, body = e.code, e.read(200)
+    except Exception as e:
+        print(f"  ! api smoke test could not reach {probe}: {e}")
+        return False
+    ok = code == 401
+    print(f"  {'ok' if ok else '!'} GET /api/session → {code} (want 401) {body[:80].decode(errors='replace')}")
+    return ok
+
+
 def find_or_create_site(name=None):
     # existing state file wins (idempotent re-deploys)
     state = os.path.join(ROOT, ".netlify", "state.json")
@@ -97,6 +148,13 @@ def main():
     # --draft builds a deploy you can open and share without publishing it: it gets its
     # own deploy URL and the live site keeps serving the current production deploy.
     draft = "--draft" in sys.argv
+
+    url = deploy_via_cli(site_id, draft)
+    if url:
+        if not smoke(url) and not draft:
+            sys.exit("admin API missing from a production deploy — /api/* is not routed")
+        return
+
     payload = zip_dist()
     print(f"uploading {len(payload)/1e6:.1f} MB zip…" + (" (draft)" if draft else ""))
     qs = "?draft=true" if draft else ""
@@ -118,6 +176,8 @@ def main():
             print(f"  live site: {d.get('ssl_url') or d.get('url')}")
             os.makedirs(os.path.join(ROOT, ".netlify"), exist_ok=True)
             json.dump({"siteId": site_id}, open(os.path.join(ROOT, ".netlify", "state.json"), "w"))
+            if not smoke(url) and not draft:
+                sys.exit("admin API missing from a production deploy — /api/* is not routed")
             return
         if state == "error":
             sys.exit(f"deploy error: {d}")
