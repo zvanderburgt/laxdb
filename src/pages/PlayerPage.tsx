@@ -26,6 +26,7 @@ import { peerRanks } from "../lib/peers";
 import { splits } from "../lib/splits";
 import { adjustedRate } from "../lib/adjusted";
 import { toggleSaved, useRoster } from "../lib/storage";
+import { useIsEditing } from "../lib/cms";
 import {
   Avatar,
   Card,
@@ -127,7 +128,7 @@ function Profile({ player }: { player: Player }) {
                 {league ? <span className="tag">{league.type === "box" ? "Box lacrosse" : "Field lacrosse"}</span> : null}
                 {player.commit ? <span className="tag tag-accent">Committed · {player.commit.college}</span> : null}
               </div>
-              <h1>{player.name}</h1>
+              <h1 data-cms="player.name" data-cms-id={player.id}>{player.name}</h1>
               <div className="profile-sub">
                 <Link to={`/team/${team?.slug}`} className="profile-team">
                   <TeamLogo team={team} size={18} />
@@ -143,13 +144,31 @@ function Profile({ player }: { player: Player }) {
                 ) : null}
               </div>
               <div className="profile-meta">
-                {player.heightIn > 0 ? <span><b>{fmtHeight(player.heightIn)}</b> height</span> : null}
-                {player.weightLb > 0 ? <span><b>{player.weightLb} lb</b> weight</span> : null}
-                {player.hand ? (
-                  <span><b>{player.hand}H</b> {player.hand === "R" ? "right-handed" : "left-handed"}</span>
+                {player.heightIn > 0 ? (
+                  <span data-cms="player.heightIn" data-cms-id={player.id} data-cms-value={String(player.heightIn)}>
+                    <b>{fmtHeight(player.heightIn)}</b> height
+                  </span>
                 ) : null}
-                {ageOf(player.dob) ? <span><b>{ageOf(player.dob)}</b> years old</span> : null}
-                {player.jersey > 0 ? <span><b>#{player.jersey}</b> jersey</span> : null}
+                {player.weightLb > 0 ? (
+                  <span data-cms="player.weightLb" data-cms-id={player.id} data-cms-value={String(player.weightLb)}>
+                    <b>{player.weightLb} lb</b> weight
+                  </span>
+                ) : null}
+                {player.hand ? (
+                  <span data-cms="player.hand" data-cms-id={player.id} data-cms-value={player.hand}>
+                    <b>{player.hand}H</b> {player.hand === "R" ? "right-handed" : "left-handed"}
+                  </span>
+                ) : null}
+                {ageOf(player.dob) ? (
+                  <span data-cms="player.dob" data-cms-id={player.id} data-cms-value={player.dob}>
+                    <b>{ageOf(player.dob)}</b> years old
+                  </span>
+                ) : null}
+                {player.jersey > 0 ? (
+                  <span data-cms="player.jersey" data-cms-id={player.id} data-cms-value={String(player.jersey)}>
+                    <b>#{player.jersey}</b> jersey
+                  </span>
+                ) : null}
                 {player.experience ? <span><b>{player.experience}</b> yrs pro</span> : null}
               </div>
               {!hasBio ? (
@@ -295,16 +314,44 @@ function Profile({ player }: { player: Player }) {
           <Card>
             <div className="eyebrow">Profile</div>
             <dl className="facts">
-              {player.dob ? <div><dt>Born</dt><dd>{fmtDate(player.dob)}</dd></div> : null}
+              {player.dob ? (
+                <div>
+                  <dt>Born</dt>
+                  <dd data-cms="player.dob" data-cms-id={player.id} data-cms-value={player.dob}>{fmtDate(player.dob)}</dd>
+                </div>
+              ) : null}
               {ageOf(player.dob) ? <div><dt>Age</dt><dd>{ageOf(player.dob)}</dd></div> : null}
               {player.birthplace.city ? (
-                <div><dt>Hometown</dt><dd>{[player.birthplace.city, player.birthplace.state].filter(Boolean).join(", ")}</dd></div>
+                <div>
+                  <dt>Hometown</dt>
+                  <dd data-cms="player.birthplace.city" data-cms-id={player.id} data-cms-value={player.birthplace.city}>
+                    {[player.birthplace.city, player.birthplace.state].filter(Boolean).join(", ")}
+                  </dd>
+                </div>
               ) : null}
-              {player.highSchool ? <div><dt>High school</dt><dd>{player.highSchool}</dd></div> : null}
-              {player.classYear ? <div><dt>Class</dt><dd>{player.classYear}</dd></div> : null}
-              <div><dt>Position</dt><dd>{player.positionName}</dd></div>
+              {player.highSchool ? (
+                <div>
+                  <dt>High school</dt>
+                  <dd data-cms="player.highSchool" data-cms-id={player.id}>{player.highSchool}</dd>
+                </div>
+              ) : null}
+              {player.classYear ? (
+                <div>
+                  <dt>Class</dt>
+                  <dd data-cms="player.classYear" data-cms-id={player.id} data-cms-value={String(player.classYear)}>{player.classYear}</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Position</dt>
+                <dd data-cms="player.position" data-cms-id={player.id} data-cms-value={player.position}>{player.positionName}</dd>
+              </div>
               <div><dt>Status</dt><dd>{player.status}</dd></div>
-              {player.jersey > 0 ? <div><dt>Jersey</dt><dd>#{player.jersey}</dd></div> : null}
+              {player.jersey > 0 ? (
+                <div>
+                  <dt>Jersey</dt>
+                  <dd data-cms="player.jersey" data-cms-id={player.id} data-cms-value={String(player.jersey)}>#{player.jersey}</dd>
+                </div>
+              ) : null}
             </dl>
             {!hasBio ? (
               <p className="muted small bio-note">
@@ -457,6 +504,7 @@ function Profile({ player }: { player: Player }) {
 }
 
 function Overview({ player, onStats }: { player: Player; onStats: () => void }) {
+  const editing = useIsEditing();
   const { theme } = useTheme();
   const cur = currentSeason(player);
   const team = teamOf(player);
@@ -544,10 +592,16 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
 
   return (
     <>
-      {player.bio || player.strengths.length ? (
+      {player.bio || player.strengths.length || editing ? (
         <Card>
           <h3 className="card-title">Bio</h3>
-          {player.bio ? <p className="prose">{player.bio}</p> : null}
+          {player.bio ? (
+            <p className="prose" data-cms="player.bio" data-cms-id={player.id}>{player.bio}</p>
+          ) : editing ? (
+            <p className="prose cms-empty-slot" data-cms="player.bio" data-cms-id={player.id}>
+              Add a bio
+            </p>
+          ) : null}
           {player.strengths.length ? (
             <div className="strength-row">
               {player.strengths.map((s) => (
@@ -1429,7 +1483,7 @@ function Scouting({ player }: { player: Player }) {
           </div>
           <span className="muted small">{fmtDate(player.scouting.date)}</span>
         </div>
-        <p className="prose lead">{player.scouting.report}</p>
+        <p className="prose lead" data-cms="player.scouting.report" data-cms-id={player.id}>{player.scouting.report}</p>
         <div className="strength-row">
           {player.strengths.map((s) => (
             <span key={s} className="tag">{s}</span>

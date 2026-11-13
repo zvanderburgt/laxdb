@@ -133,6 +133,23 @@ export async function stage(patch: Patch): Promise<DraftDoc> {
   return next;
 }
 
+/** Remove one staged field from the draft (the dock's chip × and its Undo). */
+export async function unstage(entity: string, id: string, path: string): Promise<DraftDoc | null> {
+  const draft = await readDraft();
+  if (!draft) return null;
+  const key = entityKey(entity, id);
+  const entry = draft.entities[key];
+  if (!entry) return draft;
+  const fields = { ...entry.fields };
+  delete fields[path];
+  const entities = { ...draft.entities };
+  if (Object.keys(fields).length === 0) delete entities[key];
+  else entities[key] = { ...entry, updatedAt: new Date().toISOString(), fields };
+  const next: DraftDoc = { ...draft, entities, generated: new Date().toISOString() };
+  await store("cms").set(DRAFT_KEY, JSON.stringify(next));
+  return next;
+}
+
 export async function discardDraft(): Promise<void> {
   await store("cms").del(DRAFT_KEY);
 }

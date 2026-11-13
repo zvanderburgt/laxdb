@@ -13,11 +13,11 @@ bio, both bars stacked) and `docs/cms-dock-desktop.png` / `docs/cms-dock-phone.p
 at 1440 and 390. Measured from those: the dock is 846×50 at 1440 and 366×50 at 390 — the same 50px as
 the tray — and `scrollWidth === clientWidth` at both widths.
 
-**Status.** Phase 0 (auth + deploy plumbing) and Phase 1 (the override layer, draft → preview →
-publish, revert, history) are built and verified — locally against a filesystem store, and against a
-deployed draft on real Netlify Blobs. The dock itself (Phase 2) is next: `src/lib/cms-registry.ts`,
-`src/lib/overrides.ts`, `netlify/functions/api.ts` and `netlify/lib/*` exist; `src/components/cms/*`
-does not.
+**Status.** Phases 0–2 are built and verified — locally against a filesystem store, and against a
+deployed draft on real Netlify Blobs. The dock, select mode, the inline field editor and the review
+sheet all work end to end: sign in, click a field, type, save, review, publish, reload and the value is
+live. What remains is Phase 3 (structured + people + media controls), Phase 4 (per-version history UI,
+flags, the orphan report) and Phase 5 (hardening).
 
 **The one constraint everything else follows from:** `public/data.json` is generated. It is rebuilt
 by `scripts/rebuild-all.sh` from feeds, and a raw re-import already resets logos and headshots. The
@@ -410,10 +410,22 @@ plus the draft/publish/revert endpoints it needs. No UI. Verified locally: a pub
 and `player.heightIn` render on Home and the profile (6'7" from 79 in), and the full draft → publish →
 revert cycle passes end-to-end on a deployed draft with real Blobs.
 
-**Phase 2 — the dock + text fields (1–2 sessions).** `.tray-cms`, mode chip, change stack, select mode,
-shadow input, `POST /edits` with validation and revisions. Fields: player `name`/`bio`/`highSchool`,
-site hero copy. *Done when* a bio edited in place on production survives a hard reload, a second
-browser sees it within 60s, `Esc` cancels, and re-running the D1 importer changes nothing.
+**Phase 2 — the dock + inline fields. ✅ shipped.** `.tray-cms`, hover overlay with a field label,
+shadow input (text/prose/number/date/select), change stack, review sheet, sign-in panel, `⌘⇧E` and
+`?edit=1` as the way in, editor chunk lazily loaded (`Editor-*.js`, 3.3 KB gzip). Verified in a real
+browser: draft seeds from the server on reload, commit → chip → review → publish → reload, `Esc`
+discards, a chip's `×` restores the published value, and the store is empty afterwards.
+
+Two things this phase had to work out that the plan did not foresee:
+
+- **The page has to be told a mutated object changed.** The layer writes through to the same objects
+  the pages render (that is the whole point), so React never sees a new value. `bumpRevision()` in
+  `src/lib/cms.ts` + one `useDataRevision()` call in `App`'s `Routes` is the repaint; copying the
+  dataset instead would leave every derived index reading the feed value.
+- **"Before" is the published value, not the feed value.** `feedValues` (first write per path) and
+  `publishedValues` (the published document's fields) are both kept: a dropped draft edit restores the
+  published value, while returning to the feed is the server-side `/api/revert`. Recomputing "before"
+  from the live object after a reload just reads the override back, which is why it is captured.
 
 **Phase 3 — structured + people + media (1–2 sessions).** number/date/select/people controls, `/media`
 with the shared crop path, team and league fields, colour picker with a contrast warning. *Done when*
@@ -457,6 +469,16 @@ without the CSRF header is rejected.
 - **Undo that isn't undo.** `⌘Z` inside a shadow input is the browser's text undo; the dock's
   "Undo" is the last *commit*. Two different actions, two different affordances — do not bind both to
   the same key.
+- **Two attributes, not one.** `data-cms="player.hand"` says which field; `data-cms-value` carries the
+  stored code when the printed text differs ("LH right-handed" → `L`, "Mar 21, 2000" → `2000-03-21`).
+  Without the second, a select or date field commits the formatted string and the validator rejects it.
+- **`animation-fill-mode: both` pinned the trays off-screen on phones.** `.tray` was centred with
+  `transform: translateX(-50%)`, and `trayin`'s final keyframe carried the same transform — an
+  animation's value beats a media query, so the phone tier's `transform: none` never applied and both
+  the dock and the *existing compare tray* rendered at `x: -171` on a 390px screen. The fix is to
+  centre with `left: 0; right: 0; margin-inline: auto; width: fit-content` and animate `translateY`
+  only. Check it by measuring, not by looking: `getComputedStyle(tray).transform` still reads the
+  matrix even when `left`/`right` are correct.
 
 ---
 

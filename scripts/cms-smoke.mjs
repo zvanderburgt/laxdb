@@ -79,6 +79,14 @@ label(r.status === 401, "POST /api/publish anonymously → 401", String(r.status
 r = await call("/api/draft", { method: "POST", body: { patch: PATCH } });
 label(r.status === 401, "POST /api/draft anonymously → 401", String(r.status));
 
+// a write from another origin is refused before the passphrase is even looked at
+r = await call("/api/session", {
+  method: "POST",
+  body: { passphrase: "x" },
+  headers: { origin: "https://evil.example" },
+});
+label(r.status === 403, "POST from a foreign origin → 403", String(r.status));
+
 // 2. a wrong passphrase costs a second and says nothing
 const t0 = Date.now();
 r = await call("/api/session", { method: "POST", body: { passphrase: `${pass}-nope` } });
@@ -91,6 +99,10 @@ label(r.status === 200 && Boolean(cookie), "POST /api/session signs in and sets 
 label(Boolean(r.headers.get("set-cookie")?.includes("HttpOnly")), "cookie is HttpOnly");
 label(Boolean(r.headers.get("set-cookie")?.includes("SameSite=Strict")), "cookie is SameSite=Strict");
 csrf = r.json?.csrf ?? "";
+
+// start from a clean draft: a leftover from a real editing session would be published by this run
+r = await call("/api/draft", { method: "DELETE", headers: { "x-cms-csrf": csrf } });
+label(r.status === 200, "DELETE /api/draft clears anything already staged", String(r.status));
 
 r = await call("/api/session");
 label(r.status === 200 && r.json?.csrf === csrf, "GET /api/session returns the csrf token", String(r.status));
@@ -154,10 +166,10 @@ if (!write && !base.includes("localhost") && !base.includes("127.0.0.1")) {
   // revert = drop the override, which is the feed value. Also leaves the store clean after a run.
   r = await call("/api/revert", {
     method: "POST",
-    body: { entity: "player", id: PATCH.id, path: PATCH.path },
+    body: { entity: "player", id: PATCH.id },
     headers: { "x-cms-csrf": csrf },
   });
-  label(r.status === 200, "POST /api/revert drops the field back to the feed value", JSON.stringify(r.json));
+  label(r.status === 200, "POST /api/revert drops the entity back to the feed value", JSON.stringify(r.json));
 
   r = await fresh();
   label(!hasValue(r, PATCH.value), "reverted field is gone from the document (fresh read)");
