@@ -14,7 +14,7 @@ lives in `docs/coverage-history.json`, so progress is a diff, not an opinion.
 | club logos | 344 of 471 (73%) |
 | club staff | 244 of 471 (52%) |
 | players with a game log | 3,044 (14%) |
-| handedness | 0% — **no source publishes it**, not a failed import |
+| handedness | 1% — Wikipedia infoboxes (80 players) plus BCJALL only; see Phase 6 |
 
 Two facts decide the whole plan. Everything cheap has already been imported; and the
 remaining gaps are uneven — half of all empty profiles sit in one league (MCLA), and a
@@ -290,7 +290,7 @@ finds bios on more than half.
 | birth dates, NCAA | 7,076 | — | college rosters do not publish DOB; structural, leave it |
 | staff | 227 clubs | league + club sites | free once Phase 3's scrapers exist |
 | logos | 127 clubs | same | free once Phase 3's scrapers exist |
-| handedness | 21,754 | — | nobody publishes it; remove from all gap reporting |
+| handedness | 21,577 | Wikipedia infobox `shoots`; GameSheet player pages (manual saves) | the field exists on GameSheet and Wikipedia only — never report it as unpublished |
 
 ---
 
@@ -311,8 +311,37 @@ pages also carried the *last school* and class year, which the current-season pa
 on some hosts.
 
 A floor worth stating plainly: **birth date will never reach parity** (only box and pro
-feeds publish it) and **handedness will stay at zero**. Everything else on this page is
-reachable from a source we have already proven.
+feeds publish it). **Handedness is source-limited, not absent** — see Phase 6.
+
+---
+
+## Phase 6 — handedness: what the source landscape actually is — 2026-11-13
+
+**Shipped:** `scripts/fetch-wikipedia-hands.py` (235 players now carry a hand, up from 155)
+and `scripts/import-gs-pages.py` (2026 rosters from saved league pages).
+
+### Wikipedia is a real source
+
+`{{Infobox lacrosse player}}` carries `shoots = left|right`. The pass enumerates articles via
+`list=embeddedin` on the template, one level of player subcategories, and `insource:"shoots ="`
+search, then parses the wikitext. Result: ~420 articles readable, ~290 with a hand, **80 matched
+to our players** (plus 90 birth dates). Coverage is retired and active pros — hence NLL 12.7%
+and PLL 7.1% — and it will grow as articles are written.
+
+### Dead ends, tested rather than assumed
+
+| source | what happened |
+| --- | --- |
+| GameSheet league players list | saved pages carry **zero** `shotHand`; the payload holds standings rows only |
+| GameSheet CSV export | built in the browser from the visible rows (`text/csv` in the bundle, no endpoint), paginated 20–60 rows, and has no hand column at all |
+| 290 archived D1 roster pages | **0** mentions of "shoots" — college rosters do not publish it |
+| NLL.com player pages | no handedness field anywhere in a 490 KB page |
+| Pointstreak (old box host) | every URL redirects to Stack Sports; rosters gone |
+| wcjll.com / tojll.com / rmll.ca | redirect to canadianlacrosseleague.com, whose stats app covers only CLL events (`league_id=188`) — no league switcher, no club rosters |
+| Digitalshift API from Python | 401 with a valid browser ticket under seven header shapes; DOM scraping only |
+
+**Consequence:** the only bulk route left is a saved page per club on GameSheet (one save
+yields the whole club roster).
 
 ---
 
