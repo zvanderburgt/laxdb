@@ -22,7 +22,24 @@ third of the fixable ones sit in one league-season range (NCAA D1, 2022–2025).
 
 ---
 
-## Phase 1 — D1 historical rosters (the big one)
+## Phase 1 — D1 historical rosters — SHIPPED 2026-11-12
+
+`scripts/fetch-d1-rosters.py` · 288 schools × seasons · 290 pages cached.
+
+| | before | after |
+| --- | --- | --- |
+| D1 players with no bio | 3,938 | **48** |
+| D1 core score | 36% | **76%** |
+| D1 photo / height / hometown | 44 / 44 / 45% | **68 / 98 / 99%** |
+| D1 weight / jersey | 38 / 45% | **91 / 98%** |
+| D1 high school / class year | 34 / 33% | **76 / 76%** |
+| empty profiles, whole site | 16,811 (77%) | **12,890 (59%)** |
+| players with a headshot | 4,427 | **6,088** |
+
+The remaining D1 gap is birth date (1%, no college source publishes it) and the ~32% of
+photos the archived pages don't carry.
+
+<details><summary>Original plan, kept for the repeatability notes</summary>
 
 **Gap:** 3,938 D1 players with no bio at all. Coverage by season explains why:
 
@@ -57,6 +74,14 @@ Fills four fields at once: photo, height, weight, hometown. Also unlocks *high s
 merging — a class year plus a hometown is real evidence.
 
 **Effort:** medium. One new script, 72 schools × 4 seasons, mostly request volume.
+
+</details>
+
+**Repeatable:** `python3 scripts/fetch-d1-rosters.py --apply` (add `--season 2024` or
+`--only princeton` to narrow it). Pages are cached under `scripts/.cache/d1`, and a school
+with no archived page is remembered as a `.miss` marker, so a second run makes almost no
+requests: the 290 pages that exist are read from disk and the rest are skipped in one
+stat() per season. It is wired into `scripts/rebuild-all.sh` after the headshot pass.
 
 ---
 
@@ -147,11 +172,15 @@ After each phase, `scripts/coverage.py --save` should show:
 
 | after | empty profiles | photo | height | logo | staff |
 | --- | --- | --- | --- | --- | --- |
-| today | 16,811 | 20% | 18% | 73% | 52% |
-| Phase 1 | ~13,400 | 36% | 34% | 73% | 52% |
-| Phase 2 | ~12,200 | 42% | 39% | 73% | 52% |
-| Phase 3 | ~10,300 | 48% | 44% | 95% | 80% |
-| Phase 4 (option 1) | ~10,300 + label | — | — | — | — |
+| baseline 2026-11-12 | 16,811 | 20% | 18% | 73% | 52% |
+| **Phase 1 — done** | **12,890** | **28%** | **32%** | 73% | 52% |
+| Phase 2 | ~11,500 | 34% | 37% | 73% | 52% |
+| Phase 3 | ~9,800 | 40% | 42% | 95% | 80% |
+| Phase 4 (option 1) | ~9,800 + honest label | — | — | — | — |
+
+Phase 1 beat its target (predicted 13,400 empty, delivered 12,890) because the archived
+pages also carried the *last school* and class year, which the current-season parser drops
+on some hosts.
 
 A floor worth stating plainly: **birth date will never reach parity** (only box and pro
 feeds publish it) and **handedness will stay at zero**. Everything else on this page is

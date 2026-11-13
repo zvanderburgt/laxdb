@@ -20,6 +20,9 @@ python3 scripts/fetch-logos.py
 echo "── headshots (both Sidearm roster card templates)"
 python3 scripts/fetch-headshots.py
 
+echo "── D1 bios from archived per-season rosters (2022-2025)"
+python3 scripts/fetch-d1-rosters.py --apply || true
+
 echo "── box bios (GameSheet: dob, hometown, height/weight, jersey, photos, club logos)"
 python3 scripts/fetch-gamesheet.py --apply || true
 

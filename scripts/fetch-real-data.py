@@ -386,6 +386,9 @@ def parse_roster_page(html):
                 "classYear": YEAR_TO_CLASS.get(yr),
                 "city": city, "state": state, "hs": hs,
                 "jersey": int(num(c[idx["num"]])) if idx["num"] is not None and idx["num"] < len(c) else 0,
+                # kept raw so an archived season can resolve the year against its own season:
+                # "Fr." on a 2023 roster is the class of 2026, not of 2029
+                "rawYear": yr,
             }
     return out
 
