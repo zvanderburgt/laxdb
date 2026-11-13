@@ -129,7 +129,10 @@ def read_tables(raw: str) -> list[dict]:
         if "NAME" not in heads:
             continue
         idx = {name: i for i, name in enumerate(heads)}
-        hand_col = idx.get("SH", idx.get("CT"))
+        # SH = throwing hand, which is what we store. CT (goalies) is the *catch* hand —
+        # the opposite of the throwing hand — so a goalie row is skipped rather than
+        # guessed at or inverted.
+        hand_col = idx.get("SH")
         if hand_col is None:
             continue
         for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", block, re.S):
