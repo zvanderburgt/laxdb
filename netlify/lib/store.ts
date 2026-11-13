@@ -83,15 +83,63 @@ function blobsStore(name: StoreName): KV {
   };
 }
 
-const cache = new Map<StoreName, KV>();
+/**
+ * A store handle for this request.
+ *
+ * Deliberately NOT cached across invocations: Netlify Blobs hands the function a short-lived token in
+ * `NETLIFY_BLOBS_CONTEXT`, and a client built on a warm instance keeps the token it captured — which
+ * expires. Caching it produced `BlobsInternalError: Failed to decode token: Token expired` on every
+ * request after the first hour, which surfaced to the editor as a 502. `getStore()` re-reads the
+ * environment and costs nothing measurable.
+ */
+const fsCache = new Map<StoreName, KV>();
 
 export function store(name: StoreName): KV {
-  let s = cache.get(name);
+  if (!useFs()) return resilient(blobsStore(name));
+  let s = fsCache.get(name);
   if (!s) {
-    s = useFs() ? fsStore(name) : blobsStore(name);
-    cache.set(name, s);
+    s = fsStore(name);
+    fsCache.set(name, s);
   }
   return s;
 }
+
+/** Reads degrade to "nothing stored"; writes fail loudly so a caller can answer 503, not 502. */
+function resilient(kv: KV): KV {
+  return {
+    async get(key) {
+      try {
+        return await kv.get(key);
+      } catch (err) {
+        console.error(`blobs: get ${key} failed — ${String(err)}`);
+        return null;
+      }
+    },
+    async list(prefix) {
+      try {
+        return await kv.list(prefix);
+      } catch (err) {
+        console.error(`blobs: list ${prefix} failed — ${String(err)}`);
+        return [];
+      }
+    },
+    async set(key, value) {
+      try {
+        await kv.set(key, value);
+      } catch (err) {
+        throw new StoreError(`could not write ${key}: ${String(err)}`);
+      }
+    },
+    async del(key) {
+      try {
+        await kv.del(key);
+      } catch (err) {
+        throw new StoreError(`could not delete ${key}: ${String(err)}`);
+      }
+    },
+  };
+}
+
+export class StoreError extends Error {}
 
 export const usingFs = useFs;

@@ -45,7 +45,7 @@ import {
   versions,
   withDraft,
 } from "../lib/doc";
-import { usingFs } from "../lib/store";
+import { StoreError, usingFs } from "../lib/store";
 
 export const config = { path: "/api/*" };
 
@@ -109,6 +109,17 @@ const originOk = (req: Request): boolean => {
 };
 
 export default async function handler(req: Request): Promise<Response> {
+  try {
+    return await route(req);
+  } catch (err) {
+    // never let a stack trace reach the client as a 502; say what broke and answer like an API
+    const storage = err instanceof StoreError;
+    console.error(`api: ${req.method} ${new URL(req.url).pathname} — ${String(err)}`);
+    return fail(storage ? 503 : 500, storage ? "storage unavailable — try again" : "request failed");
+  }
+}
+
+async function route(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const route = url.pathname.replace(/^\/api/, "").replace(/\/+$/, "") || "/";
   const method = req.method.toUpperCase();
