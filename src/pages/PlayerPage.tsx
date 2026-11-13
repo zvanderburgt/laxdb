@@ -66,6 +66,12 @@ function Profile({ player }: { player: Player }) {
 
   const team = teamOf(player);
   const league = leagueById.get(player.leagueId);
+  // a competition that publishes no bios leaves the Profile card with three rows and no
+  // person in them; say so rather than letting it read as a failed import
+  const hasBio = Boolean(
+    player.dob || player.heightIn || player.weightLb || player.photo ||
+    player.highSchool || player.classYear || (player.birthplace || {}).city,
+  );
   const cur = currentSeason(player);
   const career = careerTotals(player);
   // box feeds publish rates instead of raw minutes/saves
@@ -140,6 +146,11 @@ function Profile({ player }: { player: Player }) {
                 {player.jersey > 0 ? <span><b>#{player.jersey}</b> jersey</span> : null}
                 {player.experience ? <span><b>{player.experience}</b> yrs pro</span> : null}
               </div>
+              {!hasBio ? (
+                <p className="bio-note hero-bio-note">
+                  Statistics only — {league?.short ?? "this competition"} publishes no player bios.
+                </p>
+              ) : null}
             </div>
             <div className="profile-actions">
               <button
@@ -285,6 +296,12 @@ function Profile({ player }: { player: Player }) {
               <div><dt>Status</dt><dd>{player.status}</dd></div>
               {player.jersey > 0 ? <div><dt>Jersey</dt><dd>#{player.jersey}</dd></div> : null}
             </dl>
+            {!hasBio ? (
+              <p className="muted small bio-note">
+                Statistics only — {league?.name ?? "this competition"} publishes no player bios, so there
+                is no birth date, hometown, height or photo in the source.
+              </p>
+            ) : null}
           </Card>
 
           {mates.length ? (

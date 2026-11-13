@@ -30,7 +30,26 @@ export function Nav() {
   const { theme, toggle } = useTheme();
   const roster = useRoster();
   const [open, setOpen] = useState(false);
+  const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    setMenu(false);
+  }, [route.path]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu(false);
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menu]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -100,9 +119,41 @@ export function Nav() {
                 </svg>
               )}
             </button>
+            <button
+              className={`iconbtn menubtn ${menu ? "is-open" : ""}`}
+              onClick={() => setMenu((m) => !m)}
+              aria-label={menu ? "Close menu" : "Menu"}
+              aria-haspopup="true"
+              aria-expanded={menu}
+              aria-controls="mobile-menu"
+            >
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" className="menuicon">
+                <path d="M3.5 6h13M3.5 10h13M3.5 14h13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
         </div>
       </header>
+      {menu ? (
+        <>
+          <div className="menu-scrim" onClick={() => setMenu(false)} />
+          <nav className="mobile-menu" id="mobile-menu" aria-label="Main">
+            {NAV.map((n) => (
+              <Link
+                key={n.to}
+                to={n.to}
+                className={`menu-item ${route.path.startsWith(n.to) ? "is-active" : ""}`}
+                onClick={() => setMenu(false)}
+              >
+                <span className="menu-label">{n.label}</span>
+                {n.to === "/my-roster" && roster.length ? (
+                  <span className="nav-count">{roster.length}</span>
+                ) : null}
+              </Link>
+            ))}
+          </nav>
+        </>
+      ) : null}
       <CommandPalette open={open} onClose={() => setOpen(false)} />
     </>
   );

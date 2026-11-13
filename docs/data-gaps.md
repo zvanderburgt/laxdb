@@ -223,7 +223,36 @@ its league list. So no existing feed will fill them.
 
 ---
 
-## Phase 4 — MCLA, decide once
+## Phase 4 — MCLA, decide once — SHIPPED 2026-11-12 (option 1)
+
+**Probe result: the club sites are not a source.** `scripts/probe-mcla-clubs.py` walked the
+12 largest MCLA clubs, following the club website each MCLA team page links to:
+
+| | clubs |
+| --- | --- |
+| roster with height/weight/hometown | **0** |
+| club site, roster without bios | 7 |
+| no club site linked | 2 |
+| "bio markers" that were Wix CSS, not data | 3 |
+
+So the 172-club crawl is off the table — the share with real bios is 0%, well under the
+50% bar this plan set. 8,297 MCLA players stay statistics-only, and that is the source's
+limit, not a missing import.
+
+**Shipped instead — say so on the page.** Any player with no photo, birth date, hometown,
+height, weight, high school or class year now carries a line in the hero and in the
+Profile card:
+
+> Statistics only — MCLA publishes no player bios, so there is no birth date, hometown,
+> height or photo in the source.
+
+It applies wherever the data is absent, not just MCLA: 12,598 players site-wide, 8,237 of
+them MCLA. The rest are the box leagues in Phase 3 that are still waiting on the division
+map, and the line will quietly disappear for them as those fills land.
+
+---
+
+## Phase 4 (original plan, kept for context)
 
 **Gap:** 8,297 players — half of every empty profile on the site — at 16% core, and 0% on
 photo, birth date, hometown, height and weight.
