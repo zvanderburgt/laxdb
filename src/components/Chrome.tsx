@@ -229,7 +229,21 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <div className="overlay" onMouseDown={onClose}>
-      <div className="palette" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label="Search">
+      <div
+        className="palette"
+        onMouseDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search"
+        /* Escape belongs to the dialog, not the input: the footer advertises it, and
+           after clicking a result the input no longer holds focus */
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
+      >
         <div className="palette-input">
           <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true">
             <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -241,7 +255,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search players, teams, leagues…"
             onKeyDown={(e) => {
-              if (e.key === "Escape") onClose();
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setActive((a) => Math.min(a + 1, results.length - 1));

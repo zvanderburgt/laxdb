@@ -115,6 +115,8 @@ function Profile({ player }: { player: Player }) {
             <Link to={`/league/${player.leagueId}`}>{league?.short}</Link>
             <span>/</span>
             <Link to={`/team/${team?.slug}`}>{team?.shortName}</Link>
+            <span>/</span>
+            <span aria-current="page">{player.name}</span>
           </div>
           <div className="profile-head">
             <PlayerAvatar player={player} size={112} radius={30} className="hero-avatar" />

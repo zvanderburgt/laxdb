@@ -85,7 +85,7 @@ function HonoursCard({ team }: { team: Team }) {
       <div className="card-toolbar">
         <div>
           <h3 className="card-title">All-Americans</h3>
-          <p className="muted small">USILA selections 2023–2026 · {picks.length} honours</p>
+          <p className="muted small">USILA selections 2023–2026 · {picks.length} honors</p>
         </div>
       </div>
       <ul className="honour-list">
@@ -375,6 +375,8 @@ export function TeamPage() {
             <Link to="/teams">Teams</Link>
             <span>/</span>
             <Link to={`/league/${team.leagueId}`}>{league?.name}</Link>
+            <span>/</span>
+            <span aria-current="page">{team.name}</span>
           </div>
           <div className="profile-head">
             <span

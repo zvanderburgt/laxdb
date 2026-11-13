@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/styles.css"
+        ],
+        "createdAt": "2026-11-13T05:40:24.727Z",
+        "reason": "DESIGN.md Elevation/Colors: the best-game row edge is a documented varsity-blue marker, not a card accent stripe"
+      }
+    ]
+  }
+}

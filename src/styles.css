@@ -10,13 +10,19 @@
   --card-2: #f5f5f7;
   --text: #1d1d1f;
   --text-2: #5c5c62;
-  --text-3: #737379;
+  /* pewter, darkened from #737379: the old value measured 4.33:1 on Chalk and
+     failed AA at the 9.5–12px sizes it is used for */
+  --text-3: #6b6b71;
   --hairline: rgba(0, 0, 0, 0.08);
   --hairline-strong: rgba(0, 0, 0, 0.14);
   --hover: rgba(0, 0, 0, 0.03);
   --accent: #0071e3;
   --accent-hover: #0077ed;
   --accent-soft: rgba(0, 113, 227, 0.1);
+  /* text on a tinted accent surface: the fill blue only clears 3.98:1 on its own
+     10–12% tint, so small accent copy uses this darker step of the same hue */
+  --accent-ink: #0062c4;
+  --amber-ink: #8a5200;
   --green: #1d9a55;
   --red: #e0322c;
   --amber: #b26a00;
@@ -29,6 +35,13 @@
   --r-lg: 20px;
   --r-xl: 26px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* one motion scale: feedback 120ms, state 200ms, layout 320ms, an authored
+     entrance 560ms. Decelerating ease for arrivals, --ease for state changes. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-4: 560ms;
   --maxw: 1180px;
   color-scheme: light;
 }
@@ -47,6 +60,8 @@
   --accent: #0a84ff;
   --accent-hover: #3d9bff;
   --accent-soft: rgba(10, 132, 255, 0.16);
+  --accent-ink: #6fb2ff; /* on the dark theme's tint, not the light one */
+  --amber-ink: #ffc46b;
   --green: #30d158;
   --red: #ff453a;
   --amber: #ffd60a;
@@ -91,6 +106,18 @@ a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; }
 img { max-width: 100%; display: block; }
 ::selection { background: var(--accent); color: #fff; }
+html { caret-color: var(--accent); }
+/* the page scrolls; the scrollbar is part of the drawing */
+* { scrollbar-width: thin; scrollbar-color: var(--hairline-strong) transparent; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 980px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); background-clip: content-box; }
 
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -102,6 +129,12 @@ button:focus:not(:focus-visible) { outline: none; }
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 .app:has(.tray) main { padding-bottom: 84px; }
 main { flex: 1; }
+/* route continuity: a new page settles in instead of appearing between two frames */
+main { animation: pageIn var(--dur-2) var(--ease-out); }
+@keyframes pageIn {
+  from { opacity: 0.001; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
 
 .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 .muted { color: var(--text-2); }
@@ -353,12 +386,9 @@ kbd {
   max-width: 18ch;
   text-wrap: balance;
 }
-.shine {
-  background: linear-gradient(92deg, var(--accent) 0%, #5ac8fa 48%, #7a5cfa 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
+/* the accent word is varsity blue, not a three-hue gradient: the One Varsity Rule
+   (and the accent the rest of the page uses) beats a decorative ramp */
+.shine { color: var(--accent); }
 .hero-sub {
   margin-top: 24px;
   max-width: 58ch;
@@ -508,14 +538,29 @@ kbd {
   padding: 0 2px;
 }
 
-.reveal { animation: rise 0.7s var(--ease) both; }
-.hero h1.reveal { animation-delay: 0.05s; }
-.hero-sub.reveal { animation-delay: 0.12s; }
-.hero-search.reveal { animation-delay: 0.18s; }
-.chips.reveal { animation-delay: 0.24s; }
+/* the one authored entrance on the site: the hero copy arrives in reading order.
+   `both` is deliberate here and only here — every element is above the fold and
+   starts at load, so nothing waits on a scroll; nothing below the fold animates
+   opacity at all. */
+.reveal { animation: rise var(--dur-4) var(--ease-out) both; }
+.hero h1.reveal { animation-delay: 40ms; }
+.hero-sub.reveal { animation-delay: 100ms; }
+.hero-search.reveal { animation-delay: 160ms; }
+.chips.reveal { animation-delay: 220ms; }
 @keyframes rise {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: none; }
+}
+
+/* the hero card assembles under the copy. Transform only: if the browser throttles
+   these, the worst case is parts sitting 8px low, never an invisible card. */
+.hero-visual .hv-top   { animation: hvSettle var(--dur-3) var(--ease-out) 260ms both; }
+.hero-visual .hv-tags  { animation: hvSettle var(--dur-3) var(--ease-out) 320ms both; }
+.hero-visual .hv-stats { animation: hvSettle var(--dur-3) var(--ease-out) 380ms both; }
+.hero-visual .spark-wrap { animation: hvSettle var(--dur-3) var(--ease-out) 440ms both; }
+@keyframes hvSettle {
+  from { transform: translateY(8px); }
+  to { transform: none; }
 }
 
 /* ------------------------------ leaderboards ------------------------------ */
@@ -669,11 +714,11 @@ kbd {
   background: var(--card-2);
   color: var(--text-2);
 }
-.pos-a { background: rgba(0, 113, 227, 0.12); color: #0071e3; }
-.pos-m { background: rgba(48, 209, 88, 0.14); color: #1d9a55; }
-.pos-d { background: rgba(255, 149, 0, 0.16); color: #b26a00; }
-.pos-g { background: rgba(122, 92, 250, 0.16); color: #6a4cf0; }
-.pos-fo { background: rgba(255, 45, 85, 0.13); color: #d61f4a; }
+.pos-a { background: rgba(0, 113, 227, 0.12); color: #0062c4; }
+.pos-m { background: rgba(48, 209, 88, 0.14); color: #146c3c; }
+.pos-d { background: rgba(255, 149, 0, 0.16); color: #8a5200; }
+.pos-g { background: rgba(122, 92, 250, 0.16); color: #5536e0; }
+.pos-fo { background: rgba(255, 45, 85, 0.13); color: #b0143a; }
 .pos-lsm { background: rgba(90, 200, 250, 0.18); color: #0071a8; }
 .pos-f { background: rgba(94, 92, 230, 0.14); color: #4b49c9; }
 .pos-t { background: rgba(255, 196, 10, 0.2); color: #8a6a00; }
@@ -701,9 +746,9 @@ kbd {
   font-weight: 500;
   letter-spacing: -0.005em;
 }
-.tag-accent { background: var(--accent-soft); color: var(--accent); }
+.tag-accent { background: var(--accent-soft); color: var(--accent-ink); }
 .tag-pos { font-weight: 600; }
-.tag-warn { background: rgba(255, 149, 0, 0.15); color: var(--amber); }
+.tag-warn { background: rgba(255, 149, 0, 0.15); color: var(--amber-ink); }
 
 /* ------------------------------- segmented ------------------------------- */
 
@@ -772,17 +817,34 @@ kbd {
   position: relative;
   user-select: none;
 }
-.data-table th:not(.r):not(.c) { cursor: pointer; }
-.data-table th:hover { color: var(--text-2); }
+/* only a header that actually sorts may look clickable — the old rule put the
+   pointer on every text header while the sortable ones (all .r) had none */
+.data-table th.sortable { cursor: pointer; }
+.data-table th.sortable:hover { color: var(--text); }
+.data-table th.sortable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+.data-table th:not(.sortable):hover { color: var(--text-3); }
 .data-table th.is-sorted { color: var(--text); }
-.sort-caret { display: inline-block; width: 8px; margin-left: 3px; color: var(--accent); font-size: 10px; }
+.sort-caret {
+  display: inline-block;
+  width: 8px;
+  margin-left: 3px;
+  color: var(--accent);
+  font-size: 10px;
+  transition: transform var(--dur-1) var(--ease), opacity var(--dur-1) var(--ease);
+}
+.data-table th.sortable:active .sort-caret { transform: translateY(1px) scale(0.9); }
+.block-cell.is-sortable { transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease); }
 .data-table td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--hairline);
   vertical-align: middle;
   white-space: nowrap;
 }
-.data-table tbody tr { transition: background 0.14s; }
+.data-table tbody tr { transition: background var(--dur-1) var(--ease); }
+.data-table tbody tr:focus-within { background: var(--hover); }
+.card a:focus-visible, .card button:focus-visible, .card [tabindex]:focus-visible {
+  outline-offset: -2px; /* cards clip their own overflow, so a 2px offset is lost */
+}
 .data-table tbody tr:hover { background: var(--hover); }
 .data-table tbody tr:last-child td { border-bottom: 0; }
 .data-table tfoot td {
@@ -970,9 +1032,9 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   background: var(--card-2);
   color: var(--text-2);
 }
-.league-pill.t1 { background: rgba(0, 113, 227, 0.12); color: var(--accent); }
+.league-pill.t1 { background: rgba(0, 113, 227, 0.12); color: var(--accent-ink); }
 .league-pill.t2 { background: rgba(122, 92, 250, 0.14); color: #6a4cf0; }
-.league-pill.t3 { background: rgba(255, 149, 0, 0.15); color: var(--amber); }
+.league-pill.t3 { background: rgba(255, 149, 0, 0.15); color: var(--amber-ink); }
 .league-pill.t4 { background: rgba(48, 209, 88, 0.15); color: var(--green); }
 [data-theme="dark"] .league-pill.t2 { color: #b39bff; }
 .league-type { font-size: 11.5px; color: var(--text-3); }
@@ -1036,6 +1098,8 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   margin-bottom: 24px;
 }
 .crumbs a:hover { color: var(--accent); }
+/* the trail ends on the page you are already on: same row, quieter than a link */
+.crumbs [aria-current="page"] { color: var(--text-2); font-weight: 550; }
 
 .profile-head { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; }
 .hero-avatar { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 14px 34px -14px rgba(0, 0, 0, 0.45); }
@@ -2710,4 +2774,41 @@ a.vs-team:hover { color: var(--accent); }
   .skel-hero { grid-template-columns: minmax(0, 1fr); }
   .skel-hero-side { flex-direction: row; }
   .skel-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+
+/* ------------------------------ reduced motion ----------------------------- */
+/* Fewer and gentler, not none. Movement is removed; the state changes that carry
+   meaning (colour, border, shadow, the sort caret) stay, and every control keeps
+   a visible pressed/hover state. */
+@media (prefers-reduced-motion: reduce) {
+  main,
+  .reveal,
+  .hero-visual .hv-top,
+  .hero-visual .hv-tags,
+  .hero-visual .hv-stats,
+  .hero-visual .spark-wrap,
+  .hv-rotate > .hv-card,
+  .tray,
+  .palette {
+    animation: none !important;
+  }
+
+  .card,
+  .pcard,
+  .chip,
+  .btn,
+  .nav-link,
+  .data-table tbody tr,
+  .hero-search,
+  .sort-caret {
+    transition-duration: 60ms !important;
+    transform: none !important;
+  }
+
+  .card:hover,
+  .pcard:hover,
+  .btn:active {
+    transform: none !important;
+  }
 }

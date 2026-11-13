@@ -6,9 +6,11 @@ colors:
   varsity-blue-hover: "#0077ed"
   varsity-blue-night: "#0a84ff"
   varsity-blue-night-hover: "#3d9bff"
+  varsity-blue-ink: "#0062c4"      # accent text on a tinted surface
+  amber-ink: "#8a5200"             # warning text on its own tint
   ink: "#1d1d1f"
   graphite: "#5c5c62"
-  pewter: "#737379"
+  pewter: "#6b6b71"          # darkened from #737379: AA on Chalk at 9.5–12px
   cool-paper: "#fbfbfd"
   chalk: "#f5f5f7"
   sheet: "#ffffff"
@@ -52,6 +54,13 @@ typography:
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: "0.08em"
+motion:
+  ease: "cubic-bezier(0.22, 1, 0.36, 1)"
+  ease-out: "cubic-bezier(0.16, 1, 0.3, 1)"
+  feedback: "120ms"
+  state: "200ms"
+  layout: "320ms"
+  entrance: "560ms"
 rounded:
   xs: "6px"
   sm: "10px"
@@ -192,6 +201,11 @@ tenth of any screen. If two elements on one surface are blue, one of them is pro
 **The Paper Rule.** A card is a white sheet on cool paper, separated by a hairline. Never stack a
 white card directly on another white card without a border; use Chalk for the inner surface instead.
 
+**The Tint Rule.** A hue that fills a surface is not the hue that sets text on it. Varsity blue reads
+at 4.7:1 on white but only 3.98:1 on its own 10–12% tint, so accent copy on a tint uses Varsity Blue
+Ink, warning copy uses Amber Ink, and a position badge darkens its own hue until it clears 4.5:1.
+The tint keeps the hue; the text carries the contrast.
+
 ## Typography
 
 **Display Font:** the system stack — SF Pro on Apple devices, Segoe UI on Windows, Inter as fallback.
@@ -265,6 +279,26 @@ lightening them, and never uses a glow as elevation.
 **The Lift-Only-When-Asked Rule.** At rest, a surface is a hairline sheet. It earns a shadow only by
 being interactive, floating, or deliberately staged in the hero. Never add a shadow to a static
 section merely to separate it.
+
+## Motion
+
+Motion explains state; it never decorates a page. Four durations and two curves cover everything:
+120ms for feedback (press, hover tint, caret), 200ms for a state change, 320ms for layout or an
+overlay, and 560ms for the one authored entrance. Arrivals decelerate with `ease-out`; state changes
+use `ease`.
+
+- **The one authored moment** is the home hero: the copy rises in reading order (40/100/160/220ms),
+  then the featured card's parts settle under it (260–440ms). Nothing repeats on scroll, and no
+  section below the fold animates.
+- **Route continuity.** `<main>` is re-keyed per route, so every navigation settles 6px with a
+  200ms fade instead of appearing between two frames.
+- **Feedback.** Interactive cards lift 3px, buttons press to 0.975, chips and segmented items tint,
+  and a sorted column's caret nudges on the click that sorted it.
+- **Entrances may not hide content.** Only the hero's fade-in sequence uses opacity with a fill mode;
+  every other entrance animates transform alone, so a throttled or skipped animation leaves the
+  element visible, merely offset.
+- **Reduced motion** removes movement (transforms and entrances) and keeps colour, border, shadow and
+  the caret at 60ms, so state stays legible without motion.
 
 ## Shapes
 

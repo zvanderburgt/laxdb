@@ -537,9 +537,22 @@ export function LeaguePage() {
     .slice(0, 40);
 
   const th = (k: typeof sortKey, label: React.ReactNode, cls = "") => (
-    <th className={`r sortable ${cls} ${sortKey === k ? "is-sorted" : ""}`} onClick={() => sortBy(k)}>
+    <th
+      className={`r sortable ${cls} ${sortKey === k ? "is-sorted" : ""}`}
+      aria-sort={sortKey === k ? (sortDir === "desc" ? "descending" : "ascending") : "none"}
+      tabIndex={0}
+      onClick={() => sortBy(k)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          sortBy(k);
+        }
+      }}
+    >
       {label}
-      <span className="sort-caret">{sortKey === k ? (sortDir === "desc" ? "↓" : "↑") : ""}</span>
+      <span className="sort-caret" aria-hidden="true">
+        {sortKey === k ? (sortDir === "desc" ? "↓" : "↑") : ""}
+      </span>
     </th>
   );
 
@@ -564,7 +577,7 @@ export function LeaguePage() {
           <div className="crumbs">
             <Link to="/leagues">Leagues</Link>
             <span>/</span>
-            <span>{league.short}</span>
+            <span aria-current="page">{league.short}</span>
           </div>
           <div className="league-hero-head">
             <div>
