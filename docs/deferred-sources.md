@@ -64,9 +64,34 @@ the page's `localStorage.website_api_ticket` rotating value did not help.
 The app's hash route repaints ~7s after the shell loads, so anything under that wait
 returns no table at all — that is why half the clubs came back empty at 3–4s.
 
-**Where it blocks:** `wcjll.com`, `tojll.com`, `rmll.ca` and `wla.ca` all 301 to
-`canadianlacrosseleague.com`, an umbrella platform where each league is a
-`division_id`. Map our league ids to division ids and the scraper runs unchanged.
+**Where it blocks:** the bio columns are a **per-league setting**, not a platform feature.
+PNWJLL serves the same software and its roster is `# · Name · POS` only (7 clubs, 44 riders,
+nothing to fill). `wcjll.com`, `tojll.com` and `rmll.ca` 301 to `canadianlacrosseleague.com`,
+which exposes no league index (only league 188, an international competition) and rejects
+our ids; `wla.ca` does not answer at all. Only BCJALL has the extended table switched on.
+
+**If a league turns it on later:** add `(site, entry_path)` to `LEAGUES` in
+`scripts/fetch-digitalshift.py`. No other change is needed.
+
+---
+
+## GameSheet handedness
+
+The player page at `gamesheetstats.com/seasons/<id>/players/<pid>` shows a handedness /
+shoots field. It is **not** in the API: `/api/players/standings/<season>?limit=1000` returns
+exactly 13 fields per player — `birthdate, externalId, firstName, height, hometown, id,
+jersey, lastName, photoUrl, positions, stats, teams, weight` — and the full 489 KB payload
+for season 14861 contains the string "shoot" zero times. `/api/season-info/<id>` matches
+"shoot" only inside penalty labels ("Goalie Interference by Shooter"). Every other path
+tried (`/api/players/<pid>`, `/api/seasons/<sid>/players/<pid>[/stats|/details]`,
+`/api/teams/<tid>/players`, roster/entries variants, `?bio=true`) returns 404.
+
+The player page itself never passes its Cloudflare Turnstile challenge in headless Chromium
+(`Just a moment…` after 25s), so the rendered value cannot be read either.
+
+**Unblock:** a saved page or a logged-in browser session exported by hand, or the league
+asking GameSheet to expose the field. For the leagues Digitalshift covers, `Shoots` is on
+the roster table and already imported.
 
 ---
 
