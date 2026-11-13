@@ -337,7 +337,12 @@ async function route(req: Request): Promise<Response> {
     const bytes = Buffer.from(match[2], "base64");
     // the client crops to 224×224 webp (~15 KB); this is the backstop, not the target
     if (bytes.length > 600 * 1024) return fail(413, "image is too large");
-    if (bytes.length < 200) return fail(422, "image looks empty");
+    // check the bytes, not the size: a flat 224×224 webp is legitimately ~170 bytes
+    const head = bytes.subarray(0, 12);
+    const isWebp = head.subarray(0, 4).toString("latin1") === "RIFF" && head.subarray(8, 12).toString("latin1") === "WEBP";
+    const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+    const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    if (!isWebp && !isPng && !isJpeg) return fail(422, "that does not look like an image");
 
     const key = `${kind}/${id}.webp`;
     await store("media").set(key, bytes.toString("base64"));
