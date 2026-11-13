@@ -26,6 +26,7 @@ import os
 import re
 import sys
 import unicodedata
+from html import unescape as html_unescape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "public", "data.json")
@@ -108,8 +109,72 @@ def row_at(flat: str, pos: int, hand: str) -> dict | None:
     return row
 
 
+MONTHS = {m: i for i, m in enumerate(
+    "jan feb mar apr may jun jul aug sep oct nov dec".split(), 1)}
+
+TABLE_COLS = {"name": "NAME", "pos": "POS", "jersey": "#", "dob": "DOB",
+              "height": "HT", "weight": "WT", "hometown": "BIRTHPLACE"}
+
+
+def read_tables(raw: str) -> list[dict]:
+    """The rendered roster table carries SH (skaters) or CT (goalies) — the one place the
+    handedness value is visible on a club page. The flight payload on the same page has the
+    bios but no shotHand, so the table is read first and the payload only fills gaps."""
+    out = []
+    title = re.search(r"<title>(.*?)</title>", raw, re.S)
+    club = re.split(r"\s+[-–|]\s+", html_unescape(title.group(1)))[0].strip() if title else ""
+    for block in re.findall(r"<table[^>]*>(.*?)</table>", raw, re.S):
+        heads = [html_unescape(re.sub(r"<[^>]+>", "", h)).strip().replace(" ↑", "").upper()
+                 for h in re.findall(r"<th[^>]*>(.*?)</th>", block, re.S)]
+        if "NAME" not in heads:
+            continue
+        idx = {name: i for i, name in enumerate(heads)}
+        hand_col = idx.get("SH", idx.get("CT"))
+        if hand_col is None:
+            continue
+        for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", block, re.S):
+            cells = [re.sub(r"\s+", " ", html_unescape(re.sub(r"<[^>]+>", " ", c))).strip()
+                     for c in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
+            if len(cells) <= hand_col:
+                continue
+            hand = cells[hand_col].strip().lower()
+            if hand not in ("left", "right"):
+                continue
+
+            def cell(key: str) -> str:
+                i = idx.get(TABLE_COLS[key])
+                return cells[i] if i is not None and i < len(cells) else ""
+
+            name = cell("name")
+            parts = [p for p in re.sub(r"[★☆]", " ", name).split() if p]
+            if len(parts) < 2:
+                continue
+            row = {"first": parts[0].title(), "last": " ".join(parts[1:]).title(),
+                   "gsId": 0, "hand": hand[:1].upper(), "club": club, "teamId": 0}
+            dob = re.match(r"([A-Za-z]{3})[a-z]*\s+(\d{1,2}),\s*(\d{4})", cell("dob"))
+            if dob and dob.group(1).lower() in MONTHS:
+                row["dob"] = f"{int(dob.group(3)):04d}-{MONTHS[dob.group(1).lower()]:02d}-{int(dob.group(2)):02d}"
+            ht = re.match(r"(\d)'(\d{1,2})", cell("height"))
+            if ht:
+                row["heightIn"] = int(ht.group(1)) * 12 + int(ht.group(2))
+            wt = re.match(r"(\d{2,3})", cell("weight"))
+            if wt:
+                row["weightLb"] = int(wt.group(1))
+            jersey = re.match(r"(\d{1,2})", cell("jersey"))
+            if jersey:
+                row["jersey"] = int(jersey.group(1))
+            place = cell("hometown")
+            if place:
+                row["birthplace"] = place
+            out.append(row)
+    return out
+
+
 def read_page(path: str) -> list[dict]:
     raw = open(path, encoding="utf-8", errors="ignore").read()
+    rows = read_tables(raw)
+    if rows:
+        return rows
     # the payload is JSON-escaped twice inside self.__next_f.push([1,"…"])
     flat = raw.replace('\\"', '"')
     players = [r for r in (row_at(flat, m.start(), m.group(1)[:1].upper())
@@ -149,11 +214,16 @@ def main():
         print(f"  {os.path.basename(path)[:50]:<52} {len(players):>3} riders  "
               f"club={', '.join(sorted(clubs))[:34] or '?'}")
         for row in players:
-            prev = seen.get(row["gsId"])
+            key = row["gsId"] or (row["first"] + " " + row["last"] + "|" + row["club"])
+            prev = seen.get(key)
             # keep the copy that carries a club name — a player page's own team block is
             # more reliable than the majority title on a roster page
-            if prev is None or (not prev["club"] and row["club"]):
-                seen[row["gsId"]] = row
+            if prev is None:
+                seen[key] = row
+            else:
+                for k, v in row.items():
+                    if v and not prev.get(k):
+                        prev[k] = v
 
     filled = skipped = bios = 0
     for row in seen.values():
