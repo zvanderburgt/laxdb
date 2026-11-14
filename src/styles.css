@@ -1033,7 +1033,9 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 }
 .league-grid.wide { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .league-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 16px;
   background: var(--card);
   border: 1px solid var(--hairline);
@@ -1061,7 +1063,17 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .league-pill.t4 { background: rgba(48, 209, 88, 0.15); color: var(--green); }
 [data-theme="dark"] .league-pill.t2 { color: #b39bff; }
 .league-type { font-size: 11px; color: var(--text-3); }
-.league-card h3 { font-size: 16px; letter-spacing: -0.02em; margin-bottom: 4px; }
+.league-level {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 2px;
+}
+/* the title takes the slack, so the counts line and the leader row sit on the
+   same baseline in every card of a row however the name wraps */
+.league-card h3 { font-size: 16px; letter-spacing: -0.02em; margin-bottom: 4px; flex: 1 1 auto; }
 .league-card p { font-size: 12px; }
 .league-swatches { display: flex; gap: 4px; margin-top: 16px; align-items: center; }
 .league-swatches > span { width: 16px; height: 16px; border-radius: 6px; }
@@ -1070,7 +1082,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--hairline);
   font-size: 12px;

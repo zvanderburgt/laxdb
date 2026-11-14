@@ -16,30 +16,49 @@ import {
   teamById,
   teamOf,
 } from "../lib/data";
-import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, Segmented, Stat, PlayerAvatar, Term, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, Segmented, Stat, PlayerAvatar, Term, TeamLogo } from "../components/ui";
 import type { League, Team } from "../lib/types";
 
+const LEVEL_ORDER = [
+  "College", "College Club", "Professional", "Senior A", "Senior B",
+  "Junior A", "Junior B", "Junior C", "High School", "International",
+];
+const levelRank = (lvl: string) => {
+  const i = LEVEL_ORDER.indexOf(lvl);
+  return i === -1 ? 99 : i;
+};
+
 export function LeaguesPage() {
-  const groups = useMemo(() => {
-    const map = new Map<string, typeof data.leagues>();
-    for (const l of data.leagues) {
-      const arr = map.get(l.level) ?? [];
-      arr.push(l);
-      map.set(l.level, arr);
+  // one grid, ordered by level: a section heading per level left a full row of
+  // empty columns whenever a level had a single competition. The level now
+  // rides on each card, so nineteen leagues fill four rows instead of eight.
+  const cards = useMemo(() => {
+    const leader = new Map<string, (typeof data.players)[number]>();
+    const leaderPts = new Map<string, number>();
+    for (const p of data.players) {
+      const pts = currentSeason(p).pts ?? 0;
+      if (pts > (leaderPts.get(p.leagueId) ?? -1)) {
+        leader.set(p.leagueId, p);
+        leaderPts.set(p.leagueId, pts);
+      }
     }
-    const order = [
-      "College", "College Club", "Professional", "Senior A", "Senior B",
-      "Junior A", "Junior B", "Junior C", "High School", "International",
-    ];
-    const rank = (lvl: string) => {
-      const i = order.indexOf(lvl);
-      return i === -1 ? 99 : i;
-    };
-    return [...map.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
+    return data.leagues
+      .map((league) => ({
+        league,
+        top: leader.get(league.id),
+        teams: leagueTeams(league.id).length,
+        players: leaguePlayerCount(league.id),
+      }))
+      .sort(
+        (a, b) =>
+          levelRank(a.league.level) - levelRank(b.league.level) ||
+          b.players - a.players ||
+          a.league.name.localeCompare(b.league.name),
+      );
   }, []);
 
   return (
-    <div className="page">
+    <div className="page page-wide">
       <div className="page-head">
         <div>
           <div className="eyebrow">Competitions</div>
@@ -48,37 +67,30 @@ export function LeaguesPage() {
         </div>
       </div>
 
-      {groups.map(([level, leagues]) => (
-        <section key={level} className="team-group">
-          <SectionHead title={level} />
-          <div className="league-grid wide">
-            {leagues.map((l) => {
-              const top = data.players
-                .filter((p) => p.leagueId === l.id)
-                .sort((a, b) => (currentSeason(b).pts ?? 0) - (currentSeason(a).pts ?? 0))[0];
-              return (
-                <Link key={l.id} to={`/league/${l.id}`} className="league-card">
-                  <div className="league-card-top">
-                    <span className={`league-pill t${l.tier}`}>{l.short}</span>
-                    <span className="league-type">{l.type === "box" ? "Box" : "Field"} · {l.country}</span>
-                  </div>
-                  <h3>{l.name}</h3>
-                  <p className="muted">
-                    {leagueTeams(l.id).length} teams · {leaguePlayerCount(l.id)} players
-                  </p>
-                  {top ? (
-                    <div className="league-top">
-                      <PlayerAvatar player={top} size={28} />
-                      <span>{top.name}</span>
-                      <span className="num muted">{currentSeason(top).pts} PTS</span>
-                    </div>
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+      <div className="league-grid wide">
+        {cards.map(({ league: l, top, teams, players }) => (
+          <Link key={l.id} to={`/league/${l.id}`} className="league-card">
+            <div className="league-card-top">
+              <span className={`league-pill t${l.tier}`}>{l.short}</span>
+              <span className="league-type">
+                {l.type === "box" ? "Box" : "Field"} · {l.country}
+              </span>
+            </div>
+            <div className="league-level">{l.level}</div>
+            <h3>{l.name}</h3>
+            <p className="muted">
+              {teams} teams · {players} players
+            </p>
+            {top ? (
+              <div className="league-top">
+                <PlayerAvatar player={top} size={28} />
+                <span>{top.name}</span>
+                <span className="num muted">{currentSeason(top).pts} PTS</span>
+              </div>
+            ) : null}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
