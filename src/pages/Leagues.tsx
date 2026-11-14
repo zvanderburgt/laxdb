@@ -759,7 +759,7 @@ export function LeaguePage() {
               <div className="rail-teams">
                 {teams.map((t) => (
                   <Link key={t.id} to={`/team/${t.slug}`} className="rail-team">
-                    <span className="team-dot lg" style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }} />
+                    <span className="team-dot lg" style={{ background: t.colors[0] }} />
                     <span>
                       <span>{t.shortName}</span>
                       <span className="muted small">{t.conference}</span>

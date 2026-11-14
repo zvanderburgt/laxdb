@@ -288,10 +288,7 @@ export function TeamsPage() {
               const pts = roster.reduce((n, p) => n + careerTotals(p).pts, 0);
               return (
                 <Link key={t.id} to={`/team/${t.slug}`} className="team-card" data-k={t.id}>
-                  <span
-                    className={`team-crest ${t.logo ? "has-logo" : ""}`}
-                    style={{ background: `linear-gradient(150deg, ${t.colors[0]}, ${t.colors[1]})` }}
-                  >
+                  <span className={`team-crest ${t.logo ? "has-logo" : ""}`}>
                     {t.logo ? <TeamLogo team={t} size={44} /> : t.shortName.slice(0, 2).toUpperCase()}
                   </span>
                   <span className="team-card-body">
@@ -376,10 +373,7 @@ export function TeamPage() {
 
   return (
     <div className="profile" style={{ ["--club" as string]: club } as React.CSSProperties}>
-      <div
-        className="profile-hero team-hero"
-        style={{ background: `radial-gradient(120% 160% at 0% 0%, ${team.colors[0]}2b, transparent 60%), radial-gradient(80% 120% at 100% 0%, ${team.colors[1]}22, transparent 55%)` }}
-      >
+      <div className="profile-hero team-hero">
         <div className="profile-hero-inner">
           <div className="crumbs">
             <Link to="/teams">Teams</Link>
@@ -393,7 +387,6 @@ export function TeamPage() {
               className={`team-crest xl ${team.logo ? "has-logo" : ""}`}
               data-cms="team.colors"
               data-cms-id={team.id}
-              style={{ background: `linear-gradient(150deg, ${team.colors[0]}, ${team.colors[1]})` }}
             >
               <span className="cms-logo" data-cms="team.logo" data-cms-id={team.id}>
                 {team.logo ? <TeamLogo team={team} size={88} /> : team.shortName.slice(0, 2).toUpperCase()}

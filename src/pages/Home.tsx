@@ -156,7 +156,6 @@ export default function Home() {
   return (
     <div className="home">
       <section className="hero">
-        <div className="hero-glow" aria-hidden="true" />
         <div className="hero-inner">
           <div className="hero-copy">
             <div className="eyebrow reveal" data-cms="site.heroEyebrow" data-cms-id="site">{site.heroEyebrow}</div>
@@ -357,7 +356,7 @@ export default function Home() {
                     <span
                       style={{
                         width: `${Math.max(6, (r.value / (rows[0]?.value || 1)) * 100)}%`,
-                        background: `linear-gradient(90deg, ${team?.colors[0]}, ${team?.colors[1]})`,
+                        background: team?.colors[0] ?? "var(--text-3)",
                       }}
                     />
                   </span>
@@ -431,7 +430,7 @@ export default function Home() {
                 </p>
                 <div className="league-swatches">
                   {teams.slice(0, 7).map((t) => (
-                    <span key={t.id} style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }} />
+                    <span key={t.id} style={{ background: t.colors[0] }} />
                   ))}
                   {teams.length > 7 ? <span className="swatch-more">+{teams.length - 7}</span> : null}
                 </div>
@@ -488,7 +487,7 @@ function HeroCard({ player }: { player: Player }) {
   return (
     <div className="hv-card">
       <div className="hv-top">
-        <PlayerAvatar player={p} size={54} radius={16} />
+        <PlayerAvatar player={p} size={54} />
         <div className="hv-id">
           <div className="hv-name">
             <Link to={`/player/${p.slug}`} className="cell-link">

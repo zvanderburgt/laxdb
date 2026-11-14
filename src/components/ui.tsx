@@ -2,20 +2,22 @@ import React from "react";
 import { Link } from "../lib/app";
 import { useFlipRows, useTrackedRect } from "../lib/motion";
 import type { Player, Team } from "../lib/types";
-import { positionLabel, teamById } from "../lib/data";
+import { positionLabel } from "../lib/data";
 
 /* --------------------------------- avatar --------------------------------- */
 
+/** One radius scale: every computed corner snaps to it (DESIGN.md → Shapes). */
+const RADII = [6, 10, 14, 20, 26];
+const snapRadius = (n: number) => RADII.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
+
 export function Avatar({
   name,
-  colors = ["#0071e3", "#5ac8fa"],
   size = 44,
   radius,
   className = "",
   photo,
 }: {
   name: string;
-  colors?: [string, string];
   size?: number;
   radius?: number;
   className?: string;
@@ -35,8 +37,7 @@ export function Avatar({
       style={{
         width: size,
         height: size,
-        borderRadius: radius ?? Math.round(size * 0.28),
-        background: `linear-gradient(145deg, ${colors[0]}, ${shade(colors[0], -28)} 60%, ${colors[1]})`,
+        borderRadius: radius ?? snapRadius(Math.round(size * 0.28)),
         fontSize: Math.round(size * 0.36),
       }}
       aria-hidden="true"
@@ -85,26 +86,15 @@ export function PlayerAvatar({
   radius?: number;
   className?: string;
 }) {
-  const team = teamById.get(player.teamId);
   return (
     <Avatar
       name={player.name}
-      colors={team?.colors}
       size={size}
       radius={radius}
       className={className}
       photo={player.photo}
     />
   );
-}
-
-function shade(hex: string, amt: number) {
-  const c = hex.replace("#", "");
-  const n = parseInt(c.length === 3 ? c.replace(/./g, (x) => x + x) : c, 16);
-  const r = Math.max(0, Math.min(255, (n >> 16) + amt));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 0x00ff) + amt));
-  const b = Math.max(0, Math.min(255, (n & 0x0000ff) + amt));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
 /* -------------------------------- primitives ------------------------------- */
@@ -174,7 +164,7 @@ export function Skeleton({
   r?: number;
   className?: string;
 }) {
-  return <span className={`skel ${className}`} style={{ width: w, height: h, borderRadius: r }} aria-hidden="true" />;
+  return <span className={`skel ${className}`} style={{ width: w, height: h, borderRadius: snapRadius(r) }} aria-hidden="true" />;
 }
 
 /** Table-shaped placeholder: a header line and n rows, with ragged name widths. */
@@ -959,7 +949,7 @@ export function PlayerCard({ player, team }: { player: Player; team?: Team }) {
   return (
     <Link to={`/player/${player.slug}`} className="pcard">
       <div className="pcard-top">
-        <Avatar name={player.name} colors={team?.colors} size={52} photo={player.photo} />
+        <Avatar name={player.name} size={52} photo={player.photo} />
         <div className="pcard-id">
           <div className="pcard-name">{player.name}</div>
           <div className="pcard-team">

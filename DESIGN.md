@@ -34,15 +34,20 @@ typography:
     lineHeight: 1.02
     letterSpacing: "-0.042em"
   headline:
-    fontSize: "clamp(34px, 4.2vw, 48px)"
-    fontWeight: 600
-    lineHeight: 1.08
-    letterSpacing: "-0.035em"
+    fontSize: "22px"
+    fontWeight: 650
+    lineHeight: 1.25
+    letterSpacing: "-0.02em"
+  record:
+    fontSize: "28px"
+    fontWeight: 650
+    lineHeight: 1.15
+    letterSpacing: "-0.025em"
   title:
-    fontSize: "16px"
+    fontSize: "18px"
     fontWeight: 600
     lineHeight: 1.2
-    letterSpacing: "-0.02em"
+    letterSpacing: "-0.015em"
   body:
     fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Inter, system-ui, "Helvetica Neue", Arial, sans-serif'
     fontSize: "15px"
@@ -196,7 +201,23 @@ amber reserved for outcome, warning and position semantics.
   and raised sheet.
 
 **The One Varsity Rule.** Varsity blue is the only chromatic brand color, and it occupies well under a
-tenth of any screen. If two elements on one surface are blue, one of them is probably wrong.
+tenth of any screen. It appears on exactly four things:
+
+1. the primary button fill,
+2. links (inline, arrows, breadcrumbs, in-table name links),
+3. focus rings and focus borders — accessibility, not decoration,
+4. the wordmark mark.
+
+Everything else that used to be blue is neutral: rank numbers, sort carets, accent stat values,
+timeline dots, count badges, selected chips and compare toggles, timeline markers, caret and text
+selection. Selected and active states are a neutral tint plus ink — never accent text on an accent
+tint. If a blue element is not one of the four above, it is wrong.
+
+**The No-Gradient Rule.** Surfaces are flat. No gradients on chrome, backgrounds, bands, glows, text,
+borders, progress or score bars, or chart fills — and never an `accent → cyan` ramp, which invents a
+color the palette does not own. Two exceptions: the skeleton shimmer (a loading affordance, neutral
+and moving) and real assets (a downloaded logo). Identity that we do not have is drawn neutrally, not
+invented in colour.
 
 **The Paper Rule.** A card is a white sheet on cool paper, separated by a hairline. Never stack a
 white card directly on another white card without a border; use Chalk for the inner surface instead.
@@ -219,16 +240,23 @@ vertically, and uppercase labels open their tracking to stay legible at 10–11p
 
 ### Hierarchy
 
+Heavier and smaller: headings earn their rank from weight and proximity, not from size. Seven steps,
+two weights plus one title weight — never a fourth.
+
 - **Display** (650 weight, clamp 38–66px, 1.02 line height, -0.042em tracking): the home hero only.
-  Balanced wrapping, maximum ~18 characters per line.
-- **Headline** (600 weight, clamp 34–48px, 1.08 line height, -0.035em tracking): page titles, profile
-  names, league and team names. Profile names may reach the low 50s.
-- **Title** (600 weight, 16–30px): section headings use a 24–30px step; card titles sit at 16–20px
-  with tighter tracking.
-- **Body** (400 weight, 15px, 1.47 line height): interface copy and table text. Long-form prose opens
-  to 1.62; a lead paragraph runs at 17px with slightly negative tracking.
-- **Label** (600 weight, 10.5–11.5px, 0.07–0.09em tracking, uppercase): eyebrows, table headers, stat
-  labels, form labels and footer headings.
+  Balanced wrapping, maximum ~18 characters per line. The one place a heading is large.
+- **Record title** (650 weight, 28px, 24px on phones, 1.15 line height, -0.025em): player, team and
+  league profile names.
+- **Page title** (650 weight, 22px, 18px on phones, 1.25 line height, -0.02em): the `h1` on every
+  directory and utility page. It labels the page; it does not compete with the data.
+- **Section** (600 weight, 18px, -0.015em): section headings and card-group heads.
+- **Card title** (600 weight, 16px): card and panel titles.
+- **Body** (400 weight, 15px, 1.47 line height; 14px in dense surfaces): interface copy and table
+  text. Table body is 13px, table headers 11px. Long-form prose opens to 1.62.
+- **Label** (600 weight, 11px, 0.07–0.09em tracking, uppercase): eyebrows, table headers, stat
+  labels, form labels and footer headings. 10px is the floor, for micro labels only.
+
+Weights in use: 400, 600, and 650 (titles only). Bold and strong are normalised to 600.
 
 **The Tabular Rule.** Every number that can be compared vertically is set with tabular figures
 (`.num`). Never use proportional numerals in tables, stat strips, score lines or leadership values.
@@ -307,9 +335,18 @@ The form language is a sheet with gently curved corners: large cards, tables and
 picker use the 14px step; badges and small controls use the 6–10px steps. Buttons and chips are full
 capsules; segmented controls are an 11px outer track with 8px inner pills.
 
+**The Radius Scale** is 6 / 10 / 14 / 20 / 26px and the capsule. Every corner snaps to it: badges and
+labels 6, controls, fields and rows 10, compact cards and pickers 14, sheets, tables and the palette
+20, the hero card and the extra-large crest 26, buttons, chips and pills capsule. Computed radii snap
+too — an avatar's 28% corner rounds to the nearest step rather than producing 11px or 15px.
+
 Borders are always a single hairline. Dashed borders appear only where a slot is empty — the
-"add a third player" comparison cell — never as a decorative frame. Avatars are squircle-ish, with a
-radius equal to 28% of their size; team crests use 13px, or 26px at the extra-large profile size.
+"add a third player" comparison cell — never as a decorative frame.
+
+**Placeholder identity.** A player without a headshot, or a team without a crest, gets a neutral
+`Chalk` tile with its initials in Graphite and a hairline ring — never a coloured gradient standing in
+for the asset. 129 teams have no crest yet; they are listed in `docs/missing-crests.md` and should be
+filled from the source, not simulated.
 Hover lifts must not be clipped: horizontal rails carry padding above the cards to leave room for the
 2–3px rise and its shadow.
 
@@ -319,7 +356,8 @@ Hover lifts must not be clipped: horizontal rails carry padding above the cards 
 
 - **Shape:** full capsule, 38px tall, 18px horizontal padding, 14px/500 label with a touch of negative
   tracking.
-- **Primary:** varsity blue fill, white label. The only button that carries the brand color.
+- **Primary:** varsity blue fill, white label. The only button that carries the brand color —
+  one per view, the page's single primary action.
 - **Secondary:** sheet fill, ink label, strong hairline border. Used beside a primary action.
 - **Ghost:** transparent, graphite label, tinted hover fill. Used inside chrome and trays.
 - **Hover / Focus:** background shifts one step; focus is a 2px varsity-blue outline with 2px offset.
@@ -335,7 +373,7 @@ Hover lifts must not be clipped: horizontal rails carry padding above the cards 
 
 ### Cards / Containers
 
-- **Corner Style:** 20px for sheets; 14px for compact rows and fields; 24px for the hero card.
+- **Corner Style:** 20px for sheets; 14px for compact rows and fields; 26px for the hero card.
 - **Background:** sheet on cool paper. Nested surfaces use Chalk, never another white.
 - **Shadow Strategy:** ambient sheet at rest; working hover on interactive cards only.
 - **Border:** 1px hairline; strong hairline on hover for interactive cards.
@@ -344,7 +382,7 @@ Hover lifts must not be clipped: horizontal rails carry padding above the cards 
 
 ### Inputs / Fields
 
-- **Style:** 38px tall, 11px radius, sheet fill, hairline border, graphite placeholder.
+- **Style:** 38px tall, 10px radius, sheet fill, hairline border, graphite placeholder.
 - **Hero search:** 54px tall, 16px radius, working-hover shadow at rest, 15.5px text.
 - **Focus:** border becomes varsity blue plus a 3px accent-soft ring (4px on the hero field). No outer
   glow, no color shift in the field itself.
@@ -370,7 +408,7 @@ lower-value columns are hidden rather than crushed.
 
 A 54px sticky bar in frosted Cool Paper — 20px blur with 180% saturation — that only reveals its
 bottom hairline after the page scrolls. Links are 13.5px/500 graphite, with a tinted capsule and 600
-weight for the active route. The wordmark is 16px/700 with a 26px gradient mark. Below 900px the link
+weight for the active route. The wordmark is 16px/650 with a 26px flat varsity-blue mark. Below 900px the link
 row is hidden and the search control collapses to an icon; the theme toggle stays.
 
 ### Position Badge
@@ -432,6 +470,10 @@ compact avatars, removable names, and one varsity-blue action. On phones it span
 - **Don't** reproduce Elite Prospects' interface density or chrome.
 - **Don't** introduce another chromatic brand color. Semantic status and position hues are not
   decoration.
+- **Don't** use a gradient to stand in for a missing logo, headshot or colour pair.
+- **Don't** set a page title above 22px or a profile name above 28px; rank comes from weight.
+- **Don't** let two accent-coloured things share a surface unless one is a link and the other is the
+  primary action.
 - **Don't** stack a shadow, a decorative gradient and a border on the same card.
 - **Don't** set display type at default tracking; large headings need roughly -0.03 to -0.042em.
 - **Don't** let a wide table widen its grid track. Give it `min-width: 0` and scroll it.
