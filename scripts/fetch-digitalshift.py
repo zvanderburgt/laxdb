@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Bios for the box leagues that publish them on Digitalshift.
+"""Bios for the box leagues that publish them on Digitalshift — rendered-page fallback.
 
-BCJALL, WCJLL, TOJLL, PNWJLL, RMLL (Jr B tiers, Senior B) and the WLA all run the same
-league platform. Its player API answers 401 outside the browser, but the rendered roster
-table carries more than any feed we hold:
+This drives a headless browser at the roster table. It is now the *fallback*: the same
+platform serves those partials to any anonymous session, so `fetch-digitalshift-api.py`
+gets the same columns (and every historical season, plus headshots) with plain HTTP.
+Keep this one for a league whose site paints a table the API does not offer.
+
+The rendered table carries:
 
     # | Name | POS | Shoots | Height | Weight | Hometown | Minor Association | ...
 
