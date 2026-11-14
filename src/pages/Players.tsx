@@ -160,7 +160,7 @@ export default function Players() {
   );
 
   return (
-    <div className="page">
+    <div className="page page-wide">
       <div className="page-head">
         <div>
           <div className="eyebrow">Database</div>
@@ -374,7 +374,7 @@ export default function Players() {
                     <td>
                       <Link to={`/team/${team?.slug}`} className="team-link">
                         <span className="team-dot" style={{ background: team?.colors[0] }} />
-                        {team?.shortName}
+                        <span className="team-name">{team?.shortName}</span>
                       </Link>
                     </td>
                     <td className="muted small">{leagueById.get(p.leagueId)?.short}</td>

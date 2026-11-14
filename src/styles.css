@@ -333,6 +333,15 @@ kbd {
   margin: 0 auto;
   padding: 44px 24px 88px;
 }
+/* the players table is the widest surface on the site: give it room instead of
+   a horizontal scroller. Everything else keeps the 1180px column. */
+.page-wide { max-width: 1720px; }
+.players-board .cell-player { max-width: 268px; min-width: 0; }
+.players-board .cell-player > span { min-width: 0; }
+.players-board .cell-name,
+.players-board .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.players-board .team-link { max-width: 200px; min-width: 0; }
+.players-board .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .page-head {
   display: flex;
   align-items: flex-end;
