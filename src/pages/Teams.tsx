@@ -21,6 +21,7 @@ import {
   teamOf,
 } from "../lib/data";
 import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, SkeletonCard, Stat, PlayerAvatar, Term, TermFor, TeamLogo } from "../components/ui";
+import { fmtDate } from "../lib/data";
 import type { Team } from "../lib/types";
 
 function ReturningCard({ team }: { team: Team }) {
@@ -184,7 +185,7 @@ function SeriesCard({ team }: { team: Team }) {
           primary: opponentCell(r.opponent),
           cells: [
             { label: <Term k="wl" />, value: `${r.w}–${r.l}`, strong: true },
-            { label: "Last meeting", value: r.last },
+            { label: "Last meeting", value: fmtDate(r.last) },
             { label: "Score", value: scoreCell(r.opponent, r.result) },
           ],
         }))}
@@ -206,7 +207,7 @@ function SeriesCard({ team }: { team: Team }) {
                 <td className="r num strong">
                   {r.w}–{r.l}
                 </td>
-                <td className="r num muted">{r.last}</td>
+                <td className="r num muted">{fmtDate(r.last)}</td>
                 <td className="r num">{scoreCell(r.opponent, r.result)}</td>
               </tr>
             ))}
