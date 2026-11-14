@@ -1,5 +1,11 @@
 # lacrossebible.ca — the OJLL archive, 1933–2016
 
+**Status: parsed, deliberately not imported.** The archive ends in 2016 and carries no bios,
+so every player it would add lands in the statistics-only bucket; the call was that the data
+is too old to be worth +8,157 photo-less profiles and 100 mostly-defunct clubs. The parser and
+the cached files stay so the decision can be revisited (a modern-era slice, 2000–2016, is the
+obvious cheaper retry) without re-deriving any of it.
+
 `https://lacrossebible.ca/ontario-junior-a-stats/` is the Ontario Junior A history page of
 the Lacrosse Bibliotheque / *Power's Bible of Lacrosse*. It is a WordPress site that links
 **75 plain-text season files**, one per year, at
