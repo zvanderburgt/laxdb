@@ -86,6 +86,23 @@ leagues have no bios route at all. `wla.ca` is a parked domain.
 
 ---
 
+## Whole seasons from GameSheet (OJLL 2025-26)
+
+GameSheet does not only annotate players we already have: `/api/players/standings/<season>?limit=5000`
+is a complete season — bio plus stat line. `scripts/import-gamesheet-season.py` imports one,
+creating a player only when the row carries a real `gp` and no one in the dataset already
+holds the name.
+
+OJLL's league (300680) carries two seasons, 9708 (2025) and 14861 (2026) — the second is the
+iframe behind ontariojuniorlacrosse.com/player-stats-regular-season, so the league's own
+"player stats" page is this data, not a separate source. Imported: 2025 68 → 331 season rows,
+2026 125 → 405, 124 new players.
+
+Club ids change every season (the 2025 "Kitchener" is not the 2026 "Kitchener Kodiaks"), and
+Elora Hawks moved OJBLL → OJLL for 2026, so `CLUB_ALIASES` keeps both pointing at the one
+team page. Older OJLL seasons (2020–2024) are not in this league id — our rows for them came
+from the box feed and stay partial.
+
 ## GameSheet handedness
 
 The player page at `gamesheetstats.com/seasons/<id>/players/<pid>` shows a handedness /
