@@ -57,18 +57,55 @@ export function LeaguesPage() {
       );
   }, []);
 
+  const [level, setLevel] = useState<string>("all");
+
+  // levels present in the data, in the same order the grid uses
+  const levels = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of cards) counts.set(c.league.level, (counts.get(c.league.level) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => levelRank(a[0]) - levelRank(b[0]));
+  }, [cards]);
+
+  const shown = level === "all" ? cards : cards.filter((c) => c.league.level === level);
+
   return (
     <div className="page page-wide">
       <div className="page-head">
         <div>
           <div className="eyebrow">Competitions</div>
           <h1>Leagues</h1>
-          <p className="muted">{data.leagues.length} competitions · field and box · {data.players.length} players</p>
+          <p className="muted">
+            {level === "all"
+              ? `${data.leagues.length} competitions · field and box · ${data.players.length} players`
+              : `${shown.length} of ${data.leagues.length} competitions · ${level}`}
+          </p>
+        </div>
+      </div>
+
+      <div className="filterbar">
+        <div className="pos-pills" role="group" aria-label="Filter by level">
+          <button
+            className={`pill ${level === "all" ? "is-on" : ""}`}
+            aria-pressed={level === "all"}
+            onClick={() => setLevel("all")}
+          >
+            All<span className="pill-count">{cards.length}</span>
+          </button>
+          {levels.map(([lvl, n]) => (
+            <button
+              key={lvl}
+              className={`pill ${level === lvl ? "is-on" : ""}`}
+              aria-pressed={level === lvl}
+              onClick={() => setLevel(lvl)}
+            >
+              {lvl}<span className="pill-count">{n}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="league-grid wide">
-        {cards.map(({ league: l, top, teams, players }) => (
+        {shown.map(({ league: l, top, teams, players }) => (
           <Link key={l.id} to={`/league/${l.id}`} className="league-card">
             <div className="league-card-top">
               <span className={`league-pill t${l.tier}`}>{l.short}</span>
