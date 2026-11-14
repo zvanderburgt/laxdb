@@ -49,29 +49,40 @@ their tables — this is a URL-mapping job, not a parsing one.
 
 ## Digitalshift (BCJALL, WCJLL, TOJLL, PNWJLL, RMLL, WLA)
 
-**Status:** partially used. BCJALL is scraped; the rest need a division map.
+**Status:** used. BCJALL, PNWJLL and OSL are imported through the ticket API.
 
-**What changed:** this used to read "internal endpoint absent from the public bundle". The
-endpoint is `https://web.api.digitalshift.ca/partials/stats/players?league_id=<id>`, found
-through `performance.getEntriesByType("resource")` in a rendered page. It answers **401**
-from Python with every header shape tried (bearer, raw, and three custom ticket names), and
-the page's `localStorage.website_api_ticket` rotating value did not help.
+**The 401 was a missing ticket, not a closed endpoint.** Every league site prints its tenant
+id in `window.config.client_service_id`, and `/login` hands out an anonymous session for it:
 
-**What works:** the rendered roster table, read in headless Chromium
-(`scripts/fetch-digitalshift.py` via `scripts/cdp.py`). Columns:
-`#  Name  POS  Shoots  Height  Weight  Hometown  Minor Association  Sponsor  Collegiate Team`.
+```
+POST https://web.api.digitalshift.ca/login  {"client_service_id": "<tenant>"}
+  -> {"ticket": {"hash": "..."}}
+GET  https://web.api.digitalshift.ca/partials/stats/...  Authorization: ticket="<hash>"
+```
 
-The app's hash route repaints ~7s after the shell loads, so anything under that wait
-returns no table at all — that is why half the clubs came back empty at 3–4s.
+`partials/stats/filters?type=league&id=<id>` → seasons (BCJALL back to 2005), `?type=season&id=`
+→ divisions, `?type=division&id=` → clubs — **one team id per season**, so a club's 2019 roster
+has a different id from its 2026 one. `partials/stats/team/roster?team_id=` returns
+`{"content": "<html>"}` with the same table the rendered page shows, and
+`partials/stats/player?player_id=` carries the bio tab plus a signed 140 px headshot URL (any
+other size in that filename 403s, so the source is stored at its own size).
 
-**Where it blocks:** the bio columns are a **per-league setting**, not a platform feature.
-PNWJLL serves the same software and its roster is `# · Name · POS` only (7 clubs, 44 riders,
-nothing to fill). `wcjll.com`, `tojll.com` and `rmll.ca` 301 to `canadianlacrosseleague.com`,
-which exposes no league index (only league 188, an international competition) and rejects
-our ids; `wla.ca` does not answer at all. Only BCJALL has the extended table switched on.
+Tenants: bcjall.com `295901f9-454c-4158-bcca-2c643672df78` (league 23), pnwjll.com
+`8722a4a1-16d5-4eaf-952b-5a2dbfa76906` (675), ontarioserieslacrosse.com
+`d8d5e08f-9747-40a7-a053-a28f42227e9d` (284). `scripts/fetch-digitalshift-api.py` runs the
+whole pass with no browser; `scripts/fetch-digitalshift.py` stays as the rendered-page
+fallback.
 
-**If a league turns it on later:** add `(site, entry_path)` to `LEAGUES` in
-`scripts/fetch-digitalshift.py`. No other change is needed.
+**Where it still blocks:** the extended columns are a **per-season, per-club data-entry switch**,
+not a platform feature. BCJALL has them from 2021 on (2022–2026 mostly), PNWJLL from 2022, OSL
+from 2022 — and even there only ~10% of cells are filled (BCJALL: 639 heights, 257 `Shoots` out
+of 6,511 roster rows). `wcjll.com`, `tojll.com` and `rmll.ca` 301 to
+canadianlacrosseleague.com, which hosts three unrelated leagues (3551 Play Lacrosse, 3367
+Australian, 188 International Indoor Junior) — the old tenants went with the domains, so those
+leagues have no bios route at all. `wla.ca` is a parked domain.
+
+**If a league turns it on later:** read its `window.config.client_service_id` and add a row to
+`TENANTS` in `scripts/fetch-digitalshift-api.py`.
 
 ---
 

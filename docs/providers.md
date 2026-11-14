@@ -75,6 +75,8 @@ players across leagues (PLL ↔ NLL ↔ MSL) where team evidence alone is ambigu
 
 - BCJALL, WCJLL, PNWJLL, WLA, TOJLL, RMLL tiers and the NLL: no GameSheet seed
   season found yet, so those clubs still have no bios or logos from this source.
+  (BCJALL, PNWJLL and OSL bios come from the Digitalshift ticket API instead — see
+  `docs/deferred-sources.md` — but the other four still have none.)
 - MCLA has no bio source at all.
 - D1 dates of birth are not published by any school feed we have found.
 - GameSheet publishes per-opponent and home/away splits per player that we do not

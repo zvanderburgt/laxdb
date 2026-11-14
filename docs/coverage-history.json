@@ -503,5 +503,106 @@
     "no_bio": 0
    }
   }
+ },
+ {
+  "date": "2026-11-14",
+  "players": 21812,
+  "leagues": {
+   "ncaa-d1": {
+    "players": 7142,
+    "core": 76.0,
+    "no_bio": 48
+   },
+   "mcla": {
+    "players": 8301,
+    "core": 16.3,
+    "no_bio": 8295
+   },
+   "nf-nll": {
+    "players": 307,
+    "core": 21.2,
+    "no_bio": 175
+   },
+   "nf-msl": {
+    "players": 255,
+    "core": 21.7,
+    "no_bio": 190
+   },
+   "nf-wla": {
+    "players": 195,
+    "core": 0.4,
+    "no_bio": 194
+   },
+   "nf-osl": {
+    "players": 223,
+    "core": 11.2,
+    "no_bio": 195
+   },
+   "nf-wcsla": {
+    "players": 287,
+    "core": 0.9,
+    "no_bio": 283
+   },
+   "nf-rmll-senior-b": {
+    "players": 170,
+    "core": 0.5,
+    "no_bio": 169
+   },
+   "nf-bcjall": {
+    "players": 451,
+    "core": 18.2,
+    "no_bio": 288
+   },
+   "nf-ojll": {
+    "players": 429,
+    "core": 60.5,
+    "no_bio": 121
+   },
+   "nf-rmll-junior-a": {
+    "players": 169,
+    "core": 14.3,
+    "no_bio": 150
+   },
+   "nf-ojbll": {
+    "players": 820,
+    "core": 62.1,
+    "no_bio": 161
+   },
+   "nf-pnwjll": {
+    "players": 181,
+    "core": 0.0,
+    "no_bio": 181
+   },
+   "nf-tojll": {
+    "players": 326,
+    "core": 0.1,
+    "no_bio": 326
+   },
+   "nf-wcjll": {
+    "players": 486,
+    "core": 0.4,
+    "no_bio": 484
+   },
+   "nf-rmll-junior-b-tier-1": {
+    "players": 458,
+    "core": 0.2,
+    "no_bio": 457
+   },
+   "nf-rmll-junior-b-tier-2": {
+    "players": 667,
+    "core": 0.0,
+    "no_bio": 667
+   },
+   "nf-ojcll": {
+    "players": 525,
+    "core": 35.5,
+    "no_bio": 259
+   },
+   "pll": {
+    "players": 420,
+    "core": 54.5,
+    "no_bio": 0
+   }
+  }
  }
 ]
