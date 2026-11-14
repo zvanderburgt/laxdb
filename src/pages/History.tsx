@@ -16,6 +16,9 @@ function RecordBook() {
   const records = data.history?.records;
   const [scope, setScope] = useState<"career" | "season">("career");
   const [metric, setMetric] = useState("points");
+  // the boards run 17–60 rows; the card used to print the first twelve and hide the rest
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => setShowAll(false), [scope, metric]);
   if (!records || !records.sections.length) return null;
 
   const section =
@@ -32,6 +35,7 @@ function RecordBook() {
     "Initial Season": "FIRST",
   };
   const head = (c: string) => ABBREV[c] ?? c;
+  const visible = showAll ? section.rows : section.rows.slice(0, 12);
 
   return (
     <Card padded={false} className="standings-card">
@@ -64,7 +68,7 @@ function RecordBook() {
           cutting between two tables of different heights */}
       <div className="panel-in" key={`${scope}|${metric}`}>
       <BlockList
-        rows={section.rows.slice(0, 12).map((r, i) => {
+        rows={visible.map((r, i) => {
           const nameText = r.Player ?? r.University ?? "";
           const teamText = r.Team ?? r["Initial Season"] ?? "";
           const player = r.Player ? playerByName(r.Player) : undefined;
@@ -109,7 +113,7 @@ function RecordBook() {
             </tr>
           </thead>
           <tbody>
-            {section.rows.slice(0, 12).map((r, i) => {
+            {visible.map((r, i) => {
               const nameText = r.Player ?? r.University ?? "";
               const teamText = r.Team ?? r["Initial Season"] ?? "";
               const player = r.Player ? playerByName(r.Player) : undefined;
@@ -148,6 +152,13 @@ function RecordBook() {
         </table>
       </div>
       </div>
+      {section.rows.length > 12 ? (
+        <div className="table-note">
+          <button className="link-btn" onClick={() => setShowAll((v) => !v)}>
+            {showAll ? "Show top 12" : `Show all ${section.rows.length} rows`}
+          </button>
+        </div>
+      ) : null}
       <div className="table-note">
         These lists reach back to the 1970s. Anyone we hold a profile for is linked; the rest
         predate the seasons we index. Source: NCAA record book via Wikipedia.

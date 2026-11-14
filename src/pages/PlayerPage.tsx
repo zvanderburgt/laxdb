@@ -94,6 +94,9 @@ function Profile({ player }: { player: Player }) {
   const gaaVal = cur.min ? (cur.ga * 60) / cur.min : (cur.gaa || 0);
   const isGoal = player.position === "G";
   const isBox = league?.type === "box";
+  // 411 players are roster entries whose competition published no stat line — the
+  // page should say that rather than draw an empty chart and a column of zeros
+  const hasStats = player.seasons.some((s) => (s.gp ?? 0) > 0);
 
   const roster = useRoster();
   const saved = roster.some((p) => p.id === player.id);
@@ -199,6 +202,12 @@ function Profile({ player }: { player: Player }) {
               {!hasBio ? (
                 <p className="bio-note hero-bio-note">
                   Statistics only — {league?.short ?? "this competition"} publishes no player bios.
+                </p>
+              ) : null}
+              {!hasStats ? (
+                <p className="bio-note hero-bio-note">
+                  Roster entry — no stat line was published for {player.name.split(" ")[0]} in{" "}
+                  {[...new Set(player.seasons.map((s) => s.season))].join(", ")}.
                 </p>
               ) : null}
             </div>
@@ -533,6 +542,7 @@ function Profile({ player }: { player: Player }) {
 function Overview({ player, onStats }: { player: Player; onStats: () => void }) {
   const editing = useIsEditing();
   const { theme } = useTheme();
+  const hasStats = player.seasons.some((s) => (s.gp ?? 0) > 0);
   const cur = currentSeason(player);
   const team = teamOf(player);
   const league = leagueById.get(player.leagueId);
@@ -639,6 +649,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
         </Card>
       ) : null}
 
+      {hasStats ? (
       <Card>
         <div className="card-head">
           <h3 className="card-title">{isGoal ? "Save percentage by season" : "Points by season"}</h3>
@@ -659,6 +670,7 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
           </p>
         ) : null}
       </Card>
+      ) : null}
 
       <Card>
         <div className="card-head">
