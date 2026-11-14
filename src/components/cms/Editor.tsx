@@ -461,7 +461,7 @@ export default function Editor() {
                     <span className="cms-color-role">{i === 0 ? "Primary" : "Secondary"}</span>
                   </label>
                 ))}
-                <p className="cms-array-hint">The crest gradient and team accents use these two.</p>
+                <p className="cms-array-hint">Team accents use these two: swatches, charts and row tints.</p>
               </div>
             ) : (
               <div className="cms-rows-editor">

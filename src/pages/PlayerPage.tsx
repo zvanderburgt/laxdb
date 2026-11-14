@@ -112,12 +112,7 @@ function Profile({ player }: { player: Player }) {
 
   return (
     <div className="profile">
-      <div
-        className="profile-hero"
-        style={{
-          background: `radial-gradient(120% 140% at 0% 0%, ${team?.colors[0]}1f, transparent 62%), radial-gradient(90% 120% at 100% 0%, ${team?.colors[1]}18, transparent 60%)`,
-        }}
-      >
+      <div className="profile-hero">
         <div className="profile-hero-inner">
           <div className="crumbs">
             <Link to="/players">Players</Link>
@@ -130,7 +125,7 @@ function Profile({ player }: { player: Player }) {
           </div>
           <div className="profile-head">
             <span className="cms-photo" data-cms="player.photo" data-cms-id={player.id}>
-              <PlayerAvatar player={player} size={112} radius={30} className="hero-avatar" />
+              <PlayerAvatar player={player} size={112} className="hero-avatar" />
             </span>
             <div className="profile-id">
               <div className="profile-tags">
