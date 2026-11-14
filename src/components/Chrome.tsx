@@ -3,6 +3,7 @@ import { Link, navigate, useCompare, useRoute, useTheme } from "../lib/app";
 import { useRoster } from "../lib/storage";
 import {
   data,
+  notablePlayers,
   playerById,
   searchPlayers,
   teamById,
@@ -195,10 +196,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       (p) => ({ kind: "Page" as const, to: p.to, label: p.label, sub: p.sub }),
     );
     if (!needle) {
-      const hot = data.players
-        .slice()
-        .sort((a, b) => (b.awards.length + (b.rankings[0]?.rank ? 4 : 0)) - (a.awards.length + (a.rankings[0]?.rank ? 4 : 0)))
-        .slice(0, 5);
+      const hot = notablePlayers(5);
       return hot.map((p) => ({ kind: "Player" as const, to: `/player/${p.slug}`, label: p.name, sub: `${teamOf(p)?.shortName ?? ""} · ${p.positionName}` }));
     }
     const players = searchPlayers(needle, 6).map((p) => ({
@@ -254,6 +252,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search players, teams, leagues…"
+            role="combobox"
+            aria-expanded={results.length > 0}
+            aria-controls="palette-results"
+            aria-autocomplete="list"
+            aria-activedescendant={results[active] ? `palette-opt-${active}` : undefined}
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -268,7 +271,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           />
           <kbd>esc</kbd>
         </div>
-        <div className="palette-list">
+        <div className="palette-list" id="palette-results" role="listbox" aria-label="Search results">
           {results.length === 0 ? (
             <div className="palette-empty">No matches for “{q}”</div>
           ) : (
@@ -278,6 +281,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               return (
                 <button
                   key={r.to}
+                  id={`palette-opt-${i}`}
+                  role="option"
+                  aria-selected={i === active}
                   className={`palette-item ${i === active ? "is-active" : ""}`}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(r.to)}

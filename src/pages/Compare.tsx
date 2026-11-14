@@ -11,6 +11,7 @@ import {
   teamById,
   teamOf,
   searchPlayers,
+  notablePlayers,
 } from "../lib/data";
 import { Avatar, Card, Empty, PositionBadge, PlayerAvatar } from "../components/ui";
 
@@ -114,7 +115,7 @@ export default function ComparePage() {
         <Card>
           <Empty title="Nothing to compare yet" body="Add players above, or start from one of these." />
           <div className="cards-row compact">
-            {data.players.slice(0, 4).map((p) => (
+            {notablePlayers(4).map((p) => (
               <button key={p.id} className="mini-card as-button" onClick={() => add(p.id)}>
                 <PlayerAvatar player={p} size={42} />
                 <div>

@@ -16,6 +16,7 @@ import {
   gameSummary,
   teamOf,
   teammatesOf,
+  tewaaratonFor,
   usePlayerGames,
 } from "../lib/data";
 import type { GameRow, Player, SeasonRow } from "../lib/types";
@@ -99,6 +100,14 @@ function Profile({ player }: { player: Player }) {
   const mates = useMemo(() => teammatesOf(player), [player.id]);
   const similar = useMemo(() => similarTo(player, 6), [player.id]);
   const peers = useMemo(() => peerRanks(player), [player.id]);
+  // derived honors: the selection sheets and the award archive, not an editorial field
+  const honors = useMemo(
+    () => ({
+      allAmerica: allAmericansFor(player).sort((a, b) => b.year - a.year),
+      tewaaraton: tewaaratonFor(player).sort((a, b) => b.year - a.year),
+    }),
+    [player.id],
+  );
 
   const copy = async () => {
     try {
@@ -130,6 +139,16 @@ function Profile({ player }: { player: Player }) {
             <div className="profile-id">
               <div className="profile-tags">
                 <span className={`tag tag-pos pos-${player.position.toLowerCase()}`}>{player.positionName}</span>
+                {honors.tewaaraton.length ? (
+                  <button className="tag tag-accent as-button" onClick={() => setTab("awards")}>
+                    Tewaaraton ’{String(honors.tewaaraton[0].year).slice(2)}
+                  </button>
+                ) : null}
+                {honors.allAmerica.length ? (
+                  <button className="tag as-button" onClick={() => setTab("awards")}>
+                    All-American · {honors.allAmerica[0].tier}, ’{String(honors.allAmerica[0].year).slice(2)}
+                  </button>
+                ) : null}
                 {player.status !== "Active" ? <span className="tag tag-warn">{player.status}</span> : null}
                 {league ? <span className="tag">{league.type === "box" ? "Box lacrosse" : "Field lacrosse"}</span> : null}
                 {player.commit ? <span className="tag tag-accent">Committed · {player.commit.college}</span> : null}
@@ -286,7 +305,8 @@ function Profile({ player }: { player: Player }) {
               { value: "stats", label: "Stats" },
               ...(player.leagueId === "ncaa-d1" ? [{ value: "gamelog" as Tab, label: "Game log" }] : []),
               ...(player.awards.length || player.draft || player.rankings.length ||
-              allAmericansFor(player).length
+              allAmericansFor(player).length ||
+              tewaaratonFor(player).length
                 ? [{ value: "awards" as Tab, label: "Awards" }]
                 : []),
               ...(player.scouting.report || Object.keys(player.scouting.grades).length
@@ -1409,10 +1429,25 @@ function GameLog({ player }: { player: Player }) {
 function AwardsTab({ player }: { player: Player }) {
   const awards = [...player.awards].sort((a, b) => b.year - a.year);
   const allAmerica = allAmericansFor(player).sort((a, b) => b.year - a.year);
+  const tewaaraton = tewaaratonFor(player).sort((a, b) => b.year - a.year);
   return (
     <>
       <Card>
         <h3 className="card-title">Honors &amp; awards</h3>
+        {tewaaraton.length ? (
+          <div className="timeline">
+            {tewaaraton.map((w) => (
+              <div className="tl-row" key={`tewaaraton-${w.year}`}>
+                <div className="tl-year num">{w.year}</div>
+                <div className="tl-dot" />
+                <div className="tl-body">
+                  <div className="tl-title">Tewaaraton Award</div>
+                  <div className="muted small">{w.school} · national player of the year</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {allAmerica.length ? (
           <div className="timeline">
             {allAmerica.map((a) => (
@@ -1427,7 +1462,7 @@ function AwardsTab({ player }: { player: Player }) {
             ))}
           </div>
         ) : null}
-        {awards.length === 0 && !allAmerica.length ? (
+        {awards.length === 0 && !allAmerica.length && !tewaaraton.length ? (
           <p className="muted">No individual honors recorded yet.</p>
         ) : null}
         {awards.length === 0 ? null : (

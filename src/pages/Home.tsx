@@ -6,6 +6,8 @@ import {
   data,
   leaderboard,
   leagueById,
+  notablePlayers,
+  peakSeason,
   teamById,
   PLAYER_COUNT,
   TEAM_COUNT,
@@ -47,32 +49,8 @@ export default function Home() {
 
   // Hero card: the leading scorer of each competition we cover, so the rotation
   // shows one player from field, pro field and box rather than six attackers.
-  const spotlight = useMemo(() => {
-    // one or two headline names per competition, weighted to the leagues the site
-    // covers deepest — a Junior C scorer is not a "notable player" for the hero
-    const plan: [string, number][] = [
-      ["ncaa-d1", 2],
-      ["pll", 2],
-      ["nf-nll", 1],
-      ["mcla", 1],
-    ];
-    const picks: Player[] = [];
-    for (const [leagueId, want] of plan) {
-      // peak season, not career: several older D1 seasons carry no stat rows, so a
-      // career sum ranks a recent sophomore above a four-year starter
-      const peak = (p: Player) => p.seasons.reduce((best, s) => Math.max(best, s.pts ?? 0), 0);
-      const pool = data.players
-        .filter((p) => p.leagueId === leagueId && p.seasons.reduce((t, s) => t + (s.gp ?? 0), 0) >= 12)
-        .sort((a, b) => peak(b) - peak(a))
-        .filter((p) => peak(p) > 0)
-        .slice(0, 8);
-      if (!pool.length) continue;
-      const withPhoto = pool.filter((p) => p.photo);
-      const chosen = (withPhoto.length >= want ? withPhoto : pool).slice(0, want);
-      picks.push(...chosen);
-    }
-    return picks;
-  }, []);
+  // One shared picker with Compare and the palette — the rule lives in data.ts.
+  const spotlight = useMemo(() => notablePlayers(6), []);
 
   const [spot, setSpot] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
@@ -447,7 +425,7 @@ export default function Home() {
             <h2>From the box score to the scouting report.</h2>
             <p>
               Every profile carries the full picture: season splits by team and league, a game log,
-              career milestones, draft and recruiting rankings, and graded scouting notes. Compare
+              career milestones, All-America honors and every competition he has played in. Compare
               up to three players side by side.
             </p>
             <div className="feature-actions">
@@ -456,7 +434,7 @@ export default function Home() {
             </div>
           </div>
           <div className="feature-visual">
-            {data.players.slice(4, 8).map((p) => (
+            {notablePlayers(4, [["ncaa-d1", 2], ["pll", 2]]).map((p) => (
               <div className="feature-row" key={p.id}>
                 <PositionBadge pos={p.position} />
                 <PlayerAvatar player={p} size={34} />
@@ -465,7 +443,15 @@ export default function Home() {
                     {p.name}
                   </Link>
                 </span>
-                <span className="num muted">{currentSeason(p).pts} PTS</span>
+                {(() => {
+                  // the season he is notable for, labelled — a top strip mixes D1 and PLL
+                  const best = peakSeason(p, p.leagueId) ?? currentSeason(p);
+                  return (
+                    <span className="num muted">
+                      {best.pts} PTS · ’{best.season.slice(2)}
+                    </span>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -473,10 +459,6 @@ export default function Home() {
       </section>
     </div>
   );
-}
-
-function careerScore(p: { awards: unknown[]; rankings: { rank: number }[]; draft: unknown }) {
-  return p.awards.length * 10 + (p.rankings.length ? 30 - (p.rankings[0].rank ?? 60) / 4 : 0) + (p.draft ? 8 : 0);
 }
 
 function HeroCard({ player }: { player: Player }) {

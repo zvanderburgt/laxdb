@@ -12,6 +12,9 @@ import {
   teamOf,
   positionLabel,
   positionOrder,
+  playerMatchesQuery,
+  searchKey,
+  searchTokens,
 } from "../lib/data";
 import { Avatar, BlockList, Empty, PositionBadge, Segmented, PlayerAvatar, Term } from "../components/ui";
 
@@ -53,21 +56,17 @@ export default function Players() {
   }, [league, pos]);
 
   const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = searchTokens(q);
     const list = data.players
       .filter((p) => (pos.length ? pos.includes(p.position) : true))
       .filter((p) => (league === "all" ? true : p.leagueId === league))
       .filter((p) => (year === "all" ? true : p.classYear === Number(year)))
       .filter((p) => (state === "all" ? true : p.birthplace.state === state))
-      .filter((p) => (hs.trim() ? p.highSchool.toLowerCase().includes(hs.trim().toLowerCase()) : true))
+      .filter((p) => (hs.trim() ? searchKey(p.highSchool).includes(searchKey(hs)) : true))
       .filter((p) => (minGp ? currentSeason(p).gp >= Number(minGp) : true))
-      .filter((p) =>
-        needle
-          ? p.name.toLowerCase().includes(needle) ||
-            (teamOf(p)?.name ?? "").toLowerCase().includes(needle) ||
-            p.highSchool.toLowerCase().includes(needle)
-          : true
-      )
+      // punctuation-insensitive and token-based: "oneill" finds O'Neill, and the
+      // same helper backs the ⌘K palette so the two cannot disagree
+      .filter((p) => playerMatchesQuery(p, needle))
       .map((p) => {
         const s = currentSeason(p);
         const c = careerTotals(p);

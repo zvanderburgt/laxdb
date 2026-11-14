@@ -288,25 +288,157 @@ export function leaderboard(leagueId: string, stat: "pts" | "g" | "a" | "gb" | "
     .slice(0, limit);
 }
 
+/* --------------------------------- search ---------------------------------- */
+
+/**
+ * Punctuation-insensitive search key. Nobody types the apostrophe, so it has to
+ * disappear rather than become a separator: "O'Neill" → "oneill" (not "o neill"),
+ * while "St. Mary's" → "st marys" because a period separates words.
+ */
+export function searchKey(s: string): string {
+  return (s ?? "")
+    .toLowerCase()
+    .replace(/[’'`]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const words = (s: string) => searchKey(s).split(" ").filter(Boolean);
+
+/** Every token of the query prefixes some word of the text ("cj kirst" ⇄ "C.J. Kirst"). */
+function prefixesAll(textWords: string[], query: string[]): boolean {
+  return query.length > 0 && query.every((q) => textWords.some((w) => w.startsWith(q)));
+}
+
+type SearchRow = { p: Player; name: string; nameWords: string[]; teamWords: string[]; schoolWords: string[] };
+
+let searchRows: SearchRow[] | null = null;
+let searchRowById: Map<string, SearchRow> | null = null;
+
+/** Built once on the first keystroke — 21,943 keys is too much to rebuild per letter. */
+function searchIndex(): SearchRow[] {
+  if (searchRows) return searchRows;
+  searchRows = data.players.map((p) => ({
+    p,
+    name: searchKey(p.name),
+    nameWords: words(p.name),
+    teamWords: words(teamOf(p)?.name ?? ""),
+    schoolWords: words(p.highSchool ?? ""),
+  }));
+  searchRowById = new Map(searchRows.map((r) => [r.p.id, r]));
+  return searchRows;
+}
+
+/** Tokenise once for a filter that runs over the whole table. */
+export const searchTokens = (q: string): string[] => words(q);
+
+/** Does this player match the typed query at all? Used by the table's name box. */
+export function playerMatchesQuery(player: Player, q: string | string[]): boolean {
+  const query = typeof q === "string" ? words(q) : q;
+  if (!query.length) return true;
+  searchIndex();
+  const row = searchRowById?.get(player.id);
+  if (!row) return false;
+  // checked per field rather than merged into one array: this runs 21,943 times per
+  // keystroke and the spread was allocating an array each time
+  return query.every(
+    (t) =>
+      row.nameWords.some((w) => w.startsWith(t)) ||
+      row.teamWords.some((w) => w.startsWith(t)) ||
+      row.schoolWords.some((w) => w.startsWith(t)),
+  );
+}
+
 export function searchPlayers(q: string, limit = 8): Player[] {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return [];
-  return data.players
-    .map((p) => {
-      const name = p.name.toLowerCase();
-      const team = (teamOf(p)?.name ?? "").toLowerCase();
-      let score = 0;
-      if (name === needle) score = 100;
-      else if (name.startsWith(needle)) score = 80;
-      else if (name.includes(needle)) score = 60;
-      else if (team.includes(needle)) score = 30;
-      else if (p.highSchool.toLowerCase().includes(needle)) score = 20;
-      return { p, score };
-    })
-    .filter((r) => r.score > 0)
+  const query = words(q);
+  if (!query.length) return [];
+  const needle = query.join(" ");
+  const scored: { p: Player; score: number }[] = [];
+  for (const row of searchIndex()) {
+    let score = 0;
+    if (row.name === needle) score = 1000;
+    else if (row.name.startsWith(needle)) score = 900;
+    else if (prefixesAll(row.nameWords, query)) score = 800;
+    // initials typed with spaces: "c j kirst" ⇄ "C.J. Kirst"
+    else if (row.name.replace(/ /g, "").startsWith(needle.replace(/ /g, ""))) score = 750;
+    else if (row.name.includes(needle)) score = 700;
+    else if (prefixesAll(row.teamWords, query)) score = 300;
+    else if (prefixesAll(row.schoolWords, query)) score = 100;
+    if (score) scored.push({ p: row.p, score });
+  }
+  // a name query must not be padded out with club and school matches: "teat" is
+  // not "Penn State", and a five-name answer beats a five-name answer plus noise
+  const hasNameHit = scored.some((r) => r.score >= 700);
+  return (hasNameHit ? scored.filter((r) => r.score >= 700) : scored)
     .sort((a, b) => b.score - a.score || a.p.name.localeCompare(b.p.name))
     .slice(0, limit)
     .map((r) => r.p);
+}
+
+/* ----------------------------- suggested players ---------------------------- */
+
+const peakPts = (p: Player, leagueId?: string) => {
+  const rows = leagueId ? p.seasons.filter((s) => s.leagueId === leagueId) : p.seasons;
+  return rows.reduce((best, s) => Math.max(best, s.pts ?? 0), 0);
+};
+const totalGp = (p: Player) => p.seasons.reduce((n, s) => n + (s.gp ?? 0), 0);
+
+/** The season a player is best known for — scoped to a competition when one is given. */
+export function peakSeason(p: Player, leagueId?: string): SeasonRow | null {
+  const rows = leagueId ? p.seasons.filter((s) => s.leagueId === leagueId) : p.seasons;
+  if (!rows.length) return null;
+  return rows.reduce((best, s) => ((s.pts ?? 0) > (best.pts ?? 0) ? s : best), rows[0]);
+}
+
+const notableCache = new Map<string, Player[]>();
+
+/**
+ * The players a surface can offer as a starting point. Ranked on peak season, not
+ * career totals (several older D1 seasons carry no stat rows), gated on a real
+ * sample, and headshot-preferred so a strip of faces is actually faces.
+ */
+export function notablePlayers(
+  n = 5,
+  plan: [string, number][] = [["ncaa-d1", 2], ["pll", 2], ["nf-nll", 1], ["mcla", 1]],
+): Player[] {
+  const key = `${n}|${plan.map(([l, w]) => `${l}:${w}`).join(",")}`;
+  const cached = notableCache.get(key);
+  if (cached) return cached;
+
+  const picks: Player[] = [];
+  const seen = new Set<string>();
+  const take = (pool: Player[], want: number) => {
+    const withPhoto = pool.filter((p) => p.photo);
+    const chosen = (withPhoto.length >= want ? withPhoto : pool).slice(0, want);
+    for (const p of chosen) {
+      if (seen.has(p.id) || picks.length >= n) continue;
+      seen.add(p.id);
+      picks.push(p);
+    }
+  };
+
+  for (const [leagueId, want] of plan) {
+    if (picks.length >= n) break;
+    // rank and gate inside the competition itself: a 129-point junior box summer is
+    // not a "leading D1 scorer", however good the player turns out to be
+    const gpIn = (p: Player) => p.seasons.reduce((t, s) => t + (s.leagueId === leagueId ? s.gp ?? 0 : 0), 0);
+    take(
+      data.players
+        .filter((p) => p.leagueId === leagueId && gpIn(p) >= 12 && peakPts(p, leagueId) > 0)
+        .sort((a, b) => peakPts(b, leagueId) - peakPts(a, leagueId)),
+      want,
+    );
+  }
+  if (picks.length < n) {
+    take(
+      data.players.filter((p) => totalGp(p) >= 12 && peakPts(p) > 0).sort((a, b) => peakPts(b) - peakPts(a)),
+      n - picks.length,
+    );
+  }
+
+  const out = picks.slice(0, n);
+  notableCache.set(key, out);
+  return out;
 }
 
 export function similarPlayers(p: Player, n = 4): Player[] {
@@ -346,18 +478,42 @@ export function allAmericansFor(player: Player): { year: number; tier: string; d
     }
   }
   const key = player.name.toLowerCase().replace(/[^a-z]/g, "");
-  const team = teamById.get(player.teamId);
   const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[^a-z]/g, "");
-  const mine = [norm(team?.name), norm(team?.shortName)].filter(Boolean);
+  // the honour belongs to the program he won it at, not the one he finished on: a
+  // 2023 All-American who transferred in 2025 still played that 2023 season there
+  const career = new Set<string>([player.teamId, ...player.seasons.map((s) => s.teamId)]);
+  const mine = [...career]
+    .flatMap((id) => {
+      const t = teamById.get(id);
+      return t ? [norm(t.name), norm(t.shortName)] : [];
+    })
+    .filter(Boolean);
 
   return (aaIndex.get(key) ?? [])
     .filter((sel) => {
-      if (sel.teamId) return sel.teamId === player.teamId;
+      if (sel.teamId) return career.has(sel.teamId);
       // selections the PDF could not link to a program: require the school text to agree
       const school = norm(sel.school);
       return Boolean(school) && mine.some((t) => school.includes(t) || t.includes(school));
     })
     .map(({ year, tier, division }) => ({ year, tier, division }));
+}
+
+/** Tewaaraton winners we can place on a profile (13 of the 25 ever awarded). */
+let tewaaratonIndex: Map<string, { year: number; school: string }[]> | null = null;
+
+export function tewaaratonFor(player: Player): { year: number; school: string }[] {
+  if (!tewaaratonIndex) {
+    tewaaratonIndex = new Map();
+    for (const w of data.history?.tewaaraton ?? []) {
+      const key = nameKey(w.player);
+      if (!key) continue;
+      const list = tewaaratonIndex.get(key) ?? [];
+      list.push({ year: w.year, school: w.school });
+      tewaaratonIndex.set(key, list);
+    }
+  }
+  return tewaaratonIndex.get(nameKey(player.name)) ?? [];
 }
 
 export function pctRank(value: number, pool: number[]): number {
