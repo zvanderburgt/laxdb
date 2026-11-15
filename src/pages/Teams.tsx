@@ -22,6 +22,14 @@ import {
 } from "../lib/data";
 import { Avatar, BlockList, Card, Empty, PositionBadge, SectionHead, SkeletonCard, Stat, PlayerAvatar, Term, TermFor, TeamLogo } from "../components/ui";
 import { fmtDate } from "../lib/data";
+import {
+  fixturesFor,
+  gameHref,
+  normName,
+  seasonRecord,
+  type Fixture,
+  type ScorePayload,
+} from "../lib/schedule";
 import type { Team } from "../lib/types";
 
 function ReturningCard({ team }: { team: Team }) {
@@ -108,32 +116,17 @@ function HonoursCard({ team }: { team: Team }) {
 
 function SeriesCard({ team }: { team: Team }) {
   const [result, setResult] = React.useState<{ season: string; rows: import("../lib/series").Series[] } | null>(null);
-  const [scores, setScores] = React.useState<Map<string, { us: number; them: number }>>(new Map());
+  const [fixtures, setFixtures] = React.useState<Fixture[]>([]);
 
   React.useEffect(() => {
     let alive = true;
     loadGames().then((all) => {
       if (alive) setResult(seriesFor(team, all));
     });
-    // final scores for the same fixtures, keyed by opponent name
+    // the scorecard for each meeting, from the same feed the schedule reads
     fetch(`${import.meta.env.BASE_URL}scores.json`)
       .then((r) => r.json())
-      .then((payload: { d1?: { date: string; home: string; away: string; hs: number; as: number }[] }) => {
-        if (!alive || !payload.d1) return;
-        const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
-        const mine = [norm(team.name), norm(team.shortName), norm(team.slug.replace(/-/g, " "))];
-        const out = new Map<string, { us: number; them: number; date: string }>();
-        for (const g of payload.d1) {
-          const isHome = mine.some((m) => norm(g.home).startsWith(m) || m.startsWith(norm(g.home)));
-          const isAway = mine.some((m) => norm(g.away).startsWith(m) || m.startsWith(norm(g.away)));
-          if (!isHome && !isAway) continue;
-          const key = isHome ? g.away : g.home;
-          const row = { us: isHome ? g.hs : g.as, them: isHome ? g.as : g.hs, date: g.date };
-          const prev = out.get(key);
-          if (!prev || row.date > prev.date) out.set(key, row);
-        }
-        setScores(out);
-      })
+      .then((payload: ScorePayload) => alive && setFixtures(fixturesFor(team, payload)))
       .catch(() => undefined);
     return () => {
       alive = false;
@@ -143,17 +136,22 @@ function SeriesCard({ team }: { team: Team }) {
   if (!result) return <SkeletonCard title="Season series" sub="Rebuilding from the box scores" rows={5} cols={4} />;
   if (result.rows.length < 3) return null;
 
-  // one lookup per cell, shared by the table and the phone block, so they cannot drift
-  const norm = (x: string) => x.toLowerCase().replace(/[^a-z]/g, "");
-  const scoreCell = (opponent: string, fallback: string) => {
-    const key = [...scores.keys()].find(
-      (k) => norm(k).startsWith(norm(opponent)) || norm(opponent).startsWith(norm(k)),
-    );
-    const s = key ? scores.get(key) : undefined;
-    if (!s) return fallback;
+  // the newest meeting with that opponent — the series aggregate is a season, but the score
+  // we can show is the last game we hold for it
+  const meeting = (name: string) => {
+    const key = normName(name);
+    return fixtures.find((f) => {
+      const k = normName(f.opponent);
+      return k.startsWith(key) || key.startsWith(k);
+    });
+  };
+
+  const scoreCell = (name: string, fallback: string) => {
+    const f = meeting(name);
+    if (!f) return fallback;
     return (
-      <span className={s.us > s.them ? "strong" : ""}>
-        {s.us}–{s.them}
+      <span className={f.us > f.them ? "strong" : ""}>
+        {f.us}–{f.them}
       </span>
     );
   };
@@ -165,6 +163,18 @@ function SeriesCard({ team }: { team: Team }) {
       </Link>
     ) : (
       name
+    );
+  };
+  /** The date is the way into the box score: every meeting we hold a score for has a page. */
+  const lastMeetingCell = (last: string, name: string) => {
+    const f = meeting(name);
+    const href = f ? gameHref(f, team) : null;
+    return href ? (
+      <Link to={href} className="cell-link">
+        {fmtDate(f!.date)}
+      </Link>
+    ) : (
+      fmtDate(last)
     );
   };
 
@@ -185,7 +195,7 @@ function SeriesCard({ team }: { team: Team }) {
           primary: opponentCell(r.opponent),
           cells: [
             { label: <Term k="wl" />, value: `${r.w}–${r.l}`, strong: true },
-            { label: "Last meeting", value: fmtDate(r.last) },
+            { label: "Last meeting", value: lastMeetingCell(r.last, r.opponent) },
             { label: "Score", value: scoreCell(r.opponent, r.result) },
           ],
         }))}
@@ -207,8 +217,122 @@ function SeriesCard({ team }: { team: Team }) {
                 <td className="r num strong">
                   {r.w}–{r.l}
                 </td>
-                <td className="r num muted">{fmtDate(r.last)}</td>
+                <td className="r num muted">{lastMeetingCell(r.last, r.opponent)}</td>
                 <td className="r num">{scoreCell(r.opponent, r.result)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Schedule and results, newest first, one season at a time.
+ *
+ * Only D1 and the PLL publish a scorecard (`scores.json`); NLL, MCLA and the box leagues have
+ * no score feed at all, so this card simply does not render for them.
+ */
+function ScheduleCard({ team }: { team: Team }) {
+  const [fixtures, setFixtures] = React.useState<Fixture[] | null>(null);
+  const [season, setSeason] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let alive = true;
+    fetch(`${import.meta.env.BASE_URL}scores.json`)
+      .then((r) => r.json())
+      .then((payload: ScorePayload) => alive && setFixtures(fixturesFor(team, payload)))
+      .catch(() => alive && setFixtures([]));
+    return () => {
+      alive = false;
+    };
+  }, [team.id]);
+
+  if (!fixtures || fixtures.length < 3) return null;
+
+  const seasons = [...new Set(fixtures.map((f) => f.season))].sort().reverse();
+  const active = season && seasons.includes(season) ? season : seasons[0];
+  const rows = fixtures.filter((f) => f.season === active).sort((a, b) => a.date.localeCompare(b.date));
+  const record = seasonRecord(rows);
+
+  const opponentCell = (f: Fixture) =>
+    f.opponentSlug ? (
+      <Link to={`/team/${f.opponentSlug}`} className="cell-link">
+        {teamByName(f.opponent)?.shortName ?? f.opponent}
+      </Link>
+    ) : (
+      f.opponent
+    );
+
+  const resultCell = (f: Fixture) => {
+    const href = gameHref(f, team);
+    const body = <span className={f.won ? "strong" : ""}>{f.us}–{f.them}</span>;
+    return href ? (
+      <Link to={href} className="cell-link">
+        {body}
+      </Link>
+    ) : (
+      body
+    );
+  };
+
+  return (
+    <Card padded={false} className="standings-card panel-in">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Schedule &amp; results</h3>
+          <p className="muted small">
+            {active} · {record.w}–{record.l} in {record.games} games · every score links to the box score
+          </p>
+        </div>
+        {seasons.length > 1 ? (
+          <select
+            className="input"
+            value={active}
+            onChange={(e) => setSeason(e.target.value)}
+            aria-label="Season"
+          >
+            {seasons.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
+      <BlockList
+        rows={rows.map((f) => ({
+          key: `${f.date}-${f.opponent}`,
+          primary: opponentCell(f),
+          // the venue only exists for PLL rows; for D1 say which side we were, like the table
+          meta: f.venue ? `${f.home ? "vs" : "at"} · ${f.venue}` : f.home ? "home" : "away",
+          cells: [
+            { label: "Date", value: fmtDate(f.date) },
+            { label: <Term k="wl" />, value: f.won ? "W" : "L", strong: true },
+            { label: "Score", value: resultCell(f) },
+          ],
+        }))}
+      />
+      <div className="table-scroll hide-sm">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Opponent</th>
+              <th className="r">Site</th>
+              <th className="r"><Term k="wl" /></th>
+              <th className="r">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((f) => (
+              <tr key={`${f.date}-${f.opponent}`}>
+                <td className="num muted">{fmtDate(f.date)}</td>
+                <td>{opponentCell(f)}</td>
+                <td className="r muted small">{f.home ? "home" : "away"}</td>
+                <td className={`r num ${f.won ? "strong" : "muted"}`}>{f.won ? "W" : "L"}</td>
+                <td className="r num">{resultCell(f)}</td>
               </tr>
             ))}
           </tbody>
@@ -484,6 +608,7 @@ export function TeamPage() {
           </Card>
         ) : null}
         <ReturningCard team={team} />
+        <ScheduleCard team={team} />
         <HonoursCard team={team} />
         <SeriesCard team={team} />
 

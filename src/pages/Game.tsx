@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useRoute } from "../lib/app";
-import { data, teamBySlug } from "../lib/data";
+import { data, fmtDate, teamBySlug } from "../lib/data";
 import { Card, Empty, PlayerAvatar, Skeleton, SkeletonRows, Term, TeamLogo } from "../components/ui";
 import type { GameRow } from "../lib/types";
 
@@ -35,7 +35,9 @@ export default function Game() {
     let alive = true;
     fetch(`${import.meta.env.BASE_URL}scores.json`)
       .then((r) => r.json())
-      .then((p: { d1?: Score[] }) => alive && setScores(p.d1 ?? []))
+      // both scorecards we hold: NCAA D1 and the PLL. A PLL game page was showing
+      // "no score on file" because only d1 was read.
+      .then((p: { d1?: Score[]; pll?: Score[] }) => alive && setScores([...(p.d1 ?? []), ...(p.pll ?? [])]))
       .catch(() => alive && setScores([]));
     fetch(`${import.meta.env.BASE_URL}games.json`)
       .then((r) => r.json())
@@ -105,7 +107,8 @@ export default function Game() {
             </Link>
           </h1>
           <p className="muted">
-            {date} · {game ? (homeWon ? `${home.shortName} won` : `${away.shortName} won`) : "no score on file"}
+            {fmtDate(date)} ·{" "}
+            {game ? (homeWon ? `${home.shortName} won` : `${away.shortName} won`) : "no score on file"}
           </p>
         </div>
       </div>
