@@ -18,6 +18,7 @@ User-agent: Discordbot
 Allow: /
 # the dataset files are never a search result: one request there is the whole database
 Disallow: /data.json
+Disallow: /data.wire.json
 Disallow: /games.json
 Disallow: /scores.json
 Disallow: /rankings.json

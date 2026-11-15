@@ -1,4 +1,5 @@
 import type { Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
+import { decodeDataset, type WireDataset } from "./wire";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -70,11 +71,23 @@ export let TEAM_COUNT = 0;
 export let SEASON_COUNT = 0;
 export let CURRENT = "";
 
-/** The dataset is ~9 MB, so it ships as a static file and is fetched once. */
+/**
+ * The dataset ships as one static file and is fetched once. `data.wire.json` is the compact
+ * encoding `scripts/compact-data.mjs` writes at build time (35% smaller, same in-memory shape);
+ * `data.json` is the fallback for a deploy or a cached shell that predates it.
+ */
 export async function loadDataset(): Promise<void> {
-  const res = await fetch(`${import.meta.env.BASE_URL}data.json`, { cache: "no-cache" });
-  if (!res.ok) throw new Error(`dataset fetch failed: ${res.status}`);
-  data = (await res.json()) as Dataset;
+  const base = import.meta.env.BASE_URL;
+  let res = await fetch(`${base}data.wire.json`, { cache: "no-cache" });
+  let payload: Dataset | WireDataset;
+  if (res.ok) {
+    payload = decodeDataset((await res.json()) as WireDataset);
+  } else {
+    res = await fetch(`${base}data.json`, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`dataset fetch failed: ${res.status}`);
+    payload = (await res.json()) as Dataset;
+  }
+  data = payload as Dataset;
 
   for (const p of data.players) {
     normalizePlayer(p);

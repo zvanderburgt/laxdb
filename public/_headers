@@ -4,6 +4,11 @@
 /assets/*
   cache-control: public, max-age=31536000, immutable
 
+/data.wire.json
+  cache-control: public, max-age=300
+  content-type: application/json; charset=utf-8
+  x-robots-tag: noindex, nofollow, noarchive
+
 /data.json
   cache-control: public, max-age=300
   content-type: application/json; charset=utf-8
