@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/gen-sitemap.mjs",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json",
     "cms:build": "node scripts/build-functions.mjs",
     "cms:dev": "node scripts/cms-dev-server.mjs",
-    "cms": "npm run cms:build && npm run cms:dev"
+    "cms": "npm run cms:build && npm run cms:dev",
+    "sitemap": "node scripts/gen-sitemap.mjs",
+    "entity-index": "node scripts/gen-entity-index.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

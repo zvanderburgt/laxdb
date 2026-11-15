@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "./",
+  // absolute, not "./": routes are real paths now, so "./assets/…" resolved to
+  // /player/assets/… on a deep link and the module 404ed with a blank page
+  base: "/",
   build: { outDir: "dist", assetsDir: "assets" },
   server: {
     // the admin API runs as the real Netlify function under scripts/cms-dev-server.mjs

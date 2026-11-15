@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Link, useRoute, useCompare } from "../lib/app";
+import { Link, navigate, useRoute, useCompare } from "../lib/app";
 import { useFlipRows } from "../lib/motion";
 import {
   data,
@@ -119,7 +119,7 @@ export default function Players() {
     if (hs.trim()) params.set("hs", hs.trim());
     if (minGp) params.set("gp", minGp);
     const qs = params.toString();
-    window.history.replaceState(null, "", `#/players${qs ? `?${qs}` : ""}`);
+    navigate(`/players${qs ? `?${qs}` : ""}`, { replace: true });
   }, [q, pos, league, year, state, hs, minGp]);
 
   const toggleSort = (k: SortKey) => {

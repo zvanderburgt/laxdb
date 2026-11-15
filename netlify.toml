@@ -5,7 +5,57 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# Hash routing: every route is served from / , so no SPA rewrite rules are needed.
+# Real paths, not hashes. These rules serve the app shell for the list pages and the
+# navigational detail routes; /player/*, /team/* and /league/* are answered by
+# netlify/functions/meta.ts, which returns the same shell with that entity's title,
+# description, Open Graph card and JSON-LD in the head. A route added to App.tsx needs a
+# rule here, or it falls through to the 404 page.
+[[redirects]]
+  from = "/players"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/teams"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/leagues"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/scores"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/leaders"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/history"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/origins"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/compare"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/my-roster"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/vs/*"
+  to = "/index.html"
+  status = 200
+[[redirects]]
+  from = "/game/*"
+  to = "/index.html"
+  status = 200
+
+# Hash routing is gone, so every route is served from / or from the meta function.
 [[headers]]
   for = "/assets/*"
   [headers.values]

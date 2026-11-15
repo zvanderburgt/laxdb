@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useRoute } from "../lib/app";
+import { Link, navigate, useRoute } from "../lib/app";
 import { data, teamBySlug } from "../lib/data";
 import { Card, Empty, SkeletonCard, TeamLogo } from "../components/ui";
 
@@ -154,7 +154,7 @@ export default function Versus() {
 
 function TeamPickers({ teams, a, b }: { teams: ReturnType<typeof data.teams.filter>; a: string; b: string }) {
   const go = (nextA: string, nextB: string) => {
-    window.location.hash = `#/vs/${nextA}/${nextB}`;
+    navigate(`/vs/${nextA}/${nextB}`);
   };
   return (
     <Card>

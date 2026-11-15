@@ -24,6 +24,7 @@ const Editor = React.lazy(() => import("./components/cms/Editor"));
 /** The way in: ⌘⇧E anywhere, or a `?edit=1` query on any route. */
 function Cms() {
   const cms = useCms();
+  const route = useRoute();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -34,8 +35,7 @@ function Cms() {
       }
     };
     window.addEventListener("keydown", onKey);
-    const query = new URLSearchParams(window.location.hash.split("?")[1] ?? "");
-    if (query.get("edit") === "1") startEditing();
+    if (route.query.get("edit") === "1") startEditing();
     return () => window.removeEventListener("keydown", onKey);
   }, [cms.mode]);
 

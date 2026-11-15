@@ -7,18 +7,37 @@
 /data.json
   cache-control: public, max-age=300
   content-type: application/json; charset=utf-8
+  # robots.txt already refuses these to every crawler; this is the header engines honour
+  # even when they fetch a URL they found in the JS bundle
+  x-robots-tag: noindex, nofollow, noarchive
 
 /games.json
   cache-control: public, max-age=300
+  x-robots-tag: noindex, nofollow, noarchive
+
+/scores.json
+  cache-control: public, max-age=300
+  x-robots-tag: noindex, nofollow, noarchive
 
 /rankings.json
   cache-control: public, max-age=300
+  x-robots-tag: noindex, nofollow, noarchive
 
 /rankings-history.json
   cache-control: public, max-age=300
+  x-robots-tag: noindex, nofollow, noarchive
+
+/franchises.json
+  cache-control: public, max-age=3600
+  x-robots-tag: noindex, nofollow, noarchive
 
 /history-results.json
   cache-control: public, max-age=3600
+  x-robots-tag: noindex, nofollow, noarchive
+
+/player-index.json
+  cache-control: public, max-age=3600
+  x-robots-tag: noindex, nofollow, noarchive
 
 /logos/*
   cache-control: public, max-age=604800

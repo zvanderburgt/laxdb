@@ -14,24 +14,44 @@ export interface Route {
   query: URLSearchParams;
 }
 
-function parseHash(): Route {
-  const raw = window.location.hash.replace(/^#/, "") || "/";
+/**
+ * Real paths, not hashes: a crawler and a chat unfurler have to be able to ask for
+ * /player/cj-kirst and get that player's page. Every link written before this change used
+ * `#/…`, so the hash form is still read (and rewritten to the path form on arrival).
+ */
+function parseLocation(): Route {
+  const raw = window.location.hash.startsWith("#/")
+    ? window.location.hash.slice(1)
+    : window.location.pathname + window.location.search;
   const [path, qs] = raw.split("?");
   return { path: path || "/", query: new URLSearchParams(qs ?? "") };
 }
 
 const RouteCtx = createContext<Route>({ path: "/", query: new URLSearchParams() });
 
+const ROUTE_EVENT = "laxdb:navigate";
+
 export function RouterProvider({ children }: { children: React.ReactNode }) {
-  const [route, setRoute] = useState<Route>(parseHash);
+  const [route, setRoute] = useState<Route>(parseLocation);
 
   useEffect(() => {
+    // an old `#/player/x` link becomes the canonical path before anything is rendered twice
+    if (window.location.hash.startsWith("#/")) {
+      const raw = window.location.hash.slice(1);
+      window.history.replaceState(null, "", raw);
+      setRoute(parseLocation());
+    }
+
     const onChange = () => {
-      setRoute(parseHash());
+      setRoute(parseLocation());
       window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
     };
-    window.addEventListener("hashchange", onChange);
-    return () => window.removeEventListener("hashchange", onChange);
+    window.addEventListener("popstate", onChange);
+    window.addEventListener(ROUTE_EVENT, onChange);
+    return () => {
+      window.removeEventListener("popstate", onChange);
+      window.removeEventListener(ROUTE_EVENT, onChange);
+    };
   }, []);
 
   return <RouteCtx.Provider value={route}>{children}</RouteCtx.Provider>;
@@ -39,12 +59,16 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
 
 export const useRoute = () => useContext(RouteCtx);
 
-export function navigate(to: string) {
-  if (window.location.hash === `#${to}`) {
+/** Push a new URL. `to` is a path with an optional query ("/players?league=ncaa-d1"). */
+export function navigate(to: string, { replace = false }: { replace?: boolean } = {}) {
+  const here = window.location.pathname + window.location.search;
+  if (here === to) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
-  window.location.hash = to;
+  if (replace) window.history.replaceState(null, "", to);
+  else window.history.pushState(null, "", to);
+  window.dispatchEvent(new Event(ROUTE_EVENT));
 }
 
 export function Link({
@@ -61,10 +85,11 @@ export function Link({
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick">) {
   return (
     <a
-      href={`#${to}`}
+      href={to}
       className={className}
       onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+        // a modified click belongs to the browser: it opens the real URL in a new tab
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();
         onClick?.();
         navigate(to);
