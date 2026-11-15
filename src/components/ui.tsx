@@ -267,6 +267,11 @@ const TERMS: Record<string, TermEntry> = {
   a: { label: "AST", full: "Assists" },
   pts: { label: "PTS", full: "Points", note: "goals plus assists" },
   ppg: { label: "PTS/G", full: "Points per game" },
+  adj: {
+    label: "ADJ",
+    full: "Opponent-adjusted points per game",
+    note: "each game weighted by the opponent's Elo against a 1500 baseline",
+  },
   sh: { label: "SH", full: "Shots" },
   shp: { label: "SH%", full: "Shooting percentage", note: "goals divided by shots" },
   gb: { label: "GB", full: "Ground balls" },

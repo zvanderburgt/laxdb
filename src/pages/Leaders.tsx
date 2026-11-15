@@ -1,9 +1,10 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useFlipRows } from "../lib/motion";
 import { Link } from "../lib/app";
-import { data, leagueById, teamById, teamByName } from "../lib/data";
+import { data, leagueById, loadGames, teamById, teamByName } from "../lib/data";
+import { adjustedRate } from "../lib/adjusted";
 import { BlockList, Card, PlayerAvatar, Provenance, Segmented, Term } from "../components/ui";
-import type { Player } from "../lib/types";
+import type { GameRow, Player } from "../lib/types";
 
 /**
  * Leaders by stat, league and season.
@@ -66,6 +67,24 @@ function indexCat(leaguePpg: number): Cat | null {
   };
 }
 
+/**
+ * Opponent-adjusted scoring as a board. Only the competitions with a game log can carry it,
+ * and only for a single season: a career total cannot be re-weighted after the fact.
+ */
+function adjustedCat(season: string | null, games: Record<string, GameRow[]> | null): Cat | null {
+  if (!season || !games) return null;
+  return {
+    key: "adj",
+    label: "Opp-adj PTS",
+    value: (r) => {
+      const rows = (games[r.player.id] ?? []).filter((g) => g.date.startsWith(season));
+      const adj = adjustedRate(rows, r.player);
+      return adj ? adj.adjusted : null;
+    },
+    format: (n) => n.toFixed(2),
+  };
+}
+
 /** every club name on the site should reach that club's page */
 function linkTeam(name: string) {
   const t = teamByName(name);
@@ -95,6 +114,15 @@ export default function Leaders() {
   }, [leagueId]);
 
   const [season, setSeason] = useState<string | null>(null);
+  // the adjusted board needs each player's game log, which ships separately
+  const [games, setGames] = useState<Record<string, GameRow[]> | null>(null);
+  React.useEffect(() => {
+    let alive = true;
+    loadGames().then((g) => alive && setGames(g));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [scope, setScope] = useState<"season" | "career">("season");
   const [pos, setPos] = useState<"all" | "A" | "M" | "D" | "G">("all");
   const activeSeason = season && seasons.includes(season) ? season : seasons[0];
@@ -133,8 +161,11 @@ export default function Leaders() {
   }, [rows]);
   const cats = useMemo(() => {
     const idx = indexCat(leaguePpg);
-    return idx ? [...CATS, idx] : CATS;
-  }, [leaguePpg]);
+    // only the competitions we hold a game log for can be re-weighted
+    const hasLogs = leagueId === "ncaa-d1" || leagueId === "pll";
+    const adj = scope === "season" && hasLogs ? adjustedCat(activeSeason, games) : null;
+    return [...CATS, ...(idx ? [idx] : []), ...(adj ? [adj] : [])];
+  }, [leaguePpg, scope, activeSeason, games, leagueId]);
   const cat = cats.find((c) => c.key === catKey) ?? cats[0];
 
   const board = useMemo(() => {
@@ -200,6 +231,9 @@ export default function Leaders() {
             {board.minGames ? ` · minimum ${board.minGames} games played to qualify` : ""}
             {cat.key === "idx" && leaguePpg
               ? ` · 100 = this competition's ${leaguePpg.toFixed(2)} points per game`
+              : ""}
+            {cat.key === "adj"
+              ? " · each game weighted by the opponent's Elo (1500 baseline), then averaged"
               : ""}
             <Provenance feed="the league's own published statistics" />
           </p>
