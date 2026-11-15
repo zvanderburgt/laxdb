@@ -16,7 +16,7 @@ import {
   teamById,
   teamOf,
 } from "../lib/data";
-import { Avatar, BlockList, Card, Empty, PositionBadge, Segmented, Stat, PlayerAvatar, Term, TeamLogo } from "../components/ui";
+import { Avatar, BlockList, Card, Empty, PositionBadge, Provenance, Segmented, Stat, PlayerAvatar, Term, TeamLogo } from "../components/ui";
 import type { League, Team } from "../lib/types";
 
 const LEVEL_ORDER = [
@@ -461,6 +461,7 @@ function StandingsCard({ league }: { league: League }) {
           <h3 className="card-title">Standings</h3>
           <p className="muted small">
             {data.meta.season} · {rows.length} teams · sorted by win percentage
+            <Provenance feed="the conference's published standings" />
           </p>
         </div>
       </div>

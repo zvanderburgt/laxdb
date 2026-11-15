@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "../lib/app";
 import { useFlipRows, useTrackedRect } from "../lib/motion";
 import type { Player, Team } from "../lib/types";
-import { positionLabel } from "../lib/data";
+import { data, fmtDate, positionLabel } from "../lib/data";
 
 /* --------------------------------- avatar --------------------------------- */
 
@@ -379,6 +379,20 @@ const LABEL_TO_KEY: Record<string, string> = {
 };
 
 /** For labels that arrive as text (feeds, maps, column descriptors). */
+/**
+ * Where a board's numbers come from and when they were built. The dataset is one build, so the
+ * date is the same everywhere; what changes per board is the feed behind it.
+ */
+export function Provenance({ feed }: { feed: string }) {
+  const updated = data.meta.generated;
+  return (
+    <>
+      {" "}
+      · {feed} · updated <time dateTime={updated}>{fmtDate(updated)}</time>
+    </>
+  );
+}
+
 export function TermFor({ text }: { text: string }) {
   const key = LABEL_TO_KEY[text];
   return key ? <Term k={key} /> : <>{text}</>;

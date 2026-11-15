@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useFlipRows } from "../lib/motion";
 import { Link } from "../lib/app";
 import { data, leagueById, teamById, teamByName } from "../lib/data";
-import { BlockList, Card, PlayerAvatar, Segmented, Term } from "../components/ui";
+import { BlockList, Card, PlayerAvatar, Provenance, Segmented, Term } from "../components/ui";
 import type { Player } from "../lib/types";
 
 /**
@@ -201,6 +201,7 @@ export default function Leaders() {
             {cat.key === "idx" && leaguePpg
               ? ` · 100 = this competition's ${leaguePpg.toFixed(2)} points per game`
               : ""}
+            <Provenance feed="the league's own published statistics" />
           </p>
         </div>
       </div>

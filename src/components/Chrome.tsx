@@ -3,6 +3,7 @@ import { Link, navigate, useCompare, useRoute, useTheme } from "../lib/app";
 import { useRoster } from "../lib/storage";
 import {
   data,
+  fmtDate,
   notablePlayers,
   playerById,
   searchPlayers,
@@ -375,7 +376,9 @@ export function Footer() {
             {(data.meta.sources ?? []).map((s) => (
               <span key={s}>{s}</span>
             ))}
-            <span className="footer-stamp">Updated {data.meta.generated}</span>
+            <span className="footer-stamp">
+              Updated {fmtDate(data.meta.generated)} · {data.players.length.toLocaleString()} players
+            </span>
           </div>
         </div>
       </div>

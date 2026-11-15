@@ -16,7 +16,7 @@ import {
   searchKey,
   searchTokens,
 } from "../lib/data";
-import { Avatar, BlockList, Empty, PositionBadge, Segmented, PlayerAvatar, Term } from "../components/ui";
+import { Avatar, BlockList, Empty, PositionBadge, Provenance, Segmented, PlayerAvatar, Term } from "../components/ui";
 
 type SortKey =
   | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
@@ -168,6 +168,7 @@ export default function Players() {
             {rows.length.toLocaleString()} of {data.players.length.toLocaleString()} players ·{" "}
             {Math.min(...data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))))}–
             {Math.max(...data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))))} seasons
+            <Provenance feed="school and league statistics feeds" />
           </p>
         </div>
         <Segmented

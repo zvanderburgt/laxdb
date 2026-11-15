@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "../lib/app";
 import { data, teamById, teamByName, playerByName } from "../lib/data";
+import { careerWindow, d1Club, recordClimbers } from "../lib/climbers";
 import { BlockList, Card, Empty, Segmented, TermFor, TeamLogo } from "../components/ui";
 
 const METRICS = [
@@ -162,6 +163,95 @@ function RecordBook() {
       <div className="table-note">
         These lists reach back to the 1970s. Anyone we hold a profile for is linked; the rest
         predate the seasons we index. Source: NCAA record book via Wikipedia.
+      </div>
+    </Card>
+  );
+}
+
+const STAT_LABEL: Record<string, string> = {
+  points: "Career points",
+  goals: "Career goals",
+  assists: "Career assists",
+};
+
+/**
+ * The record book is all-time; this is the live edge of it. Everything is computed from the
+ * seasons we hold, so the card states the window instead of implying a full career.
+ */
+function Climbers() {
+  const climbs = React.useMemo(() => recordClimbers(6), []);
+  const window = React.useMemo(() => careerWindow(), []);
+  if (!climbs.length) return null;
+
+  const cells = (c: (typeof climbs)[number]) => [
+    { label: "Board", value: STAT_LABEL[c.stat] },
+    { label: "Career", value: c.career.toLocaleString(), strong: true },
+    { label: "Board cut-off", value: c.cutoff.toLocaleString() },
+    {
+      label: "To pass",
+      value: `${c.seasonsNeeded} ${c.seasonsNeeded === 1 ? "season" : "seasons"} at ${c.bestSeason}/yr`,
+      strong: true,
+    },
+  ];
+
+  return (
+    <Card padded={false} className="standings-card panel-in">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Climbing the record book</h3>
+          <p className="muted small">
+            Active D1 players within reach of the lowest total printed on an NCAA career board
+          </p>
+        </div>
+      </div>
+      <BlockList
+        rows={climbs.map((c) => ({
+          key: `${c.player.id}-${c.stat}`,
+          primary: (
+            <Link to={`/player/${c.player.slug}`} className="cell-link">
+              {c.player.name}
+            </Link>
+          ),
+          meta: d1Club(c.player),
+          cells: cells(c),
+        }))}
+      />
+      <div className="table-scroll hide-sm">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Club</th>
+              <th>Board</th>
+              <th className="r">Career</th>
+              <th className="r">Cut-off</th>
+              <th className="r">To pass</th>
+            </tr>
+          </thead>
+          <tbody>
+            {climbs.map((c) => (
+              <tr key={`${c.player.id}-${c.stat}`}>
+                <td>
+                  <Link to={`/player/${c.player.slug}`} className="cell-link">
+                    {c.player.name}
+                  </Link>
+                </td>
+                <td className="muted small">{d1Club(c.player)}</td>
+                <td className="muted small">{STAT_LABEL[c.stat]}</td>
+                <td className="r num strong">{c.career.toLocaleString()}</td>
+                <td className="r num muted">{c.cutoff.toLocaleString()}</td>
+                <td className="r num">
+                  {c.seasonsNeeded} {c.seasonsNeeded === 1 ? "season" : "seasons"}
+                  <span className="muted small"> at {c.bestSeason}/yr</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="table-note">
+        Counts only the seasons we hold ({window.first}–{window.last}) and only players whose first college season
+        falls inside that window. “At his best season” repeats his best year; it is not a forecast.
       </div>
     </Card>
   );
@@ -469,6 +559,7 @@ export default function History() {
 
       <div className="leader-grid history-second">
         <RecordBook />
+        <Climbers />
         <div className="stack">
           <AllAmericans />
         </div>

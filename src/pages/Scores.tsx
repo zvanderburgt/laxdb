@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "../lib/app";
 import { teamByName } from "../lib/data";
-import { Card, Segmented , Skeleton, SkeletonRows } from "../components/ui";
+import { Card, Provenance, Segmented , Skeleton, SkeletonRows } from "../components/ui";
 
 type Game = { date: string; home: string; away: string; hs: number; as: number; venue?: string };
 type Payload = { d1: Game[]; pll: Game[] };
@@ -82,6 +82,7 @@ export default function Scores() {
             {league === "d1" ? "NCAA Division I" : "Premier Lacrosse League"}
             {activeSeason ? ` · ${activeSeason}` : ""} · {byDate.reduce((n, d) => n + d.games.length, 0)}{" "}
             games across {byDate.length} dates
+            <Provenance feed="the ESPN scoreboard" />
           </p>
         </div>
         <div className="scores-controls">
