@@ -5,12 +5,29 @@ not the UI — is what decides whether it ships.
 
 Last competitive scan: **2026-11-12** — 13 sites checked, 38 features logged, 7 blocked.
 Evidence and per-site notes: `docs/competitive-scan.md`.
+Last improvement scan: **2026-11-14** — `docs/improvement-scan.md` (search, suggested lists,
+honors, record book, roster-only profiles: shipped; crawl policy: shipped; what is open, below).
 
 ## Shipped
 
+**2026-11-14 — findability, correctness, polish**
+- **Search** that survives punctuation and initials (`oneill`, `c j kirst`, `mount st marys`), and
+  a name query is no longer padded with club or school substring noise. Same index backs the
+  players table.
+- **One notable-player picker** behind the hero carousel, the home strip, Compare and ⌘K — scoped
+  to the competition, so a Junior B summer peak cannot rank as a "leading D1 scorer".
+- **Honors on the profile**: All-America matched over the whole career (118 → 201 players),
+  Tewaaraton winners on the timeline, hero tags for both.
+- Record book expands past 12 rows (388 rows reachable, was 156); roster-only profiles say so
+  instead of drawing an empty chart (411 players); palette is a real combobox.
+- **Crawl policy and real URLs** — `docs/crawling.md`: path routing, per-entity `<title>`,
+  canonical, Open Graph card and JSON-LD via a Netlify function, `robots.txt` that admits search
+  engines and refuses bulk/AI crawlers, `x-robots-tag` on every feed, 22,443-URL sitemap, `/x/`
+  canary.
+
 **Data**
-- 21,803 players, 471 teams, 19 competitions, 34,943 player-seasons (2021–2026)
-- NCAA D1: **72 programs** — 7,166 players, roughly 3,000 per season from 2022 to 2026
+- 21,943 players, 473 teams, 19 competitions, 34,943 player-seasons (2021–2026)
+- NCAA D1: **72 programs** — roughly 3,000 players per season from 2022 to 2026
 - MCLA (172 teams), PLL, 16 Canadian box leagues down to Junior C
 - Elo + strength of schedule for 63 D1 teams, from 563 ESPN results
 - 252 team logos, 3,615 player headshots (224×224 webp, square-cropped)
@@ -21,31 +38,48 @@ Evidence and per-site notes: `docs/competitive-scan.md`.
   **situational splits (month, result, vs RPI top 25)**,
   teammates, **comparable players (1–99 similarity)**, **peer rank ("2nd of 37 attackmen in points
   per game")**
-- `#/leaders` — every stat, by competition and season **or career**, top 25, with a printed
+- `/leaders` — every stat, by competition and season **or career**, top 25, with a printed
   qualification minimum so a two-game sample cannot top a board
-- `#/origins` — D1 players by home state: headcount, share, per-100k (2020 census), top feeders
-- `#/history` — 126 seasons of champions, titles by program, Tewaaraton, NCAA record book
+- `/origins` — D1 players by home state: headcount, share, per-100k (2020 census), top feeders
+- `/history` — 126 seasons of champions, titles by program, Tewaaraton, NCAA record book
   (13 boards / 388 rows), **USILA All-Americans 2023–2026** (409 players)
 - Team: roster, leaders, record, Elo/SOS, staff, **recent seasons**
 - League: standings, **conference breakdown**, ratings with **consensus rank**, three polls with
   movement arrows, leaderboards
 - Compare up to three players; My roster; CSV export; share cards
 
+
 ## Next — closing the data gaps
 
-The site is ahead of its data: 77% of player profiles have no photo, birth date, hometown,
+The site is still ahead of its data: most player profiles have no photo, birth date, hometown,
 height or weight. Phased plan, with the source and expected yield for each step, lives in
-**`docs/data-gaps.md`**. Short version:
+**`docs/data-gaps.md`**. Phases 1–4 are shipped (D1 historical rosters; the box leagues GameSheet
+already covers; BCJALL bios through the Digitalshift ticket API; MCLA labelled "statistics only").
+What is left:
 
-1. **D1 historical rosters** (2022–2025) — one script, ~3,400 players, D1 core 36% → ~75%.
-2. **Finish the box leagues GameSheet already covers** — matching work, +1,000–1,500.
-3. **Box leagues with no bio feed** (RMLL Jr B, TOJLL, WCJLL, PNWJLL, WLA, BCJALL) — a
-   scraper each; brings logos to ~95% and staff to ~80% on the same pages.
-4. **MCLA** — the source publishes no bios; label it honestly, probe 10 club sites before
-   investing in 172.
-5. Long tail: box game logs, PLL birth dates, remaining staff and logos.
+1. **The long tail** (`data-gaps.md` phase 5) — box game logs, PLL birth dates, remaining staff and
+   logos. Each is a scraper per source; measure with `coverage.py` before and after.
+2. **Handedness** (`data-gaps.md` phase 6) — the value is printed in GameSheet's *rendered* club
+   roster table and in no JSON surface, so it needs saved pages or a league CSV export; OJBLL and
+   BCJALL fill it, several clubs ship nulls by data entry. Probe one club before asking for more.
 
 Measured with `python3 scripts/coverage.py --save`, trended in `docs/coverage-history.json`.
+
+## Next — what the improvement scan left open
+
+`docs/improvement-scan.md` has the evidence for each of these.
+
+1. **Link the game pages** — `/game/…` is reachable only from `/scores`, though a team page already
+   prints the opponent and the date of each meeting. Every series row becomes that link.
+2. **A team schedule** — dated fixtures from `scores.json` (D1 and PLL only; no score feed exists for
+   NLL, MCLA or the box leagues), which the per-opponent series card cannot show.
+3. **Split `data.json`** — 18.19 MB decoded before any route paints. A `players-index.json` lets list
+   routes paint first and the detail payload follow; it is also the structural fix for the bulk file.
+4. **Per-entity share images** — the Open Graph card is one static PNG today; the player-card renderer
+   already exists in `src/lib/export.ts`.
+5. **Manual, outside the repo** — verify the domain in Search Console and Bing, submit
+   `/sitemap.xml`, and decide whether Cloudflare sits in front for per-IP rate limits on the feeds
+   (`docs/crawling.md`).
 
 ## Next — small, no new feed
 
@@ -72,12 +106,19 @@ layer keyed by entity id and never touches `data.json`, so a re-import cannot co
 Plan, field registry, auth model, infrastructure and phases: **`docs/cms.md`**; still of the surface:
 `docs/cms-preview.html`.
 
+Phases 0–3 are shipped (override layer, dock and inline fields, structured controls, photo/logo
+upload with the client-side 224×224 crop, club colour). Left:
+
+1. **Phase 4** — per-version history UI, flags for a suspect feed value, and the orphan report for
+   overrides whose entity no longer exists.
+2. **Phase 5** — hardening pass (rate limits on the API, audit trail, a review the whole surface).
+
 ## Next — needs a precompute pass
 
 1. ~~Opponent-adjusted scoring~~ — shipped on the game-log tab: output weighted by opponent Elo,
    shown against the raw rate with the sample size. A league-wide adjusted leaderboard is the
    remaining piece.
-2. ~~Era- and league-adjusted scoring index~~ — shipped as the **points index** on `#/leaders`
+2. ~~Era- and league-adjusted scoring index~~ — shipped as the **points index** on `/leaders`
    (100 = that competition-season's average player-game). Cross-era normalisation is still open.
 3. **Team efficiency** — possessions estimated from faceoffs, shots and turnovers, then points per
    100 possessions, opponent-adjusted ratings and expected W-L. *(Basketball-Reference.)*
