@@ -114,9 +114,9 @@ upload with the client-side 224×224 crop, club colour). Left:
 
 ## Next — needs a precompute pass
 
-1. ~~Opponent-adjusted scoring~~ — shipped on the game-log tab: output weighted by opponent Elo,
-   shown against the raw rate with the sample size. A league-wide adjusted leaderboard is the
-   remaining piece.
+1. ~~Opponent-adjusted scoring~~ — shipped twice: on the game-log tab (raw rate beside the adjusted
+   one, with the sample size) and as the **Opp-adj PTS** board on `/leaders` (D1 and PLL, single
+   season, same qualification rule as every other board).
 2. ~~Era- and league-adjusted scoring index~~ — shipped as the **points index** on `/leaders`
    (100 = that competition-season's average player-game). Cross-era normalisation is still open.
 3. **Team efficiency** — possessions estimated from faceoffs, shots and turnovers, then points per
