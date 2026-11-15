@@ -111,18 +111,24 @@ Path to fixing it, cheapest first:
    `<title>`, description, `og:image` (the share-card renderer) and a JSON-LD `Person`/`SportsTeam`
    block, plus a 22,435-URL sitemap (**M–L**, but it is the whole SEO surface of the product).
 
-### B. Game pages are orphaned
+### B. Game pages were orphaned ✅
 
-`#/game/<date>/<home>/<away>` is linked **only** from `#/scores`. A team page links to `/vs/` once and
-to zero game pages, though its season-series table already prints the opponent and the date of the last
-meeting — every row can become that link. **S**, and it turns a dead-end page into navigation.
+**Was:** `/game/<date>/<home>/<away>` was linked only from `/scores`; a team page linked to `/vs/`
+once and to zero game pages, though its series table already printed the opponent and the date.
 
-### C. Team pages have no schedule
+**Now:** every fixture a team page renders links to its box score — the season series' last-meeting
+date, and the schedule card below it. Measured on Duke 2026 (16 games, 11–5) and PLL Atlas (12 games,
+3–9). A box-league club has no score feed, so it gets no card rather than a dead one.
 
-Only a per-opponent series with a last-meeting score, and "Recent seasons" as season totals. A dated
-game list is a normal expectation and the data exists: `scores.json` carries D1 and PLL fixtures with
-dates, scores and venues. It cannot cover NLL, MCLA or the box leagues (no score feed), so the card
-appears only where the data does. **M**.
+### C. Team pages have no schedule ✅
+
+**Was:** only a per-opponent series with a last-meeting score, and "Recent seasons" as season totals.
+
+**Now:** **Schedule & results** (`src/lib/schedule.ts`, `ScheduleCard` in `Teams.tsx`) — date order, a
+season selector, the W–L record, opponent links, site/venue, and the score as the link into the game
+page. The game page also reads the PLL scorecard now, which it never did: every PLL game said "no score
+on file". It still cannot cover the NLL, MCLA or the box leagues (no score feed), so the card appears
+only where the data does.
 
 ### D. First paint still carries 18 MB
 

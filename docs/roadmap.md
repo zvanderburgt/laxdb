@@ -67,17 +67,16 @@ Measured with `python3 scripts/coverage.py --save`, trended in `docs/coverage-hi
 
 ## Next — what the improvement scan left open
 
-`docs/improvement-scan.md` has the evidence for each of these.
+`docs/improvement-scan.md` has the evidence for each of these. Shipped since the scan: the game pages
+are linked from every fixture a team page shows, and the team page has a dated **Schedule & results**
+card with a season selector (`src/lib/schedule.ts`; D1 and PLL only — no score feed exists for the
+NLL, MCLA or the box leagues).
 
-1. **Link the game pages** — `/game/…` is reachable only from `/scores`, though a team page already
-   prints the opponent and the date of each meeting. Every series row becomes that link.
-2. **A team schedule** — dated fixtures from `scores.json` (D1 and PLL only; no score feed exists for
-   NLL, MCLA or the box leagues), which the per-opponent series card cannot show.
-3. **Split `data.json`** — 18.19 MB decoded before any route paints. A `players-index.json` lets list
+1. **Split `data.json`** — 18.19 MB decoded before any route paints. A `players-index.json` lets list
    routes paint first and the detail payload follow; it is also the structural fix for the bulk file.
-4. **Per-entity share images** — the Open Graph card is one static PNG today; the player-card renderer
+2. **Per-entity share images** — the Open Graph card is one static PNG today; the player-card renderer
    already exists in `src/lib/export.ts`.
-5. **Manual, outside the repo** — verify the domain in Search Console and Bing, submit
+3. **Manual, outside the repo** — verify the domain in Search Console and Bing, submit
    `/sitemap.xml`, and decide whether Cloudflare sits in front for per-IP rate limits on the feeds
    (`docs/crawling.md`).
 
