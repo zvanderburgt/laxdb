@@ -20,7 +20,13 @@ import {
   useCms,
   snapshot,
   fieldOf,
+  diffVersion,
+  loadVersion,
+  loadVersions,
+  revertToFeed,
   type PendingField,
+  type VersionChange,
+  type VersionRow,
 } from "../../lib/cms";
 import { fieldFor } from "../../lib/cms-registry";
 import { cmsSession } from "../../lib/overrides";
@@ -98,6 +104,10 @@ export default function Editor() {
   const [editing, setEditing] = useState<Target | null>(null);
   const [draft, setDraft] = useState("");
   const [review, setReview] = useState(false);
+  // version history: the last 20 published documents, diffed against the one before them
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [versions, setVersions] = useState<VersionRow[] | null>(null);
+  const [view, setView] = useState<{ version: number; changes: VersionChange[] } | null>(null);
   /** a structured field (list / people / colours) open in its own sheet */
   const [rows, setRows] = useState<{ target: Target; type: string; label: string; item?: readonly string[]; value: unknown[] } | null>(null);
   const [signOpen, setSignOpen] = useState(false);
@@ -565,6 +575,98 @@ export default function Editor() {
         </div>
       ) : null}
 
+      {historyOpen ? (
+        <div className="cms-sheet-backdrop" onClick={() => setHistoryOpen(false)}>
+          <div className="cms-sheet" role="dialog" aria-modal="true" aria-label="Version history" onClick={(e) => e.stopPropagation()}>
+            <div className="cms-sheet-head">
+              <div>
+                <div className="eyebrow">History</div>
+                <h2>{view ? `Version ${view.version}` : "Published versions"}</h2>
+              </div>
+              <button className="tray-x" onClick={() => setHistoryOpen(false)} aria-label="Close">
+                ×
+              </button>
+            </div>
+
+            {versions === null ? (
+              <p className="cms-sheet-empty">Loading…</p>
+            ) : versions.length === 0 ? (
+              <p className="cms-sheet-empty">Nothing published yet.</p>
+            ) : view ? (
+              <>
+                <button className="btn btn-ghost btn-sm cms-back" onClick={() => setView(null)}>
+                  ← All versions
+                </button>
+                {view.changes.length === 0 ? (
+                  <p className="cms-sheet-empty">This version changed nothing.</p>
+                ) : (
+                  <ul className="cms-rows">
+                    {view.changes.map((c) => (
+                      <li key={`${c.entity}:${c.id}:${c.path}`}>
+                        <div className="cms-row-head">
+                          <span className="cms-row-where">
+                            {c.entityLabel} <span className="cms-row-field">{c.label}</span>
+                          </span>
+                          <span className="cms-foot-actions">
+                            {c.before === undefined ? (
+                              <button
+                                className="cms-row-drop"
+                                title="Put the feed's value back"
+                                onClick={() => void revertToFeed({ entity: c.entity, id: c.id, path: c.path })}
+                              >
+                                Revert to feed
+                              </button>
+                            ) : (
+                              <button
+                                className="cms-row-drop"
+                                title="Stage this value again"
+                                onClick={() => void commitField({ entity: c.entity, id: c.id, path: c.path }, c.before)}
+                              >
+                                Restore
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                        <div className="cms-row-diff">
+                          <span className="cms-before">{c.before === undefined ? "feed" : formatValue(c.before)}</span>
+                          <span className="cms-arrow">→</span>
+                          <span className="cms-after">{formatValue(c.after)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <ul className="cms-rows">
+                {versions.map((v) => (
+                  <li key={v.version}>
+                    <button
+                      className="cms-version"
+                      onClick={() => {
+                        void (async () => {
+                          const doc = await loadVersion(v.version);
+                          if (!doc) return;
+                          const prev = v.version > 1 ? await loadVersion(v.version - 1) : null;
+                          setView({ version: v.version, changes: diffVersion(doc, prev) });
+                        })();
+                      }}
+                    >
+                      <span className="cms-row-where">
+                        v{v.version} <span className="cms-row-field">{new Date(v.at).toLocaleString()}</span>
+                      </span>
+                      <span className="cms-foot-note">
+                        {v.fields} field{v.fields === 1 ? "" : "s"} · {v.entities} entit{v.entities === 1 ? "y" : "ies"}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       {review ? (
         <div className="cms-sheet-backdrop" onClick={() => setReview(false)}>
           <div className="cms-sheet" role="dialog" aria-modal="true" aria-label="Review changes" onClick={(e) => e.stopPropagation()}>
@@ -659,6 +761,19 @@ export default function Editor() {
           </button>
           <button className="btn btn-ghost btn-sm btn-discard" onClick={() => void discardAll()} disabled={!count || cms.busy}>
             Discard
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setHistoryOpen(true);
+              setView(null);
+              setVersions(null);
+              void loadVersions().then(setVersions);
+            }}
+            disabled={!cms.signedIn}
+            title={cms.signedIn ? "Published versions" : "Sign in to see versions"}
+          >
+            History
           </button>
           <button className="btn btn-primary btn-sm" onClick={() => setReview(true)}>
             Review{count ? ` · ${count}` : ""}

@@ -451,10 +451,13 @@ with the shared crop path, team and league fields, colour picker with a contrast
 a portrait uploaded through the dock is 224×224 and matches `save_image()`'s output byte-for-byte in
 dimensions, and a staff row can be added, reordered and removed in one publish.
 
-**Phase 4 — review, undo, flags (1 session).** Review sheet, revision history per entity, per-field
-revert, `Flag for re-import`, `cms-report.py` (orphaned overrides, flagged fields, stale photos).
-*Done when* a change can be published, reverted to the previous value and reverted to the feed value,
-each from the UI, with three revision rows to show for it.
+**Phase 4 — review, undo, flags. ✅ shipped (flags still open).** Review sheet, version history sheet
+in the dock (the last 20 published documents, each diffed against the one before it), per-field
+**Restore** (re-stages the previous value as a draft) and **Revert to feed** (drops the override
+server-side and reloads), and `scripts/cms-report.py` (orphaned overrides, empty overrides, dataset
+assets missing from disk). Verified end to end against the local store: v8's bio diff offered
+Restore and staged the prior value; v5's feed-valued diff offered Revert to feed and left the store
+empty at version 9. `Flag for re-import` has no endpoint yet — that is the remaining piece.
 
 **Phase 5 — hardening (1 session).** Rate limits, CSRF header, security headers in `netlify.toml`
 (`frame-ancestors 'none'`, `X-Content-Type-Options`, a `connect-src` that allows the functions origin),

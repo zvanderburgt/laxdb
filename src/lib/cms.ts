@@ -360,3 +360,89 @@ async function post(url: string, body?: unknown, method = "POST"): Promise<{ ok:
 export const resetPending = () => set({ pending: [] });
 
 export { overrides };
+
+/* --------------------------------- history --------------------------------- */
+
+export type VersionRow = { version: number; at: string; fields: number; entities: number };
+
+export type VersionDoc = { version: number; generated: string; entities: Record<string, { rev: number; fields: Record<string, unknown> }> };
+
+async function get<T>(url: string): Promise<T | null> {
+  try {
+    const res = await fetch(url, { credentials: "same-origin" });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Published versions, newest first (the server keeps the last 20). */
+/**
+ * Drop the editorial value and go back to the feed's. The server owns the document; the page
+ * reloads afterwards so every derived index is rebuilt from the feed value rather than patched
+ * in place (a field can feed similarity, peer ranks and charts).
+ */
+export async function revertToFeed(target: { entity: EntityType; id: string; path?: string }): Promise<boolean> {
+  const res = await post("/api/revert", {
+    entity: target.entity,
+    id: target.id,
+    ...(target.path ? { path: target.path } : {}),
+  });
+  if (!res.ok) {
+    set({ notice: res.error ?? "nothing to revert", noticeKind: "bad" });
+    return false;
+  }
+  location.reload();
+  return true;
+}
+
+export async function loadVersions(): Promise<VersionRow[]> {
+  const data = await get<{ versions: VersionRow[] }>("/api/history");
+  return data?.versions ?? [];
+}
+
+export async function loadVersion(version: number): Promise<VersionDoc | null> {
+  return get<VersionDoc>(`/api/history?version=${version}`);
+}
+
+export type VersionChange = {
+  entity: EntityType;
+  id: string;
+  path: string;
+  label: string;
+  entityLabel: string;
+  /** what the field held before this version — the value "restore" puts back */
+  before: unknown;
+  after: unknown;
+};
+
+/**
+ * What one version changed, field by field, against the version before it. A field that did not
+ * exist in the previous document reads as absent (`before: undefined`), which is the feed value.
+ */
+export function diffVersion(
+  doc: VersionDoc,
+  previous: VersionDoc | null,
+): VersionChange[] {
+  const out: VersionChange[] = [];
+  for (const [key, entity] of Object.entries(doc.entities ?? {})) {
+    const [kind, id] = key.split(":");
+    if (kind !== "player" && kind !== "team" && kind !== "league") continue;
+    const prev = previous?.entities?.[key]?.fields ?? {};
+    for (const [path, after] of Object.entries(entity.fields ?? {})) {
+      const before = prev[path];
+      if (JSON.stringify(before) === JSON.stringify(after)) continue;
+      out.push({
+        entity: kind,
+        id,
+        path,
+        label: fieldFor(kind, path)?.label ?? path,
+        entityLabel: entityLabelOf(kind, id),
+        before,
+        after,
+      });
+    }
+  }
+  return out;
+}

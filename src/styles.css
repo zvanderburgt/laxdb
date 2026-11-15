@@ -1640,6 +1640,14 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .cms-arrow { color: var(--text-3); }
 .cms-after { color: var(--text); font-weight: 600; }
 .cms-row-err { margin-top: 4px; font-size: 12px; color: var(--red); }
+/* a version row and the "back to all versions" control inside the history sheet */
+.cms-version {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 4px 2px; border: 0; background: transparent;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.cms-version:hover .cms-row-where { color: var(--accent-ink); }
+.cms-back { margin: 4px 12px 10px; }
 .cms-rows li.is-err { background: color-mix(in srgb, var(--red) 6%, transparent); }
 .cms-sheet-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
