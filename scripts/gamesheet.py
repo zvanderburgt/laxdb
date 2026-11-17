@@ -1,15 +1,19 @@
 """GameSheet Stats API client (gamesheetstats.com).
 
-The public stats site is a Next.js app over an open JSON API. The HTML pages are
-behind a bot check, but `/api/*` is not — and the responses carry everything the
-site renders: player bios (birthdate, hometown, height, weight, jersey), photos,
-team logos and per-season stat lines.
+The public stats site is a Next.js app over an open JSON API. Both the API and
+the rendered pages sit behind Cloudflare, which refuses a plain `urllib` request
+with a 403 `Just a moment...` — but only because it fingerprints the TLS
+handshake, not the headers. Through `netget` (curl_cffi, Chromium fingerprint)
+the same URLs answer 200, so **no saved pages are needed any more**: `/api/*`
+gives bios and stat lines, and a rendered roster page gives the `SH`
+handedness column that no JSON surface carries.
 
   from gamesheet import GameSheet
   gs = GameSheet()
   leagues = gs.leagues()                 # id -> {title, active_season}
   seasons = gs.seasons(league_id)        # [{id, title, sport, start, end}]
   rows = gs.players(season_id)           # every player in that season
+  html = gs.page(f"/seasons/{sid}/teams/{tid}/roster")   # rendered table
 
 Every response is cached under scripts/.cache/gs so a re-run costs nothing.
 Politeness: one request at a time with a delay, and a normal browser UA.
@@ -21,9 +25,8 @@ import os
 import re
 import time
 import unicodedata
-import urllib.error
-import urllib.parse
-import urllib.request
+
+import netget
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(ROOT, ".cache", "gs")
@@ -122,9 +125,20 @@ class GameSheet:
         self.refresh = refresh
         os.makedirs(cache_dir, exist_ok=True)
         self._last = 0.0
+        self._sess = None
 
     # ---------------------------------------------------------------- plumbing
+    def _session(self):
+        if self._sess is None:
+            self._sess = netget.Session()
+        return self._sess
+
     def _get(self, path: str, retries: int = 3) -> dict | None:
+        """JSON from the API, through a Chromium TLS fingerprint (see netget).
+
+        `urllib` gets a 403 `Just a moment...` here even with a browser UA, so the
+        GameSheet pass silently filled nothing whenever Cloudflare tightened.
+        """
         url = BASE + path
         for attempt in range(retries):
             since = time.time() - self._last
@@ -132,15 +146,49 @@ class GameSheet:
                 time.sleep(self.delay - since)
             self._last = time.time()
             try:
-                with urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=45) as r:
-                    return json.loads(r.read())
-            except urllib.error.HTTPError as e:
-                if e.code in (429, 502, 503, 504):
-                    time.sleep(2 * (attempt + 1))
-                    continue
-                return None
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+                res = self._session().get(url, headers=HEADERS, timeout=45)
+            except Exception:  # noqa: BLE001 - transport hiccup, retry
                 time.sleep(1 + attempt)
+                continue
+            if res.status_code in (429, 502, 503, 504):
+                time.sleep(2 * (attempt + 1))
+                continue
+            if res.status_code >= 400:
+                return None
+            try:
+                return res.json()
+            except json.JSONDecodeError:
+                time.sleep(1 + attempt)
+        return None
+
+    def page(self, path: str, referer: str | None = None) -> str | None:
+        """Rendered HTML for one of the site's pages.
+
+        This is the only route to handedness: `/api/*` has no `shoot*` field at
+        all, while the roster table prints `SH` (Left/Right) alongside DOB, HT,
+        WT and BIRTHPLACE. Player pages answer 403 to a cold request, so pass the
+        roster page that links them as `referer` (a warm session is enough).
+        """
+        url = BASE + path
+        headers = {
+            **HEADERS,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Referer": referer or BASE + "/",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+        }
+        for attempt in range(2):
+            try:
+                res = self._session().get(url, headers=headers, timeout=45)
+            except Exception:  # noqa: BLE001
+                time.sleep(1 + attempt)
+                continue
+            if res.status_code in (429, 502, 503, 504):
+                time.sleep(2 * (attempt + 1))
+                continue
+            if res.status_code >= 400:
+                return None
+            return res.text
         return None
 
     def _cached(self, name: str, loader):
@@ -207,8 +255,10 @@ class GameSheet:
             url = url.rstrip("/") + "/public"
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=45) as r:
-                body = r.read()
+            res = netget.get(url, headers=HEADERS, timeout=45)
+            if res.status_code >= 400:
+                return False
+            body = res.content
             if len(body) < 512:
                 return False
             with open(dest, "wb") as f:
