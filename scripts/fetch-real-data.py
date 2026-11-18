@@ -976,7 +976,17 @@ def build_netfront():
         except Exception as e:
             print(f"  ! {short}: league page {e}")
             continue
-        team_links = sorted(set(re.findall(r'href="(https://stats\.netfrontsports\.com/team/[^"]+)"', h)))
+        # NetFront moved its team pages from stats.netfrontsports.com/team/<slug>
+        # to netfrontsports.com/lacrosse/team/<slug>?season=<id>; league pages now
+        # link the new host, and the old one 301s to it. Accept either form, and
+        # de-duplicate per club because the page links each club from several
+        # nav blocks (65 links -> 40 NLL clubs).
+        team_links, seen_clubs = [], set()
+        for link in re.findall(r'href="(https?://(?:stats\.)?netfrontsports\.com/(?:lacrosse/)?team/[^"]+)"', h):
+            club = link.split("?")[0].rstrip("/").split("/")[-1]
+            if club and club not in seen_clubs:
+                seen_clubs.add(club)
+                team_links.append(link)
         if not team_links:
             print(f"  x {short}: no teams")
             continue
@@ -988,18 +998,48 @@ def build_netfront():
         n_players = 0
         league_players = {}   # (norm_name, pos) -> player, merged across teams
         for link in team_links:
-            tslug = link.rstrip("/").split("/")[-1]
+            tslug = link.split("?")[0].rstrip("/").split("/")[-1]
             tid = f"t-{tslug}"
             try:
                 th = get(link)
             except Exception:
                 continue
-            skaters, goalies, career = parse_netfront_team(th)
+            skaters, goalies, career = [], [], {}
+            # A team page renders ONE season+phase at a time and offers the rest in
+            # `<select name="season">` ("2025-26 · Regular · National Lacrosse
+            # League"). The league page links the club's playoffs, so walk every
+            # "Regular" option; parsing only the linked page yields 0 skaters.
+            base = link.split("?")[0]
+            pages = [th]
+            for sid, label in re.findall(r'<option value="(\d+)"[^>]*>([^<]*)</option>', th):
+                if "regular" not in label.lower():
+                    continue
+                if int(str(sid)) and f"season={sid}" in link:
+                    continue
+                try:
+                    pages.append(get(f"{base}?season={sid}"))
+                except Exception:
+                    continue
+            seen_rows = set()
+            for page_html in pages:
+                sk, gl, car = parse_netfront_team(page_html)
+                for pos, rows in (("F", sk), ("G", gl)):
+                    for row in rows:
+                        key = (norm_name(row["name"]), row["season"], pos)
+                        if key in seen_rows:
+                            continue
+                        seen_rows.add(key)
+                        (goalies if pos == "G" else skaters).append(row)
+                for key, val in car.items():
+                    if key not in career or val["gp"] >= career[key]["gp"]:
+                        career[key] = val
             if not skaters and not goalies:
                 continue
             m = re.search(r"<title>([^<|]+)", th)
             pretty = (m.group(1).strip() if m else tslug.replace("-", " ").title())
             pretty = re.sub(r"\s+Lacrosse Stats.*$", "", pretty).strip()
+            # new titles carry the league in brackets: "Halifax Thunderbirds (NLL)"
+            pretty = re.sub(rf"\s*\({re.escape(short)}\)$", "", pretty).strip()
             teams.append({
                 "id": tid, "name": pretty, "shortName": pretty, "slug": tslug,
                 "leagueId": lid, "city": "", "cityName": "", "region": "",

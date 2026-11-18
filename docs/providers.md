@@ -11,6 +11,7 @@ Run `python3 scripts/coverage.py` for the live numbers; this file is the map.
 | mcla.us | 172 club teams | rosters, season stats, conference standings, team logos | no bios at all: no photo, hometown, height, weight, class |
 | stats.premierlacrosseleague.com | PLL | season stats, games with scores/venues, headshots (100%) | no date of birth or hometown |
 | stats.netfrontsports.com | 16 Canadian box leagues | season + career stats per player, team pages | stats only: no bios, no photos, no club logos |
+| **netfrontsports.com** | the same 16 box leagues (NetFront moved here) | one page per **season + phase**, listed in its `<select name="season">` | the URL the league page links is the *Playoffs* split and parses to zero skaters — walk every `Regular` option |
 | **gamesheetstats.com** | the same box leagues, plus OJLL/OJCL/OSL/MSL/WCSLA | **date of birth, hometown, height, weight, jersey, player photos, club logos**, 20 seasons deep | coverage of a club depends on the league uploading bios; photos exist for a minority of players |
 | ESPN scoreboard | D1 results | scores, standings, Elo inputs | names need alias mapping (~13 unmatched per season) |
 | ncaa.com | D1 polls + goalie leaders | committee top 10, RPI, individual goalie stats | client-rendered, browser only |
@@ -19,8 +20,11 @@ Run `python3 scripts/coverage.py` for the live numbers; this file is the map.
 
 ## GameSheet Stats
 
-The public stats site is a Next.js app over an open JSON API. The HTML pages sit
-behind a bot check, but `/api/*` answers plainly — no token, no browser:
+The public stats site is a Next.js app over an open JSON API. Both the API and
+the rendered pages sit behind Cloudflare, which refuses a plain `urllib`
+handshake with a 403 `Just a moment...` regardless of User-Agent — the verdict
+is on the TLS fingerprint. Through `scripts/netget.py` (curl_cffi impersonating
+Chrome) both answer 200 with no token and no browser:
 
 ```
 GET /api/season-info/{seasonId}              -> title, sport, dates, league{id,title}

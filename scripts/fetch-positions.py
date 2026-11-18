@@ -42,8 +42,9 @@ def ds_leagues() -> dict[str, str]:
     except Exception:
         return {}
     out = {}
-    for lid, site in mod.LEAGUES.items():
-        host = site.split("//")[1]
+    for lid, cfg in mod.LEAGUES.items():
+        site = cfg[0] if isinstance(cfg, (tuple, list)) else cfg
+        host = site.split("//")[-1]
         slug = "".join(c if c.isalnum() else "-" for c in host).strip("-")
         out[lid] = os.path.join(DS_CACHE, f"{slug}.json")
     return out
