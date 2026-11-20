@@ -7,6 +7,8 @@ Three defects found by scripts/check-data.py:
   2. three clubs appear twice with the same id, once per league they play in
   3. one club is referenced by 29 seasons but has no team row (it was dropped when the
      league's standings table did not list it)
+  4. the box import sometimes labels one club twice ("... Warriors T2" beside "... Warriors"),
+     leaving a team row with no players whose season rows are copies of the real club's
 
 Usage: python3 scripts/repair-data.py [--dry]
 """
@@ -130,6 +132,43 @@ def main():
         split += 1
     players.extend(clones)
 
+    # 5. empty duplicate team rows — the box import sometimes labels one club twice
+    #    ("... Warriors T2" beside "... Warriors"), leaving a team row that no player calls
+    #    home while every season row on it is a carbon copy of the same player's row on the
+    #    real club. Drop the label and the copies; nothing is lost.
+    def _row_sig(s):
+        return (s.get("season"), s.get("type"), s.get("gp"), s.get("g"), s.get("a"))
+
+    rows_by = defaultdict(list)
+    for p in players:
+        for s in p["seasons"]:
+            rows_by[s["teamId"]].append((p, s))
+
+    owned = Counter(p["teamId"] for p in players)
+    dead_teams, dead_rows = [], 0
+    for t in list(teams):
+        if owned.get(t["id"], 0) or not rows_by.get(t["id"]):
+            continue
+        common = None
+        for p, s in rows_by[t["id"]]:
+            here = {x["teamId"] for x in p["seasons"]
+                    if x is not s and x["teamId"] != t["id"] and _row_sig(x) == _row_sig(s)}
+            common = here if common is None else (common & here)
+            if not common:
+                break
+        if not common:
+            continue
+        live = [k for k in common if owned.get(k, 0) > 0]
+        if len(live) != 1:
+            continue
+        dead_teams.append(t["id"])
+        dead_rows += len(rows_by[t["id"]])
+        for p, _s in rows_by[t["id"]]:
+            p["seasons"] = [x for x in p["seasons"] if x["teamId"] != t["id"]]
+    if dead_teams:
+        drop = set(dead_teams)
+        teams = [t for t in teams if t["id"] not in drop]
+
     # players whose `teamId` points at a team we have just created keep working
     by_id = {t["id"]: t for t in teams}
     retarget = 0
@@ -152,6 +191,8 @@ def main():
     print(f"clamped {neg} negative season values, {gneg} game-log values")
     print(f"merged {dup} duplicate team rows, added {len(added)} missing teams, "
           f"retargeted {retarget} players, split {split} same-name merges")
+    print(f"dropped {len(dead_teams)} empty duplicate team rows and {dead_rows} copied season rows"
+          + (f": {", ".join(dead_teams)}" if dead_teams else ""))
     for t in added:
         print(f"  + {t['name']} ({t['leagueId']})")
 
