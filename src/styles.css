@@ -1871,7 +1871,7 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .form-strip { border-top: 1px solid var(--hairline); padding-top: 8px; }
 }
 
-/* dead once the link row started collapsing at 1060: the two-link drop only ever
+/* dead once the link row started collapsing: the two-link drop only ever
    applied from 901 to 1000, where the row no longer exists */
 
 /* history page: keep the long champions list from towering over the rail */
@@ -2287,10 +2287,10 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
    (the search field and the chip grid) was forcing the page 36px wider */
 .hero-inner > * { min-width: 0; }
 
-/* the nav collapses at 1060, not 900: nine links plus the search field need
+/* the nav collapses at 1140, not 900: ten links plus the search field need
    ~990px of content, so 1001–1040 overflowed the viewport by up to 21px once the
    link row came back. The hamburger carries every route below the breakpoint. */
-@media (max-width: 1060px) {
+@media (max-width: 1140px) {
   .nav-links { display: none; }
   .searchbtn-text, .searchbtn kbd { display: none; }
   .searchbtn { padding: 0 8px; }
@@ -2546,7 +2546,7 @@ a.vs-team:hover { color: var(--accent); }
 }
 
 /* ------------------------------ mobile menu ------------------------------ */
-/* Below 1060px the desktop link row is hidden and only search was left in the
+/* Below 1140px the desktop link row is hidden and only search was left in the
    header, so the nine routes were unreachable without the command palette.
    The trigger sits beside the theme toggle; the sheet drops below the bar and
    closes on route change, Escape or a tap on the scrim. */
@@ -2598,7 +2598,7 @@ a.vs-team:hover { color: var(--accent); }
 .menu-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-item .nav-count { margin-left: auto; }
 
-@media (max-width: 1060px) {
+@media (max-width: 1140px) {
   .menubtn { display: inline-grid; }
   /* the label is hidden here, so this control has to be a square holding a
      centred glyph: as an auto-width flex row it rendered 35×32 with the 15px
@@ -2606,7 +2606,7 @@ a.vs-team:hover { color: var(--accent); }
   .searchbtn { justify-content: center; padding: 0; }
   .searchbtn svg { width: 17px; height: 17px; }
 }
-@media (min-width: 641px) and (max-width: 1060px) {
+@media (min-width: 641px) and (max-width: 1140px) {
   .searchbtn { width: 32px; height: 32px; }
 }
 @media (max-width: 640px) {

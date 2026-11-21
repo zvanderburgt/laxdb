@@ -12,6 +12,7 @@ import MyRoster from "./pages/MyRoster";
 import History from "./pages/History";
 import Origins from "./pages/Origins";
 import Leaders from "./pages/Leaders";
+import Coaches from "./pages/Coaches";
 import Scores from "./pages/Scores";
 import Versus from "./pages/Versus";
 import Game from "./pages/Game";
@@ -78,7 +79,7 @@ function titleFor(path: string) {
   if (seg[0] === "team") return `${teamBySlug.get(seg[1] ?? "")?.name ?? "Team"} · LAXDB`;
   if (seg[0] === "league") return `${leagueById.get(seg[1] ?? "")?.name ?? "League"} · LAXDB`;
   const label = {
-    players: "Players", teams: "Teams", leagues: "Leagues", compare: "Compare",
+    players: "Players", teams: "Teams", leagues: "Leagues", coaches: "Coaches", compare: "Compare",
     "my-roster": "My roster", history: "History", origins: "Origins", leaders: "Leaders", scores: "Scores", vs: "Head to head", game: "Game",
   }[seg[0]];
   return label ? `${label} · LAXDB` : "LAXDB";
@@ -101,6 +102,7 @@ function Routes() {
   else if (seg[0] === "teams") page = <TeamsPage />;
   else if (seg[0] === "team") page = <WithSeasons><TeamPage /></WithSeasons>;
   else if (seg[0] === "leagues") page = <LeaguesPage />;
+  else if (seg[0] === "coaches") page = <Coaches />;
   else if (seg[0] === "league") page = <WithSeasons><LeaguePage /></WithSeasons>;
   else if (seg[0] === "compare") page = <ComparePage />;
   else if (seg[0] === "my-roster") page = <MyRoster />;

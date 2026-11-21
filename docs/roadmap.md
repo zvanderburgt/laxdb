@@ -11,6 +11,18 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
 
 ## Shipped
 
+**2026-11-21 — franchise history, coach directory, card sweep**
+- **Franchise history** on the team page: every season we hold, with the league, the published record
+  and goals where a results feed exists, that season's leading scorer (linked), and a footer that
+  totals the results. A box club publishes none, so those columns drop out instead of printing four
+  dashes. Replaces the ESPN-only "Recent seasons" card.
+- **`/coaches`** — every staff row we hold (653 people across 244 of 475 programs), grouped by
+  programme, searchable by name, role or club, with competition pills and an A–Z sort. The nav now
+  carries ten links, so the desktop row collapses at 1140px instead of 1060.
+- **`scripts/check-og.mjs`** renders the built card function over every league, every team and one
+  player per competition for each shape: 580/580, avg 89 KB, 90 s. Goalie cards chart save percentage
+  and count saves/GAA instead of points.
+
 **2026-11-21 — per-entity share cards**
 - `/og/player/<slug>.png`, `/og/team/<slug>.png` and `/og/league/<id>.png` are real 1200×630 cards:
   the entity's name, club colours, career line, points-by-season bars (player) or career leaders
@@ -108,8 +120,9 @@ NLL, MCLA or the box leagues), and the dataset is split into an index plus a sea
 
 ## Next — small, no new feed
 
-1. **All-time team encyclopedia** — stack every season we hold on one page: record, GF/GA,
-   conference, peak Elo, leading scorer. *(Basketball-Reference franchise pages.)*
+1. ~~**All-time team encyclopedia**~~ — shipped as **Franchise history** on the team page (per-season
+   record, goals, leading scorer, totals). Peak Elo per season is still open: the dataset stores only
+   the current campaign's rating.
 2. ~~Roster composition~~ — shipped as **returning production** on team pages; a class-by-class
    breakdown still needs a trustworthy class field (`gradYear` is the season year for 5,390 players).
 3. **Eligibility clock** — a "Class of 2027" view with years-remaining badges, from `gradYear`.
@@ -150,7 +163,9 @@ feed and health report are in the dock too. Left:
 5. **Point shares** — split team success into offensive and defensive shares. *(Hockey-Reference.)*
 6. **Championship detail** — winning coach, MVP, venue and OT flag alongside the score we already
    show. *(College Lacrosse News tournament history.)*
-7. **Coach directory and carousel** — W-L, tenure, titles. *(LaxGrid `/coaches/d1-men`.)*
+7. **Coach directory** — `/coaches` is shipped (every staff row, grouped and searchable). What is
+   still open is the *career* view LaxGrid has: W-L, tenure and titles per coach, which needs each
+   coach's seasons attached to a person rather than to a staff row.
 8. **Conference pages with history** — conference record and finish by season.
 9. **Recruiting commitments** — LaxNumbers publishes a ~3k-row static table of class-of-2027
    commitments with high school, club, position and destination.

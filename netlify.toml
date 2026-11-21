@@ -23,6 +23,10 @@
   to = "/index.html"
   status = 200
 [[redirects]]
+  from = "/coaches"
+  to = "/index.html"
+  status = 200
+[[redirects]]
   from = "/scores"
   to = "/index.html"
   status = 200

@@ -20,7 +20,7 @@ const SITE = (process.env.SITE_URL || "https://laxdb.netlify.app").replace(/\/$/
 const data = JSON.parse(await readFile(join(ROOT, "public/data.json"), "utf8"));
 const lastmod = String(data.meta?.generated ?? "").slice(0, 10) || undefined;
 
-const pages = ["/", "/players", "/teams", "/leagues", "/scores", "/leaders", "/history", "/origins"];
+const pages = ["/", "/players", "/teams", "/leagues", "/coaches", "/scores", "/leaders", "/history", "/origins"];
 const urls = [
   ...pages.map((p) => ({ loc: `${SITE}${p}`, priority: p === "/" ? "1.0" : "0.7" })),
   ...data.players.map((p) => ({ loc: `${SITE}/player/${p.slug}`, priority: "0.8" })),
