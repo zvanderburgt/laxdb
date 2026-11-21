@@ -22,6 +22,7 @@ import index from "./entity-index.json";
 type Row = string[];
 
 const SITE = (process.env.URL || "https://laxdb.netlify.app").replace(/\/$/, "");
+// every entity gets its own card, drawn by netlify/functions/og.ts; /og.png stays the home card
 const OG_IMAGE = `${SITE}/og.png`;
 
 export const config = {
@@ -51,6 +52,8 @@ type Meta = {
   description: string;
   canonical: string;
   ogType: string;
+  /** the entity's own 1200×630 card, when one exists */
+  image?: string;
   ld: Record<string, unknown>;
 };
 
@@ -72,6 +75,7 @@ function metaFor(pathname: string): Meta | null {
       description: `${name} — ${description}. Season-by-season stats, game log and career history on LAXDB.`,
       canonical: `${SITE}/player/${key}`,
       ogType: "profile",
+      image: `${SITE}/og/player/${key}.png`,
       ld: {
         "@context": "https://schema.org",
         "@type": "Person",
@@ -94,6 +98,7 @@ function metaFor(pathname: string): Meta | null {
         `${record ? `Record ${record}. ` : ""}Roster, leaders, staff and season history on LAXDB.`,
       canonical: `${SITE}/team/${key}`,
       ogType: "website",
+      image: `${SITE}/og/team/${key}.png`,
       ld: {
         "@context": "https://schema.org",
         "@type": "SportsTeam",
@@ -114,6 +119,7 @@ function metaFor(pathname: string): Meta | null {
       description: `${name} — ${level}. ${teamCount} teams, ${playerCount} players. Standings, stat leaders, polls and player profiles on LAXDB.`,
       canonical: `${SITE}/league/${key}`,
       ogType: "website",
+      image: `${SITE}/og/league/${key}.png`,
       ld: {
         "@context": "https://schema.org",
         "@type": "SportsOrganization",
@@ -136,13 +142,16 @@ function head(m: Meta): string {
     `<meta property="og:title" content="${esc(m.title)}">`,
     `<meta property="og:description" content="${esc(m.description)}">`,
     `<meta property="og:url" content="${esc(m.canonical)}">`,
-    `<meta property="og:image" content="${OG_IMAGE}">`,
+    `<meta property="og:image" content="${m.image ?? OG_IMAGE}">`,
     `<meta property="og:image:width" content="1200">`,
     `<meta property="og:image:height" content="630">`,
+    `<meta property="og:image:alt" content="${esc(m.title)}">`,
+    `<meta property="og:image:type" content="image/png">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta name="twitter:title" content="${esc(m.title)}">`,
     `<meta name="twitter:description" content="${esc(m.description)}">`,
-    `<meta name="twitter:image" content="${OG_IMAGE}">`,
+    `<meta name="twitter:image" content="${m.image ?? OG_IMAGE}">`,
+    `<meta name="twitter:image:alt" content="${esc(m.title)}">`,
     `<script type="application/ld+json">${JSON.stringify(m.ld)}</script>`,
   ].join("\n    ");
 }

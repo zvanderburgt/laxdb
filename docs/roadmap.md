@@ -11,6 +11,16 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
 
 ## Shipped
 
+**2026-11-21 — per-entity share cards**
+- `/og/player/<slug>.png`, `/og/team/<slug>.png` and `/og/league/<id>.png` are real 1200×630 cards:
+  the entity's name, club colours, career line, points-by-season bars (player) or career leaders
+  (team, league). Rendered server-side by `netlify/functions/og.ts` — satori lays out the card as SVG,
+  `@resvg/resvg-wasm` rasterises it — with the Inter fonts and the wasm inlined into the bundle, so no
+  runtime dependency and a zip deploy is still possible. ~150 ms warm, cached a week at the edge.
+- `meta.ts` now points `og:image`/`twitter:image` at the entity's card, with `og:image:alt`.
+  `entity-index.json` grew the facts a card needs (club colours, career totals, the last four scoring
+  seasons, a club's and a league's top three scorers) so a cold start never parses the dataset.
+
 **2026-11-21 — the payload split**
 - `data.json` (23.76 MB) is re-encoded into `index.wire.json` (13.65 MB: one record per player plus
   his latest line, career totals, per-competition peak and clubs) and `seasons.wire.json` (2.02 MB:
@@ -84,12 +94,14 @@ are linked from every fixture a team page shows, the team page has a dated **Sch
 card with a season selector (`src/lib/schedule.ts`; D1 and PLL only — no score feed exists for the
 NLL, MCLA or the box leagues), and the dataset is split into an index plus a season history.
 
-1. **Per-entity share images** — the Open Graph card is one static PNG today; the player-card renderer
-   already exists in `src/lib/export.ts`. Needs a decision on where the render happens (the function
-   bundle carries no image library, and a zip deploy cannot add one).
-2. **A third file for bios** — the index is 12.09 MB of per-player bio and 3.57 MB of summaries;
-   moving the detail-only fields (`birthplace`, `careerLine`, `gradYear`, `highSchool`, size, jersey,
-   dob — ~1.6 MB) behind the player page takes first paint to ~12 MB. `docs/dataset.md` has the split.
+1. ~~**Per-entity share images**~~ — shipped as `/og/*.png` (satori + resvg-wasm in the function,
+   facts from `entity-index.json`). Next: a build-time sweep that verifies every player/team/league
+   slug renders, and a few card variants (a goalie card, a record-book card).
+2. **A third file for bios** — measured and *not* worth it as planned: `birthplace` is needed by the
+   Players state/high-school filters and Origins, and the hero shows height/weight, so moving those
+   1.6 MB behind a gate would slow the two list routes it was meant to speed up. Only a field no list
+   route reads can leave the index; what is left (`careerLine`, `experience`, `status`, `gradYear`)
+   is ~0.5 MB. Parked until the index grows for another reason.
 3. **Manual, outside the repo** — verify the domain in Search Console and Bing, submit
    `/sitemap.xml`, and decide whether Cloudflare sits in front for per-IP rate limits on the feeds
    (`docs/crawling.md`).
