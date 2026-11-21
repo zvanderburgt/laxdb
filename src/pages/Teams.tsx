@@ -234,6 +234,162 @@ function SeriesCard({ team }: { team: Team }) {
  * Only D1 and the PLL publish a scorecard (`scores.json`); NLL, MCLA and the box leagues have
  * no score feed at all, so this card simply does not render for them.
  */
+/**
+ * The club's whole record on one card: every season we hold, the leading scorer of each, and the
+ * results totals they add up to. Separate from **Recent seasons**, which only shows the ESPN rows.
+ */
+function FranchiseHistoryCard({ team }: { team: Team }) {
+  const rows = useMemo(() => {
+    const bySeason = new Map<
+      string,
+      { leagueId: string; players: Set<string>; leader: { name: string; slug: string; pts: number } | null }
+    >();
+    for (const p of data.players) {
+      for (const s of p.seasons) {
+        if (s.teamId !== team.id) continue;
+        const entry = bySeason.get(s.season) ?? { leagueId: s.leagueId, players: new Set<string>(), leader: null };
+        entry.players.add(p.id);
+        const pts = s.pts ?? (s.g ?? 0) + (s.a ?? 0);
+        if (pts > (entry.leader?.pts ?? 0)) entry.leader = { name: p.name, slug: p.slug, pts };
+        bySeason.set(s.season, entry);
+      }
+    }
+    const results = new Map((team.history ?? []).map((h) => [h.season, h]));
+    const seasons = [...new Set([...bySeason.keys(), ...results.keys()])].sort((a, b) => b.localeCompare(a));
+    return seasons.map((season) => {
+      const entry = bySeason.get(season);
+      const result = results.get(season);
+      return {
+        season,
+        league: entry ? leagueById.get(entry.leagueId)?.short ?? "" : "",
+        w: result?.w ?? null,
+        l: result?.l ?? null,
+        gf: result?.gf ?? null,
+        ga: result?.ga ?? null,
+        leader: entry?.leader ?? null,
+        players: entry?.players.size ?? 0,
+      };
+    });
+  }, [team.id]);
+
+  if (!rows.length) return null;
+
+  const totals = rows.reduce(
+    (acc, r) => ({
+      w: acc.w + (r.w ?? 0),
+      l: acc.l + (r.l ?? 0),
+      gf: acc.gf + (r.gf ?? 0),
+      ga: acc.ga + (r.ga ?? 0),
+      withResult: acc.withResult + (r.w === null ? 0 : 1),
+      players: acc.players,
+    }),
+    { w: 0, l: 0, gf: 0, ga: 0, withResult: 0, players: 0 },
+  );
+  const span = `${rows[rows.length - 1].season}–${rows[0].season}`;
+  const num = (v: number | null) => (v === null ? "—" : v);
+  // a box club publishes no game results: four empty columns are noise, so they go entirely
+  const hasResults = totals.withResult > 0;
+
+  return (
+    <Card padded={false} className="standings-card">
+      <div className="card-toolbar">
+        <div>
+          <h3 className="card-title">Franchise history</h3>
+          <p className="muted small">
+            {rows.length} {rows.length === 1 ? "season" : "seasons"} on record · {span}
+            {totals.withResult ? ` · ${totals.w}–${totals.l} from published results` : ""}
+          </p>
+        </div>
+      </div>
+      <BlockList
+        rows={rows.map((r) => ({
+          key: r.season,
+          primary: <span className="num strong">{r.season}</span>,
+          meta: [r.league, r.players ? `${r.players} players` : ""].filter(Boolean).join(" · "),
+          cells: hasResults
+            ? [
+                { label: <Term k="w" />, value: num(r.w) },
+                { label: <Term k="l" />, value: num(r.l) },
+                { label: <Term k="gf" />, value: num(r.gf) },
+                { label: <Term k="ga" />, value: num(r.ga) },
+              ]
+            : [
+                { label: <Term k="gp" />, value: r.players },
+                { label: "PTS", value: r.leader?.pts ?? 0 },
+              ],
+          note: r.leader ? (
+            <>
+              Leading scorer:{" "}
+              <Link to={`/player/${r.leader.slug}`} className="cell-link">
+                {r.leader.name}
+              </Link>{" "}
+              <span className="num">{r.leader.pts} PTS</span>
+            </>
+          ) : null,
+        }))}
+      />
+      <div className="table-scroll hide-sm">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Season</th>
+              <th>League</th>
+              {hasResults ? (
+                <>
+                  <th className="r"><Term k="w" /></th>
+                  <th className="r"><Term k="l" /></th>
+                  <th className="r"><Term k="gf" /></th>
+                  <th className="r"><Term k="ga" /></th>
+                </>
+              ) : (
+                <th className="r">Players</th>
+              )}
+              <th>Leading scorer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.season}>
+                <td className="num strong">{r.season}</td>
+                <td className="muted small">{r.league || "—"}</td>
+                {hasResults ? (
+                  <>
+                    <td className="r num">{num(r.w)}</td>
+                    <td className="r num">{num(r.l)}</td>
+                    <td className="r num">{num(r.gf)}</td>
+                    <td className="r num">{num(r.ga)}</td>
+                  </>
+                ) : (
+                  <td className="r num">{r.players}</td>
+                )}
+                <td>
+                  {r.leader ? (
+                    <>
+                      <Link to={`/player/${r.leader.slug}`} className="cell-link">
+                        {r.leader.name}
+                      </Link>{" "}
+                      <span className="num muted">{r.leader.pts}</span>
+                    </>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {totals.withResult ? (
+        <div className="table-note">
+          Published results add up to {totals.w}–{totals.l} · {totals.gf} goals for · {totals.ga} against
+        </div>
+      ) : (
+        <div className="table-note">This competition publishes no game results, so only the scorer is known.</div>
+      )}
+    </Card>
+  );
+}
+
 function ScheduleCard({ team }: { team: Team }) {
   const [fixtures, setFixtures] = React.useState<Fixture[] | null>(null);
   const [season, setSeason] = React.useState<string | null>(null);
@@ -612,62 +768,7 @@ export function TeamPage() {
         <HonoursCard team={team} />
         <SeriesCard team={team} />
 
-        {team.history && team.history.length ? (
-          <Card padded={false} className="standings-card">
-            <div className="card-toolbar">
-              <div>
-                <h3 className="card-title">Recent seasons</h3>
-                <p className="muted small">Final regular-season record, from ESPN results</p>
-              </div>
-            </div>
-            <BlockList
-              rows={team.history.map((h) => ({
-                key: h.season,
-                primary: <span className="num strong">{h.season}</span>,
-                cells: [
-                  { label: <Term k="w" />, value: h.w },
-                  { label: <Term k="l" />, value: h.l },
-                  { label: <Term k="gf" />, value: h.gf },
-                  { label: <Term k="ga" />, value: h.ga },
-                  {
-                    label: <Term k="diff" />,
-                    value: `${h.gf - h.ga > 0 ? "+" : ""}${h.gf - h.ga}`,
-                    strong: true,
-                  },
-                ],
-              }))}
-            />
-            <div className="table-scroll hide-sm">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Season</th>
-                    <th className="r"><Term k="w" /></th>
-                    <th className="r"><Term k="l" /></th>
-                    <th className="r"><Term k="gf" /></th>
-                    <th className="r"><Term k="ga" /></th>
-                    <th className="r"><Term k="diff" /></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {team.history.map((h) => (
-                    <tr key={h.season}>
-                      <td className="num strong">{h.season}</td>
-                      <td className="r num">{h.w}</td>
-                      <td className="r num">{h.l}</td>
-                      <td className="r num">{h.gf}</td>
-                      <td className="r num">{h.ga}</td>
-                      <td className={`r num ${h.gf - h.ga >= 0 ? "" : "muted"}`}>
-                        {h.gf - h.ga > 0 ? "+" : ""}
-                        {h.gf - h.ga}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        ) : null}
+        <FranchiseHistoryCard team={team} />
 
         <Card>
           <div className="card-toolbar">
