@@ -48,6 +48,8 @@ type Card = {
   subtitle: string;
   stats: [string, string][];
   bars?: { label: string; value: number }[];
+  barsTitle?: string;
+  barsSuffix?: string;
   list?: { label: string; value: string }[];
   listTitle?: string;
 };
@@ -229,7 +231,7 @@ function card(c: Card) {
                   el(
                     "div",
                     { display: "flex", fontSize: "12px", fontWeight: 400, color: MUTED, letterSpacing: "1.8px", marginBottom: "14px" },
-                    "POINTS BY SEASON",
+                    c.barsTitle ?? "POINTS BY SEASON",
                   ),
                   el(
                     "div",
@@ -247,12 +249,18 @@ function card(c: Card) {
                           height: "186px",
                         },
                         [
-                          el("div", { display: "flex", fontSize: "15px", fontWeight: 600, color: b.value === max ? "#ffffff" : MUTED, marginBottom: "8px" }, String(b.value)),
+                          el(
+                            "div",
+                            { display: "flex", fontSize: "15px", fontWeight: 600, color: b.value === max ? "#ffffff" : MUTED, marginBottom: "8px" },
+                            `${b.value}${c.barsSuffix ?? ""}`,
+                          ),
                           el("div", {
                             display: "flex",
                             width: "84px",
                             height: `${Math.max(8, Math.round((b.value / max) * 140))}px`,
-                            background: b.value === max ? bar : alpha(c.accent || c.colour, 0.5),
+                            // a club's second colour can be near-black: the non-leading bars use a
+                            // neutral so the chart never loses three of its four bars
+                            background: b.value === max ? bar : "rgba(255,255,255,0.22)",
                             borderRadius: "5px 5px 0 0",
                           }),
                         ],
@@ -322,7 +330,10 @@ function card(c: Card) {
   );
 }
 
-type PlayerRow = [string, string, string, string, string, string, string, number[], [string, number][] | null];
+type PlayerRow = [
+  string, string, string, string, string, string, string,
+  number[], [string, number][] | null, number[] | null, [string, number][] | null,
+];
 
 function cardFor(pathname: string): Card | null {
   const [, , kind, rawKey] = pathname.split("/");
@@ -335,24 +346,38 @@ function cardFor(pathname: string): Card | null {
   if (kind === "player") {
     const row = players[key];
     if (!row) return null;
-    const [name, club, league, position, , c1, c2, career, series] = row;
+    const [name, club, league, position, , c1, c2, career, series, goalie, svSeries] = row;
     const [pts, gp, g, a] = career ?? [0, 0, 0, 0];
-    const bars = (series ?? []).map(([season, value]) => ({ label: season, value }));
+    const isGoalie = /goalie/i.test(position ?? "");
+    // a goalie's card charts save percentage and counts saves, not goals
+    const bars = isGoalie && svSeries
+      ? svSeries.map(([season, value]) => ({ label: season, value }))
+      : (series ?? []).map(([season, value]) => ({ label: season, value }));
     // a roster entry has no stat line at all: zeros would read as "played, scored nothing"
     const dash = gp > 0 ? null : "—";
+    const goalieStats: [string, string][] | null = isGoalie && goalie
+      ? [
+          [dash ?? String(goalie[4] ?? 0), "GAMES"],
+          [dash ?? String(goalie[0] ?? 0), "SAVES"],
+          [dash ?? (goalie[2] ? `${Number(goalie[2]).toFixed(1)}%` : "—"), "SAVE %"],
+          [dash ?? (goalie[3] ? Number(goalie[3]).toFixed(2) : "—"), "GAA"],
+        ]
+      : null;
     return {
       kicker: [position, club, league].filter(Boolean).join(" · "),
       colour: c1,
       accent: c2 || c1,
       title: name,
       subtitle: [club, position].filter(Boolean).join(" · ") || league,
-      stats: [
+      stats: goalieStats ?? [
         [dash ?? String(pts), "CAREER PTS"],
         [dash ?? String(g), "GOALS"],
         [dash ?? String(a), "ASSISTS"],
         [dash ?? String(gp), "GAMES"],
       ],
       bars,
+      barsTitle: isGoalie && svSeries ? "SAVE % BY SEASON" : "POINTS BY SEASON",
+      barsSuffix: isGoalie && svSeries ? "%" : "",
       // with no season line there is nothing to chart, so the right column carries the facts instead
       listTitle: "PROFILE",
       list: bars.length

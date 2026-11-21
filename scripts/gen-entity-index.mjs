@@ -7,7 +7,7 @@
  * and bundled into it. Arrays rather than objects: 27k entries twice over is megabytes, and the field
  * order is fixed here.
  *
- *   players: slug  → [name, club, league, position, statLine, colour1, colour2, [careerPts, careerGp, careerG, careerA], series]
+ *   players: slug  → [name, club, league, position, statLine, colour1, colour2, [careerPts, careerGp, careerG, careerA], series, goalieStats, svSeries]
  *   teams:   slug  → [name, league, city, record, elo, playerCount, seasonCount, colour1, colour2, topScorers]
  *   leagues: id    → [name, level, teamCount, playerCount, firstSeason, lastSeason, topScorers]
  *
@@ -65,6 +65,36 @@ const career = (p) => {
   return [pts, gp, g, a];
 };
 
+/** A goalie's card: saves, save percentage, GAA and games, plus save % by season. */
+const goalieStats = (p) => {
+  if (p.position !== "G") return [null, null];
+  const rows = p.seasons ?? [];
+  const sum = (k) => rows.reduce((n, s) => n + (Number(s[k]) || 0), 0);
+  const gp = sum("gp");
+  const sv = sum("sv");
+  const ga = sum("ga");
+  const min = sum("min");
+  // box feeds publish the rates instead of raw minutes/saves, weighted by games played
+  const weighted = (key, fallback) => {
+    const pub = rows.filter((s) => typeof s[key] === "number" && s[key] > 0);
+    if (!pub.length) return fallback;
+    const w = pub.reduce((n, s) => n + Math.max(1, s.gp || 0), 0);
+    return pub.reduce((n, s) => n + s[key] * Math.max(1, s.gp || 0), 0) / w;
+  };
+  const svp = weighted("svp", sv + ga ? sv / (sv + ga) : 0);
+  const gaa = weighted("gaa", min ? (ga * 60) / min : 0);
+
+  const bySeason = new Map();
+  for (const s of rows) {
+    if (!(s.gp ?? 0)) continue;
+    const row = s.sv + s.ga ? s.sv / (s.sv + s.ga) : typeof s.svp === "number" ? s.svp : null;
+    if (row === null) continue;
+    bySeason.set(String(s.season), Number((row * 100).toFixed(1)));
+  }
+  const svSeries = bySeason.size > 1 ? [...bySeason.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-4) : null;
+  return [[sv, ga, Number((svp * 100).toFixed(1)), Number(gaa.toFixed(2)), gp], svSeries];
+};
+
 const players = {};
 for (const p of data.players) {
   if (!p.slug) continue;
@@ -72,6 +102,7 @@ for (const p of data.players) {
   const league = leagueById.get(p.leagueId);
   const [c1, c2] = team?.colors ?? FALLBACK;
   const [pts, gp, g, a] = career(p);
+  const [goalie, svSeries] = goalieStats(p);
   players[p.slug] = [
     p.name,
     team?.name ?? "",
@@ -82,6 +113,8 @@ for (const p of data.players) {
     c2,
     [pts, gp, g, a],
     series(p),
+    goalie,
+    svSeries,
   ];
 }
 
