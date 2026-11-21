@@ -18,7 +18,8 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
   dashes. Replaces the ESPN-only "Recent seasons" card.
 - **`/coaches`** — every staff row we hold (653 people across 244 of 475 programs), grouped by
   programme, searchable by name, role or club, with competition pills and an A–Z sort. The nav now
-  carries ten links, so the desktop row collapses at 1140px instead of 1060.
+  carries ten links, so the desktop row collapses at 1160px instead of 1060 (measured: the row needs
+  1150px at its widest).
 - **`scripts/check-og.mjs`** renders the built card function over every league, every team and one
   player per competition for each shape: 580/580, avg 89 KB, 90 s. Goalie cards chart save percentage
   and count saves/GAA instead of points.
