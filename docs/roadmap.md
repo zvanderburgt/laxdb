@@ -13,9 +13,10 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
 
 **2026-11-21 — the payload split**
 - `data.json` (23.76 MB) is re-encoded into `index.wire.json` (13.65 MB: one record per player plus
-  his latest line, career totals, per-competition peak and clubs) and `seasons.wire.json` (3.92 MB:
-  all 54,328 season rows). First paint decodes 13.65 MB instead of 14.45 (−5.5%); the history is
-  fetched on demand and the routes that read it gate behind the boot skeleton.
+  his latest line, career totals, per-competition peak and clubs) and `seasons.wire.json` (2.02 MB:
+  every season row but each player's newest, which rides in the index). First paint decodes 13.65 MB
+  instead of 14.45 (−5.5%); the history is fetched on demand and the routes that read it gate behind
+  the boot skeleton.
 - `gaa`/`svp` were being dropped by the wire encoder — 1,287 box goaltender rows lost their
   published rates. They are in `SEASON_COLS` now, and the season table prints them instead of "—".
 

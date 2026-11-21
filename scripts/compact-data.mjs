@@ -173,7 +173,11 @@ const teamIdx = new Map(data.teams.map((t, i) => [t.id, i]));
 const leagueIdx = new Map(data.leagues.map((l, i) => [l.id, i]));
 
 const players = data.players.map((p) => encodePlayer(p, teamIdx, leagueIdx));
-const seasonRows = data.players.map((p) => (p.seasons ?? []).map((r) => encodeSeason(r, teamIdx, leagueIdx)));
+// the newest row already travels in the index as `cur`, so the history file carries only the rows
+// before it — otherwise every player's latest season would be downloaded twice
+const seasonRows = data.players.map((p) =>
+  (p.seasons ?? []).slice(0, -1).map((r) => encodeSeason(r, teamIdx, leagueIdx)),
+);
 
 const years = data.players
   .flatMap((p) => (p.seasons ?? []).map((s) => Number(s.season)))
@@ -205,6 +209,7 @@ const seasons = {
   format: FORMAT_SEASONS,
   seasonCols: SEASON_COLS,
   generated: index.generated,
+  // the newest row of each player is in the index (`cur`); this is every earlier row
   players: seasonRows,
 };
 
@@ -243,8 +248,11 @@ if (process.argv.includes("--check")) {
   for (const [i, p] of data.players.entries()) {
     const got = back[i];
     const wire = index.players[i];
+    // the history file holds every row but the newest, which rides in the index as `cur`
     const rows = seasons.players[i] ?? [];
-    if (p.seasons.length !== rows.length) report(`${p.slug}: history rows ${rows.length} ≠ ${p.seasons.length}`);
+    const rebuilt = [...rows];
+    if (p.seasons.length) rebuilt.push(wire.cur);
+    if (p.seasons.length !== rebuilt.length) report(`${p.slug}: history rows ${rebuilt.length} ≠ ${p.seasons.length}`);
 
     for (const [k, v] of Object.entries(p)) {
       if (k === "seasons") continue;
@@ -254,7 +262,7 @@ if (process.argv.includes("--check")) {
     }
 
     for (const [j, s] of p.seasons.entries()) {
-      const g = decodeSeason(rows[j] ?? [], cols, index.teams, index.leagues);
+      const g = decodeSeason(rebuilt[j] ?? [], cols, index.teams, index.leagues);
       for (const c of cols) {
         const want = s[c] ?? null;
         const have = g[c] ?? null;

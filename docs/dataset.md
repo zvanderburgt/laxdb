@@ -8,7 +8,7 @@ it directly: `scripts/compact-data.mjs` re-encodes it into **two** wire files on
 data.json             23.76 MB   source of truth, written by fetch-real-data.py
   ↓ compact-data.mjs (run by npm run build)
 index.wire.json       13.65 MB   one record per player + three summaries   ← before first paint
-seasons.wire.json      3.92 MB   the full season history, per player       ← on demand
+seasons.wire.json      2.02 MB   every season row but each player's newest  ← on demand
   ↓ wire.ts decodeIndex() / applySeasonHistory()
 Dataset              the objects every page already expects
 ```
@@ -21,11 +21,13 @@ line that matters: **a list row needs one line per player, not his whole career.
 - `index.wire.json` — every player's identity, bio, club and photo, plus `cur` (his latest season row),
   `tot` (career totals), `pk` (his best season per competition) and `cl` (the clubs he played for).
   Home, Players, Teams, Origins, My roster, Compare and the ⌘K palette render from this alone.
-- `seasons.wire.json` — 54,328 season rows, one tuple array per player, aligned to the index's player
-  order. The player page, Leaders, History, League boards and a team's season cards need it;
-  `useSeasons()` gates exactly those routes behind the boot skeleton, and `primeSeasons()` starts the
-  fetch immediately when the landing route is one of them (otherwise after first paint, and never on
-  a metered or 2G/3G connection).
+- `seasons.wire.json` — every season row except each player's newest (that one already travels in the
+  index as `cur`, and `applySeasonHistory()` appends it back), as one tuple array per player aligned to
+  the index's player order. The player page, Leaders, History, League boards and a team's season cards
+  need it; `useSeasons()` gates exactly those routes behind the boot skeleton, and `primeSeasons()`
+  starts the fetch at boot when the landing route is one of them — otherwise the first time the
+  visitor hovers, focuses or touches a detail link, so a reader who stays on the lists never downloads
+  it (and never on a metered or 2G/3G link).
 
 Measured on the 2026-11-21 build (26,972 players, 54,328 player-seasons):
 
@@ -33,12 +35,15 @@ Measured on the 2026-11-21 build (26,972 players, 54,328 player-seasons):
 | --- | --- | --- |
 | one file, before | 14.45 MB | parsed before any route painted |
 | index now | 13.65 MB | first paint: **−5.5%** |
-| seasons now | 3.92 MB | was 11.67 MB as objects; off the first-paint path |
+| seasons now | 2.02 MB | was 11.67 MB as objects; off the first-paint path |
 
 The honest reading: the summaries (`cur` 1.89, `tot` 1.02, `pk` 0.51, `cl` 0.15 MB) cost almost as
 much as the rows they replace, because nearly every list row prints a current-season line and a
-career total. What the split buys is structural — the 12.09 MB of per-player bio stays flat as
-history grows, and every season added since 2020 lands in a file no list route downloads.
+career total. A Home visit therefore parses 15.67 MB across two files against 14.45 MB before — more
+total work for a shorter critical path (and Home is the one list route that asks for the history
+immediately, because its hero draws a points-by-season line). What the split buys is structural: the
+12.09 MB of per-player bio stays flat as history grows, and every season added since 2020 lands in a
+file most routes never download.
 
 ## What the wire format changes
 

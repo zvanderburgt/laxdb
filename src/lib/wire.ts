@@ -25,9 +25,10 @@ import type {
  * `teams`/`leagues`. Player fields holding an empty value are dropped — `normalizePlayer()` in
  * `src/lib/data.ts` restores the same defaults at load. Nothing outside this file knows any of that.
  *
- * Why: 23.8 MB of `data.json` becomes a 13.7 MB index plus a 3.9 MB history, and the history is off
- * the first-paint path. A new season-row field has to be appended to `SEASON_COLS` in the writer and
- * to `SeasonRow` together — the order **is** the format.
+ * Why: 23.8 MB of `data.json` becomes a 13.7 MB index plus a 2.0 MB history (every row except each
+ * player's newest, which the index already carries), and the history is off the first-paint path. A
+ * new season-row field has to be appended to `SEASON_COLS` in the writer and to `SeasonRow`
+ * together — the order **is** the format.
  */
 
 export const INDEX_FORMAT = "laxdb-index/2";
@@ -171,9 +172,11 @@ export function applySeasonHistory(dataset: Dataset, wire: WireSeasons): number 
   const cols = wire.seasonCols;
   let filled = 0;
   for (const [i, p] of dataset.players.entries()) {
-    const list = rows[i] ?? [];
-    p.seasons = list.map((row) => decodeRow(row, cols, dataset.teams, dataset.leagues));
-    if (p.seasons.length) filled += 1;
+    const list = (rows[i] ?? []).map((row) => decodeRow(row, cols, dataset.teams, dataset.leagues));
+    // the newest row travels in the index (`summary.current`), so it is not in this file
+    if (p.summary?.current) list.push(p.summary.current);
+    p.seasons = list;
+    if (list.length) filled += 1;
   }
   return filled;
 }

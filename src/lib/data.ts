@@ -161,7 +161,8 @@ export function ensureSeasons(): Promise<void> {
 
 /**
  * Start the history fetch without making anyone wait for it: immediately on a route that needs the
- * rows, otherwise after the first paint has settled and only when the connection is not metered.
+ * rows, otherwise the first time the visitor shows intent to open one (hover, focus or touch on a
+ * player/team/league link). A reader who never leaves the list routes never downloads it.
  */
 export function primeSeasons(): void {
   const needs = /^\/(player|team|league|leaders|history|vs)(\/|$)/.test(window.location.pathname);
@@ -169,12 +170,30 @@ export function primeSeasons(): void {
     void ensureSeasons();
     return;
   }
-  // a phone on a metered or slow link should not spend 3.9 MB on a page it may never leave
+  armSeasonPrefetch();
+}
+
+const DETAIL_LINK = 'a[href^="/player/"], a[href^="/team/"], a[href^="/league/"], a[href^="/leaders"], a[href^="/history"]';
+let prefetchArmed = false;
+
+/**
+ * Hovering a link is the cheapest honest signal that a click is coming, so the history is already in
+ * flight when the gated route mounts. Skipped entirely on a metered or 2G/3G link — 3.9 MB is not
+ * worth saving 200 ms there.
+ */
+function armSeasonPrefetch(): void {
+  if (prefetchArmed) return;
+  prefetchArmed = true;
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
   if (conn?.saveData || /2g|3g/.test(conn?.effectiveType ?? "")) return;
-  const idle = window.requestIdleCallback as undefined | ((cb: () => void, opts?: { timeout: number }) => number);
-  if (idle) idle(() => void ensureSeasons(), { timeout: 4000 });
-  else window.setTimeout(() => void ensureSeasons(), 3000);
+  const onIntent = (e: Event) => {
+    const el = e.target as Element | null;
+    if (!el?.closest?.(DETAIL_LINK)) return;
+    void ensureSeasons();
+  };
+  for (const type of ["pointerover", "pointerdown", "focusin", "touchstart"] as const) {
+    document.addEventListener(type, onIntent, { passive: true });
+  }
 }
 
 /** Subscribe a component to the history arriving; returns whether it is there yet. */
