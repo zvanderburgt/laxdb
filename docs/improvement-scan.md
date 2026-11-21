@@ -130,13 +130,21 @@ page. The game page also reads the PLL scorecard now, which it never did: every 
 on file". It still cannot cover the NLL, MCLA or the box leagues (no score feed), so the card appears
 only where the data does.
 
-### D. First paint still carries 18 MB
+### D. First paint still carries 18 MB — **shipped 2026-11-21**
 
-Cold load, live: `data.json` **1.53 MB brotli / 18.19 MB decoded**, 444 ms on the wire, DCL 911 ms, and
-the parse happens before any route paints. Home needs a fraction of it. A `players-index.json` (slug,
-name, club, league, position, photo, totals) would let home, players, teams, leaders and search paint
-first, with `data.json` following in the background for detail routes. **M** — worth doing before the
-dataset grows again rather than after.
+Cold load, live at the time: `data.json` **1.53 MB brotli / 18.19 MB decoded**, 444 ms on the wire,
+DCL 911 ms, and the parse happened before any route painted.
+
+Built: `scripts/compact-data.mjs` now writes `index.wire.json` (one record per player plus his latest
+line, career totals, per-competition peak and clubs) and `seasons.wire.json` (every season row).
+Measured on the 26,972-player build: first paint decodes **13.65 MB instead of 14.45** (−5.5%), and
+the 3.92 MB history is fetched on demand — the player page, Leaders, History, League boards and team
+pages gate on it behind the boot skeleton, list routes never download it.
+
+The five per cent, not thirty, is the honest number: `cur` + `tot` + `pk` + `cl` (3.57 MB) cost almost
+what the rows did, because nearly every list row prints a current-season line and a career total. The
+structural win is that the 12.09 MB of bio is now flat as history grows. A third file for the
+detail-only bio fields (~1.6 MB) is the next measured step — `docs/dataset.md`.
 
 ### E. Thin by design, not by bug
 

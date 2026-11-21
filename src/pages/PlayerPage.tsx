@@ -97,6 +97,9 @@ function Profile({ player }: { player: Player }) {
   // 411 players are roster entries whose competition published no stat line — the
   // page should say that rather than draw an empty chart and a column of zeros
   const hasStats = player.seasons.some((s) => (s.gp ?? 0) > 0);
+  // the rows live in a second file; if it failed to load the page must say so rather than claim
+  // this is a roster entry with no stat line
+  const historyMissing = !player.seasons.length && (player.summary?.seasonCount ?? 0) > 0;
 
   const roster = useRoster();
   const saved = roster.some((p) => p.id === player.id);
@@ -204,7 +207,11 @@ function Profile({ player }: { player: Player }) {
                   Statistics only — {league?.short ?? "this competition"} publishes no player bios.
                 </p>
               ) : null}
-              {!hasStats ? (
+              {historyMissing ? (
+                <p className="bio-note hero-bio-note">
+                  Season history didn’t load — reload to see the full record.
+                </p>
+              ) : !hasStats ? (
                 <p className="bio-note hero-bio-note">
                   Roster entry — no stat line was published for {player.name.split(" ")[0]} in{" "}
                   {[...new Set(player.seasons.map((s) => s.season))].join(", ")}.
@@ -738,8 +745,8 @@ function Overview({ player, onStats }: { player: Player; onStats: () => void }) 
                     <td className="r num">{s.min}</td>
                     <td className="r num">{s.sv}</td>
                     <td className="r num">{s.ga}</td>
-                    <td className="r num strong">{s.sv + s.ga ? (s.sv / (s.sv + s.ga)).toFixed(3).replace(/^0/, "") : "—"}</td>
-                    <td className="r num">{s.min ? ((s.ga * 60) / s.min).toFixed(2) : "—"}</td>
+                    <td className="r num strong">{s.svp ? s.svp.toFixed(3).replace(/^0/, "") : s.sv + s.ga ? (s.sv / (s.sv + s.ga)).toFixed(3).replace(/^0/, "") : "—"}</td>
+                    <td className="r num">{s.gaa ? s.gaa.toFixed(2) : s.min ? ((s.ga * 60) / s.min).toFixed(2) : "—"}</td>
                   </>
                 ) : (
                   <>

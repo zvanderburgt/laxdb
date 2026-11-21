@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { loadDataset } from "./lib/data";
+import { loadDataset, primeSeasons } from "./lib/data";
 import { loadOverrides } from "./lib/overrides";
 import { AppSkeleton } from "./components/ui";
 import "./styles.css";
@@ -60,6 +60,9 @@ loadDataset()
         </Boundary>
       </React.StrictMode>
     );
+    // the season history is a second file: start it now on a route that reads it, otherwise once
+    // the first paint has settled
+    primeSeasons();
   })
   .catch((err) => {
     root.render(

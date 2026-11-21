@@ -15,6 +15,7 @@ import {
   playerMatchesQuery,
   searchKey,
   searchTokens,
+  SEASON_RANGE,
 } from "../lib/data";
 import { Avatar, BlockList, Empty, PositionBadge, Provenance, Segmented, PlayerAvatar, Term } from "../components/ui";
 
@@ -166,8 +167,7 @@ export default function Players() {
           <h1>Players</h1>
           <p className="muted">
             {rows.length.toLocaleString()} of {data.players.length.toLocaleString()} players ·{" "}
-            {Math.min(...data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))))}–
-            {Math.max(...data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))))} seasons
+            {SEASON_RANGE[0]}–{SEASON_RANGE[1]} seasons
             <Provenance feed="school and league statistics feeds" />
           </p>
         </div>

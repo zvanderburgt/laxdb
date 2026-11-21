@@ -13,6 +13,7 @@ import {
   positionLabel,
   positionOrder,
   ratedTeams,
+  SEASON_RANGE,
   teamById,
   teamOf,
 } from "../lib/data";
@@ -653,9 +654,7 @@ export function LeaguePage() {
             <Stat label="Career goals" value={totalGoals.toLocaleString()} />
             <Stat
               label="Seasons"
-              value={`${(
-                pool.flatMap((pl) => pl.seasons.map((s) => s.season)).sort()[0] ?? data.meta.season
-              )}–${data.meta.season}`}
+              value={`${SEASON_RANGE[0] || data.meta.season}–${data.meta.season}`}
             />
           </div>
         </div>

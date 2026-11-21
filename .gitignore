@@ -19,3 +19,5 @@ data/cms-passphrase.netlify
 netlify/functions/entity-index.json
 # generated per build by scripts/compact-data.mjs from public/data.json
 public/data.wire.json
+public/index.wire.json
+public/seasons.wire.json

@@ -7,8 +7,17 @@ Last competitive scan: **2026-11-12** — 13 sites checked, 38 features logged, 
 Evidence and per-site notes: `docs/competitive-scan.md`.
 Last improvement scan: **2026-11-14** — `docs/improvement-scan.md` (search, suggested lists,
 honors, record book, roster-only profiles: shipped; crawl policy: shipped; what is open, below).
+Last payload pass: **2026-11-21** — the dataset is two files now (`docs/dataset.md`).
 
 ## Shipped
+
+**2026-11-21 — the payload split**
+- `data.json` (23.76 MB) is re-encoded into `index.wire.json` (13.65 MB: one record per player plus
+  his latest line, career totals, per-competition peak and clubs) and `seasons.wire.json` (3.92 MB:
+  all 54,328 season rows). First paint decodes 13.65 MB instead of 14.45 (−5.5%); the history is
+  fetched on demand and the routes that read it gate behind the boot skeleton.
+- `gaa`/`svp` were being dropped by the wire encoder — 1,287 box goaltender rows lost their
+  published rates. They are in `SEASON_COLS` now, and the season table prints them instead of "—".
 
 **2026-11-14 — findability, correctness, polish**
 - **Search** that survives punctuation and initials (`oneill`, `c j kirst`, `mount st marys`), and
@@ -26,11 +35,11 @@ honors, record book, roster-only profiles: shipped; crawl policy: shipped; what 
   canary.
 
 **Data**
-- 21,943 players, 473 teams, 19 competitions, 34,943 player-seasons (2021–2026)
+- 26,972 players, 475 teams, 19 competitions, 54,328 player-seasons (2020–2026)
 - NCAA D1: **72 programs** — roughly 3,000 players per season from 2022 to 2026
 - MCLA (172 teams), PLL, 16 Canadian box leagues down to Junior C
 - Elo + strength of schedule for 63 D1 teams, from 563 ESPN results
-- 252 team logos, 3,615 player headshots (224×224 webp, square-cropped)
+- 252 team logos, 6,256 player headshots (224×224 webp, square-cropped)
 - Careers merged per person: 1,253 players across teams, 792 across competitions
 
 **Pages**
@@ -60,37 +69,38 @@ What is left:
 1. **The long tail** (`data-gaps.md` phase 5) — box game logs, PLL birth dates, remaining staff and
    logos. Each is a scraper per source; measure with `coverage.py` before and after.
 2. **Handedness** (`data-gaps.md` phase 6) — the value is printed in GameSheet's *rendered* club
-   roster table and in no JSON surface, so it needs saved pages or a league CSV export; OJBLL and
-   BCJALL fill it, several clubs ship nulls by data entry. Probe one club before asking for more.
+   roster table and in no JSON surface. The two blockers are gone: requests go through a Chromium TLS
+   fingerprint (`scripts/netget.py`), and `scripts/parse-gamesheet-page.py` reads the roster table
+   directly, so a club pass needs no saved pages. Coverage is still 74 players (0.3%) because that
+   batch has not been run — OJBLL and BCJALL fill the field, several clubs ship nulls by data entry.
 
 Measured with `python3 scripts/coverage.py --save`, trended in `docs/coverage-history.json`.
 
 ## Next — what the improvement scan left open
 
 `docs/improvement-scan.md` has the evidence for each of these. Shipped since the scan: the game pages
-are linked from every fixture a team page shows, and the team page has a dated **Schedule & results**
+are linked from every fixture a team page shows, the team page has a dated **Schedule & results**
 card with a season selector (`src/lib/schedule.ts`; D1 and PLL only — no score feed exists for the
-NLL, MCLA or the box leagues).
+NLL, MCLA or the box leagues), and the dataset is split into an index plus a season history.
 
-1. **Split `data.json`** — 18.19 MB decoded before any route paints. A `players-index.json` lets list
-   routes paint first and the detail payload follow; it is also the structural fix for the bulk file.
-2. **Per-entity share images** — the Open Graph card is one static PNG today; the player-card renderer
-   already exists in `src/lib/export.ts`.
+1. **Per-entity share images** — the Open Graph card is one static PNG today; the player-card renderer
+   already exists in `src/lib/export.ts`. Needs a decision on where the render happens (the function
+   bundle carries no image library, and a zip deploy cannot add one).
+2. **A third file for bios** — the index is 12.09 MB of per-player bio and 3.57 MB of summaries;
+   moving the detail-only fields (`birthplace`, `careerLine`, `gradYear`, `highSchool`, size, jersey,
+   dob — ~1.6 MB) behind the player page takes first paint to ~12 MB. `docs/dataset.md` has the split.
 3. **Manual, outside the repo** — verify the domain in Search Console and Bing, submit
    `/sitemap.xml`, and decide whether Cloudflare sits in front for per-IP rate limits on the feeds
    (`docs/crawling.md`).
 
 ## Next — small, no new feed
 
-1. **Active players climbing the record book** — join current career totals to the NCAA lists and
-   project seasons-to-pass. *(Hockey-Reference "Active" tabs.)*
-2. **All-time team encyclopedia** — stack every season we hold on one page: record, GF/GA,
+1. **All-time team encyclopedia** — stack every season we hold on one page: record, GF/GA,
    conference, peak Elo, leading scorer. *(Basketball-Reference franchise pages.)*
-3. ~~Roster composition~~ — shipped as **returning production** on team pages; a class-by-class
+2. ~~Roster composition~~ — shipped as **returning production** on team pages; a class-by-class
    breakdown still needs a trustworthy class field (`gradYear` is the season year for 5,390 players).
-4. **Eligibility clock** — a "Class of 2027" view with years-remaining badges, from `gradYear`.
+3. **Eligibility clock** — a "Class of 2027" view with years-remaining badges, from `gradYear`.
    *(Transfermarkt contract expiry, translated to eligibility.)*
-5. **Provenance stamps** — "last updated" and the feed behind every board. *(MaxPreps.)*
 
 Judged and dropped from this tier: **home/away splits** (the box scores we parse publish no venue),
 **poll first-place votes and also-receiving** (none of the three reachable polls print them), and
@@ -106,10 +116,11 @@ Plan, field registry, auth model, infrastructure and phases: **`docs/cms.md`**; 
 `docs/cms-preview.html`.
 
 Phases 0–3 are shipped (override layer, dock and inline fields, structured controls, photo/logo
-upload with the client-side 224×224 crop, club colour). Left:
+upload with the client-side 224×224 crop, club colour), and phase 4's **version history**, revert to
+feed and health report are in the dock too. Left:
 
-1. **Phase 4** — per-version history UI, flags for a suspect feed value, and the orphan report for
-   overrides whose entity no longer exists.
+1. **Phase 4 leftovers** — flags for a suspect feed value, and the orphan report for overrides whose
+   entity no longer exists.
 2. **Phase 5** — hardening pass (rate limits on the API, audit trail, a review the whole surface).
 
 ## Next — needs a precompute pass

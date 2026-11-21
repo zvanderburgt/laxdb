@@ -1,5 +1,5 @@
-import type { Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
-import { decodeDataset, type WireDataset } from "./wire";
+import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
+import { applySeasonHistory, decodeIndex, type WireIndex, type WireSeasons } from "./wire";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -70,24 +70,33 @@ export let PLAYER_COUNT = 0;
 export let TEAM_COUNT = 0;
 export let SEASON_COUNT = 0;
 export let CURRENT = "";
+/** the span of seasons the dataset holds, as strings ("2020", "2026") */
+export let SEASON_RANGE: [string, string] = ["", ""];
 
 /**
- * The dataset ships as one static file and is fetched once. `data.wire.json` is the compact
- * encoding `scripts/compact-data.mjs` writes at build time (35% smaller, same in-memory shape);
- * `data.json` is the fallback for a deploy or a cached shell that predates it.
+ * The dataset ships as two static files (see src/lib/wire.ts). `index.wire.json` is one record per
+ * player plus the three summaries a list needs; it is fetched once, before the app renders.
+ * `seasons.wire.json` is the full season history — 54k rows — and is fetched only when a route needs
+ * it, so Home, Players, Teams and Origins never pay for it. `data.json` is the fallback for a deploy
+ * or a cached shell that predates the split.
  */
 export async function loadDataset(): Promise<void> {
   const base = import.meta.env.BASE_URL;
-  let res = await fetch(`${base}data.wire.json`, { cache: "no-cache" });
-  let payload: Dataset | WireDataset;
+  let res = await fetch(`${base}index.wire.json`, { cache: "no-cache" });
+  let payload: Dataset;
+  let stats: WireIndex["stats"] | undefined;
   if (res.ok) {
-    payload = decodeDataset((await res.json()) as WireDataset);
+    const wire = (await res.json()) as WireIndex;
+    stats = wire.stats;
+    payload = decodeIndex(wire);
   } else {
     res = await fetch(`${base}data.json`, { cache: "no-cache" });
     if (!res.ok) throw new Error(`dataset fetch failed: ${res.status}`);
     payload = (await res.json()) as Dataset;
+    // a single-file build carries its own history
+    seasonsReady = true;
   }
-  data = payload as Dataset;
+  data = payload;
 
   for (const p of data.players) {
     normalizePlayer(p);
@@ -102,8 +111,88 @@ export async function loadDataset(): Promise<void> {
 
   PLAYER_COUNT = data.players.length;
   TEAM_COUNT = data.teams.length;
-  SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
+  SEASON_COUNT = data.players.reduce((n, p) => n + (p.summary?.seasonCount ?? p.seasons.length), 0);
   CURRENT = data.meta.season;
+
+  const idxStats = stats;
+  if (idxStats?.first && idxStats?.last) {
+    SEASON_RANGE = [idxStats.first, idxStats.last];
+  } else {
+    const years = data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))).filter(Boolean);
+    SEASON_RANGE = years.length ? [String(Math.min(...years)), String(Math.max(...years))] : ["", ""];
+  }
+}
+
+/* ------------------------------ season history ----------------------------- */
+
+/** true once `player.seasons` holds the real rows (or the build shipped them inline) */
+export let seasonsReady = false;
+let seasonsPromise: Promise<void> | null = null;
+const seasonListeners = new Set<() => void>();
+
+function announceSeasons() {
+  seasonsReady = true;
+  for (const fn of seasonListeners) fn();
+  seasonListeners.clear();
+}
+
+/**
+ * Fetch the season history and write it onto the players already on screen. Idempotent; a failed
+ * fetch resolves anyway (the site still renders from the summaries) and is reported once.
+ */
+export function ensureSeasons(): Promise<void> {
+  if (seasonsPromise) return seasonsPromise;
+  const base = import.meta.env.BASE_URL;
+  seasonsPromise = (async () => {
+    if (seasonsReady) return;
+    const res = await fetch(`${base}seasons.wire.json`, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`season history fetch failed: ${res.status}`);
+    const wire = (await res.json()) as WireSeasons;
+    if (!wire?.players?.length) throw new Error("season history payload is empty");
+    const filled = applySeasonHistory(data, wire);
+    if (filled < 0) throw new Error("season history does not match this index (stale cache)");
+  })()
+    .catch((err) => {
+      console.error("[laxdb] season history unavailable:", err);
+    })
+    .finally(announceSeasons);
+  return seasonsPromise;
+}
+
+/**
+ * Start the history fetch without making anyone wait for it: immediately on a route that needs the
+ * rows, otherwise after the first paint has settled and only when the connection is not metered.
+ */
+export function primeSeasons(): void {
+  const needs = /^\/(player|team|league|leaders|history|vs)(\/|$)/.test(window.location.pathname);
+  if (needs) {
+    void ensureSeasons();
+    return;
+  }
+  // a phone on a metered or slow link should not spend 3.9 MB on a page it may never leave
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (conn?.saveData || /2g|3g/.test(conn?.effectiveType ?? "")) return;
+  const idle = window.requestIdleCallback as undefined | ((cb: () => void, opts?: { timeout: number }) => number);
+  if (idle) idle(() => void ensureSeasons(), { timeout: 4000 });
+  else window.setTimeout(() => void ensureSeasons(), 3000);
+}
+
+/** Subscribe a component to the history arriving; returns whether it is there yet. */
+export function useSeasons(): boolean {
+  const [ready, setReady] = useState(seasonsReady);
+  useEffect(() => {
+    if (seasonsReady) {
+      setReady(true);
+      return;
+    }
+    const fn = () => setReady(true);
+    seasonListeners.add(fn);
+    void ensureSeasons();
+    return () => {
+      seasonListeners.delete(fn);
+    };
+  }, []);
+  return ready;
 }
 
 /** The writer omits empty fields; restore the shape the UI expects, once. */
@@ -183,10 +272,22 @@ export const fmtDate = (iso: string) =>
     year: "numeric",
   });
 
-export const currentSeason = (p: Player): SeasonRow =>
-  p.seasons[p.seasons.length - 1] as SeasonRow;
+/** A zero row, so a caller printing `currentSeason(p).pts` can never hit `undefined`. */
+const EMPTY_SEASON: SeasonRow = {
+  season: "", teamId: "", leagueId: "", type: "", gp: 0, gs: 0, g: 0, a: 0, pts: 0, sh: 0, gb: 0,
+  to: 0, ct: 0, foW: 0, foA: 0, pen: 0, min: 0, ga: 0, sv: 0, w: 0, l: 0,
+};
 
-export function careerTotals(p: Player) {
+/**
+ * The newest season row. Reads the precomputed `summary.current` until the history lands, so a list
+ * row prints the same line either way.
+ */
+export const currentSeason = (p: Player): SeasonRow =>
+  p.seasons.length ? p.seasons[p.seasons.length - 1] : p.summary?.current ?? EMPTY_SEASON;
+
+export function careerTotals(p: Player): CareerTotals {
+  // before the history arrives the index carries the same sums, computed by the same arithmetic
+  if (!p.seasons.length && p.summary) return p.summary.career;
   const sum = (k: keyof SeasonRow) =>
     p.seasons.reduce((n, s) => n + (Number(s[k]) || 0), 0);
   const gp = sum("gp");
@@ -277,9 +378,14 @@ export function loadGames(): Promise<Record<string, GameRow[]>> {
 
 export function rosterOf(teamId: string) {
   // any season with the club counts: a player who moved keeps their history on every
-  // team they actually played for, not just the one they finished on
+  // team they actually played for, not just the one he finished on
   return data.players
-    .filter((p) => p.teamId === teamId || p.seasons.some((s) => s.teamId === teamId))
+    .filter(
+      (p) =>
+        p.teamId === teamId ||
+        (p.summary?.clubs.includes(teamId) ?? false) ||
+        p.seasons.some((s) => s.teamId === teamId),
+    )
     .sort((a, b) => (careerTotals(b).pts || 0) - (careerTotals(a).pts || 0));
 }
 
@@ -391,15 +497,55 @@ export function searchPlayers(q: string, limit = 8): Player[] {
 /* ----------------------------- suggested players ---------------------------- */
 
 const peakPts = (p: Player, leagueId?: string) => {
+  if (!p.seasons.length) {
+    const peaks = p.summary?.peaks ?? {};
+    if (leagueId) return peaks[leagueId]?.pts ?? 0;
+    return Object.values(peaks).reduce((best, l) => Math.max(best, l.pts), 0);
+  }
   const rows = leagueId ? p.seasons.filter((s) => s.leagueId === leagueId) : p.seasons;
   return rows.reduce((best, s) => Math.max(best, s.pts ?? 0), 0);
 };
-const totalGp = (p: Player) => p.seasons.reduce((n, s) => n + (s.gp ?? 0), 0);
+/** Games played inside one competition — the sample a board has to qualify on. */
+const gamesIn = (p: Player, leagueId?: string) => {
+  if (!p.seasons.length) {
+    if (!leagueId) return p.summary?.career.gp ?? 0;
+    return p.summary?.peaks[leagueId]?.gp ?? 0;
+  }
+  return p.seasons.reduce((n, s) => n + (leagueId && s.leagueId !== leagueId ? 0 : s.gp ?? 0), 0);
+};
+const totalGp = (p: Player) => p.seasons.reduce((n, s) => n + (s.gp ?? 0), 0) || p.summary?.career.gp || 0;
+
+/**
+ * The season a player is best known for, reduced to what the labels print. Available before the
+ * history lands, which is why the hero strip can render on first paint.
+ */
+export function peakLine(p: Player, leagueId?: string): { season: string; pts: number } | null {
+  if (!p.seasons.length) {
+    const peaks = p.summary?.peaks ?? {};
+    const line = leagueId
+      ? peaks[leagueId]
+      : Object.values(peaks).reduce<{ season: string; pts: number } | null>(
+          (best, l) => (!best || l.pts > best.pts ? l : best),
+          null,
+        );
+    if (line) return { season: line.season, pts: line.pts };
+    const cur = p.summary?.current;
+    return cur ? { season: cur.season, pts: cur.pts ?? 0 } : null;
+  }
+  const rows = leagueId ? p.seasons.filter((s) => s.leagueId === leagueId) : p.seasons;
+  if (!rows.length) return null;
+  const best = rows.reduce((a, s) => ((s.pts ?? 0) > (a.pts ?? 0) ? s : a), rows[0]);
+  return { season: best.season, pts: best.pts ?? 0 };
+}
 
 /** The season a player is best known for — scoped to a competition when one is given. */
 export function peakSeason(p: Player, leagueId?: string): SeasonRow | null {
   const rows = leagueId ? p.seasons.filter((s) => s.leagueId === leagueId) : p.seasons;
-  if (!rows.length) return null;
+  if (!rows.length) {
+    // only season and points are real here; the rows arrive with the history
+    const line = peakLine(p, leagueId);
+    return line ? ({ season: line.season, pts: line.pts } as SeasonRow) : null;
+  }
   return rows.reduce((best, s) => ((s.pts ?? 0) > (best.pts ?? 0) ? s : best), rows[0]);
 }
 
@@ -434,10 +580,9 @@ export function notablePlayers(
     if (picks.length >= n) break;
     // rank and gate inside the competition itself: a 129-point junior box summer is
     // not a "leading D1 scorer", however good the player turns out to be
-    const gpIn = (p: Player) => p.seasons.reduce((t, s) => t + (s.leagueId === leagueId ? s.gp ?? 0 : 0), 0);
     take(
       data.players
-        .filter((p) => p.leagueId === leagueId && gpIn(p) >= 12 && peakPts(p, leagueId) > 0)
+        .filter((p) => p.leagueId === leagueId && gamesIn(p, leagueId) >= 12 && peakPts(p, leagueId) > 0)
         .sort((a, b) => peakPts(b, leagueId) - peakPts(a, leagueId)),
       want,
     );

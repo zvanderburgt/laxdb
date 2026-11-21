@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "../lib/app";
 import { useFlipRows, useTrackedRect } from "../lib/motion";
 import type { Player, Team } from "../lib/types";
-import { data, fmtDate, positionLabel } from "../lib/data";
+import { currentSeason, data, fmtDate, positionLabel } from "../lib/data";
 
 /* --------------------------------- avatar --------------------------------- */
 
@@ -964,7 +964,8 @@ export function GradeBar({ label, value, rank }: { label: string; value: number;
 /* --------------------------------- player card ------------------------------ */
 
 export function PlayerCard({ player, team }: { player: Player; team?: Team }) {
-  const s = player.seasons[player.seasons.length - 1];
+  // the newest line — from the index summary until the season history lands
+  const s = currentSeason(player);
   return (
     <Link to={`/player/${player.slug}`} className="pcard">
       <div className="pcard-top">

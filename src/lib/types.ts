@@ -109,6 +109,52 @@ export interface SeasonRow {
   svp?: number | null;
 }
 
+/** The season a player is best known for in one competition, as the index carries it. */
+export interface PeakLine {
+  season: string;
+  pts: number;
+  gp: number;
+}
+
+/** Career totals — the sums `careerTotals()` returns, plus the two published rates. */
+export interface CareerTotals {
+  gp: number;
+  g: number;
+  a: number;
+  pts: number;
+  sh: number;
+  gb: number;
+  to: number;
+  ct: number;
+  pen: number;
+  sv: number;
+  ga: number;
+  min: number;
+  foW: number;
+  foA: number;
+  w: number;
+  l: number;
+  gaa: number;
+  svp: number;
+  fop: number;
+  ppg: number;
+}
+
+/**
+ * What the index file carries so a list can render without the season history: the latest row, the
+ * career totals, the best season per competition, and the clubs he played for. Absent on a fallback
+ * build that still ships `seasons` inline — in that case the helpers sum the rows instead.
+ */
+export interface PlayerSummary {
+  seasonCount: number;
+  current: SeasonRow | null;
+  career: CareerTotals;
+  /** leagueId → the season he is best known for there */
+  peaks: Record<string, PeakLine>;
+  /** distinct clubs, as team ids */
+  clubs: string[];
+}
+
 export interface GameRow {
   date: string;
   opponent: string;
@@ -179,6 +225,8 @@ export interface Player {
   bio: string;
   strengths: string[];
   seasons: SeasonRow[];
+  /** precomputed summary from the index file; absent when the build ships seasons inline */
+  summary?: PlayerSummary;
   /** the league's own career aggregate (box feeds publish this separately) */
   careerLine?: {
     gp: number; g: number; a: number; pts: number; pen: number; seasons: number; w?: number; l?: number;
