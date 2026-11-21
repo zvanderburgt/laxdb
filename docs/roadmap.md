@@ -228,6 +228,10 @@ tooltip showing the split.
 
 ## Known data issues
 
+- **Blaze Riorden carries skater lines in the NLL** (34 G / 39 A in 2022, career 107 G / 132 A for a
+  goalie) while his PLL rows are correct goalie lines with zero goals. Only 3 of 1,704 goalies have a
+  g+a total above 20, so this is a few bad rows, not a parser rule. Needs the NetFront rows re-read
+  for that club-season before the card and the profile are trusted for him.
 - Box leagues publish one season of detail per team page; career totals come from their own
   aggregate table, labelled as such.
 - ESPN returns a median of 4–5 games per team for 2023/24 against 15 for 2025, so only complete

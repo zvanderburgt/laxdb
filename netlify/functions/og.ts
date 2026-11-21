@@ -49,6 +49,7 @@ type Card = {
   stats: [string, string][];
   bars?: { label: string; value: number }[];
   list?: { label: string; value: string }[];
+  listTitle?: string;
 };
 
 /* fonts and the wasm module are per-instance, not per-request */
@@ -284,7 +285,7 @@ function card(c: Card) {
                   el(
                     "div",
                     { display: "flex", fontSize: "12px", fontWeight: 400, color: MUTED, letterSpacing: "1.8px", marginBottom: "18px" },
-                    (c.list ?? []).length ? "CAREER LEADERS" : "",
+                    c.listTitle ?? "CAREER LEADERS",
                   ),
                   ...(c.list ?? []).map((row) =>
                     el(
@@ -336,6 +337,9 @@ function cardFor(pathname: string): Card | null {
     if (!row) return null;
     const [name, club, league, position, , c1, c2, career, series] = row;
     const [pts, gp, g, a] = career ?? [0, 0, 0, 0];
+    const bars = (series ?? []).map(([season, value]) => ({ label: season, value }));
+    // a roster entry has no stat line at all: zeros would read as "played, scored nothing"
+    const dash = gp > 0 ? null : "—";
     return {
       kicker: [position, club, league].filter(Boolean).join(" · "),
       colour: c1,
@@ -343,12 +347,23 @@ function cardFor(pathname: string): Card | null {
       title: name,
       subtitle: [club, position].filter(Boolean).join(" · ") || league,
       stats: [
-        [String(pts), "CAREER PTS"],
-        [String(g), "GOALS"],
-        [String(a), "ASSISTS"],
-        [String(gp), "GAMES"],
+        [dash ?? String(pts), "CAREER PTS"],
+        [dash ?? String(g), "GOALS"],
+        [dash ?? String(a), "ASSISTS"],
+        [dash ?? String(gp), "GAMES"],
       ],
-      bars: (series ?? []).map(([season, value]) => ({ label: season, value })),
+      bars,
+      // with no season line there is nothing to chart, so the right column carries the facts instead
+      listTitle: "PROFILE",
+      list: bars.length
+        ? undefined
+        : (
+            [
+              club ? { label: club, value: "CLUB" } : null,
+              league ? { label: league, value: "COMPETITION" } : null,
+              position ? { label: position, value: "POSITION" } : null,
+            ].filter(Boolean) as { label: string; value: string }[]
+          ),
     };
   }
 
