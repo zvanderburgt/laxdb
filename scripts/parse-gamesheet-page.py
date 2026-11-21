@@ -13,6 +13,17 @@ object is still there, so both are read here, and the byte counts decide which w
   python3 scripts/parse-gamesheet-page.py ~/Downloads/*.html            # report
   python3 scripts/parse-gamesheet-page.py ~/Downloads/*.html --apply    # write hand into data.json
 
+It can also do the walking itself — no saved pages, no browser:
+
+  python3 scripts/parse-gamesheet-page.py --live --apply                # every box league we hold
+  python3 scripts/parse-gamesheet-page.py --live --only ojbll --apply   # one competition
+  python3 scripts/parse-gamesheet-page.py --live --max-clubs 8          # smoke run, report only
+
+`--live` enumerates the clubs of every GameSheet season from `/api/players/standings/<sid>`,
+fetches each club's rendered **roster** page (the only surface that prints `SH`) through the
+Chromium-fingerprint client, and caches it under `scripts/.cache/gs-rosters/<sid>-<tid>.html`.
+A re-run costs a stat() per club.
+
 Field order inside the flight payload differs per route (`id` comes before `firstName` on a
 player page, after it on a roster row), so this matches on `shotHand` and reads the fields
 out of a window around it instead of assuming an order.
@@ -30,6 +41,8 @@ from html import unescape as html_unescape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "public", "data.json")
+LEAGUE_MAP = os.path.join(ROOT, "scripts", ".cache", "gs", "league-map.json")
+PAGE_CACHE = os.path.join(ROOT, "scripts", ".cache", "gs-rosters")
 
 SHOT = re.compile(r'"shotHand":"(left|right|both|switch)"', re.I)
 # a roster page lists every club player but carries no shotHand at all (OJBLL is configured
@@ -203,15 +216,76 @@ def read_page(path: str) -> list[dict]:
     return [r for r in (row_at(flat, m.start(), "") for m in FIRST.finditer(flat)) if r]
 
 
+def live_pages(only: list[str], refresh: bool, max_clubs: int) -> list[str]:
+    """Fetch a roster page per club-season and return the cached file paths."""
+    from gamesheet import GameSheet
+    gs = GameSheet(refresh=refresh)
+    if not os.path.exists(LEAGUE_MAP):
+        raise SystemExit("no league map — run `python3 scripts/fetch-gamesheet.py --discover` first")
+    with open(LEAGUE_MAP) as f:
+        leagues = json.load(f)
+    os.makedirs(PAGE_CACHE, exist_ok=True)
+
+    wanted = [o.lower() for o in only]
+    paths: list[str] = []
+    fetched = cached = 0
+    for league in leagues.values():
+        title = league.get("title", "")
+        if wanted and not any(w in norm(title) for w in wanted):
+            continue
+        for sid, season in (league.get("seasons") or {}).items():
+            if season.get("sport") != "boxla":
+                continue  # the id space also carries hockey clubs under the same league ids
+            rows = gs.players(int(sid), limit=5000)
+            teams: dict[int, str] = {}
+            for r in rows:
+                for t in (r.get("teams") or []):
+                    if t.get("id"):
+                        teams[int(t["id"])] = t.get("title") or ""
+            if not teams:
+                continue
+            print(f"  {title[:44]:<46} {str(season.get('title'))[:44]:<46} {len(teams):>3} clubs")
+            for tid, tname in sorted(teams.items()):
+                if max_clubs and len(paths) >= max_clubs:
+                    print(f"  (stopping at {max_clubs} clubs)")
+                    return paths
+                path = os.path.join(PAGE_CACHE, f"{sid}-{tid}.html")
+                if os.path.exists(path) and os.path.getsize(path) > 20_000:
+                    cached += 1
+                    paths.append(path)
+                    continue
+                html = gs.page(f"/seasons/{sid}/teams/{tid}/roster")
+                if not html:
+                    print(f"    ! {tname[:40]} — no page (403 or empty)")
+                    continue
+                # a wrong-tab or JS-only page carries no table; cache nothing so a re-run retries
+                if "<table" not in html:
+                    print(f"    ! {tname[:40]} — page has no roster table")
+                    continue
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(html)
+                fetched += 1
+                paths.append(path)
+    print(f"\n  pages: {fetched} fetched, {cached} cached")
+    return paths
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("pages", nargs="+", help="saved GameSheet HTML files (globs ok)")
+    ap.add_argument("pages", nargs="*", help="saved GameSheet HTML files (globs ok)")
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--live", action="store_true", help="fetch club roster pages from GameSheet instead of reading saves")
+    ap.add_argument("--only", default="", help="with --live: comma-separated league-title fragments (ojbll, ojll, bcjall)")
+    ap.add_argument("--refresh-pages", action="store_true", help="with --live: ignore the cached pages")
+    ap.add_argument("--max-clubs", type=int, default=0, help="with --live: stop after N clubs (smoke run)")
     args = ap.parse_args()
 
-    paths: list[str] = []
-    for pattern in args.pages:
-        paths.extend(sorted(glob.glob(pattern)) or [pattern])
+    if args.live:
+        paths = live_pages([o for o in args.only.split(",") if o], args.refresh_pages, args.max_clubs)
+    else:
+        paths = []
+        for pattern in args.pages:
+            paths.extend(sorted(glob.glob(pattern)) or [pattern])
     # macOS metadata sidecars are named "._foo.html" and carry no payload
     paths = [p for p in paths if not os.path.basename(p).startswith("._")]
 
