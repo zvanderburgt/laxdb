@@ -20,7 +20,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const ROOT = process.cwd();
+/** what the meta function needs: a title, a description, a canonical */
 const OUT = join(ROOT, "netlify/functions/entity-index.json");
+/** what the share-card function needs: the same rows plus colours, careers, series, leaders */
+const CARDS = join(ROOT, "netlify/functions/entity-cards.json");
 
 const data = JSON.parse(await readFile(join(ROOT, "public/data.json"), "utf8"));
 const teamById = new Map(data.teams.map((t) => [t.id, t]));
@@ -197,9 +200,23 @@ for (const l of data.leagues) {
 }
 
 const payload = { generated: data.meta?.generated ?? "", players, teams, leagues };
-await writeFile(OUT, JSON.stringify(payload));
-const kb = (JSON.stringify(payload).length / 1024).toFixed(0);
+
+// the card file is the same rows untouched; the meta file is trimmed to the facts a <title>,
+// description and canonical need, because meta.mjs is bundled into every entity response and its
+// size is paid on each cold start (5.0 MB vs 2.0 MB is ~100 ms of parse a crawler never uses)
+const thin = {
+  generated: payload.generated,
+  players: Object.fromEntries(Object.entries(players).map(([k, r]) => [k, r.slice(0, 5)])),
+  teams: Object.fromEntries(Object.entries(teams).map(([k, r]) => [k, r.slice(0, 4)])),
+  leagues: Object.fromEntries(Object.entries(leagues).map(([k, r]) => [k, r.slice(0, 4)])),
+};
+
+await writeFile(OUT, JSON.stringify(thin));
+await writeFile(CARDS, JSON.stringify(payload));
+
+const kb = (JSON.stringify(players).length / 1024).toFixed(0);
 console.log(
   `entity index: ${Object.keys(players).length} players, ${Object.keys(teams).length} teams, ` +
-    `${Object.keys(leagues).length} leagues → netlify/functions/entity-index.json (${kb} KB)`,
+    `${Object.keys(leagues).length} leagues → entity-index.json (${(JSON.stringify(thin).length / 1024).toFixed(0)} KB)` +
+    ` + entity-cards.json (${(JSON.stringify(payload).length / 1024).toFixed(0)} KB)`,
 );

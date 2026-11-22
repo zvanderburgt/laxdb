@@ -11,8 +11,10 @@
  * (`netlify/assets/fonts/*.ttf`) and the resvg wasm, so the function carries no runtime dependency and
  * a zip deploy still works.
  *
- * Facts come from the generated `entity-index.json`, never from the dataset: a card has to answer in
- * a few milliseconds on a cold start, and 23 MB of JSON is not that.
+ * Facts come from the generated `entity-cards.json` (the full rows: colours, career totals, the
+ * scoring series, the leaders), never from the dataset: a card has to answer in a few milliseconds on
+ * a cold start, and 23 MB of JSON is not that. The meta function reads the trimmed
+ * `entity-index.json` instead — its bundle is on the path of every entity response.
  *
  * Layout is deliberately explicit — every column has a pixel width and `flexShrink: 0`. Satori sizes a
  * flex item from its content when it can, and a long name or a five-figure stat then pushes the right
@@ -27,7 +29,7 @@ import inter400 from "../assets/fonts/Inter-400.ttf";
 import inter600 from "../assets/fonts/Inter-600.ttf";
 import inter700 from "../assets/fonts/Inter-700.ttf";
 import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
-import index from "./entity-index.json";
+import index from "./entity-cards.json";
 
 const SITE = (process.env.URL || "https://laxdb.netlify.app").replace(/\/$/, "");
 

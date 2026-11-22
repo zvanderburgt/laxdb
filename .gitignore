@@ -17,6 +17,7 @@ data/cms-passphrase.netlify
 
 # generated per build by scripts/gen-entity-index.mjs (bundled into the meta function)
 netlify/functions/entity-index.json
+netlify/functions/entity-cards.json
 # generated per build by scripts/compact-data.mjs from public/data.json
 public/data.wire.json
 public/index.wire.json
