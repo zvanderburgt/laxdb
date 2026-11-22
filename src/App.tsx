@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from "react";
 import { CompareProvider, Link, RouterProvider, ThemeProvider, useRoute } from "./lib/app";
-import { leagueById, playerBySlug, teamBySlug, useSeasons } from "./lib/data";
+import { leagueById, playerBySlug, teamBySlug } from "./lib/data";
 import { CompareTray, Footer, Nav } from "./components/Chrome";
 import Home from "./pages/Home";
 import Players from "./pages/Players";
@@ -16,7 +16,7 @@ import Coaches from "./pages/Coaches";
 import Scores from "./pages/Scores";
 import Versus from "./pages/Versus";
 import Game from "./pages/Game";
-import { Empty, Skeleton, SkeletonCard } from "./components/ui";
+import { Empty } from "./components/ui";
 import { startEditing, stopEditing, useCms, useDataRevision } from "./lib/cms";
 
 // the editor surface is lazily loaded: an anonymous visitor never downloads it
@@ -48,30 +48,6 @@ function Cms() {
   );
 }
 
-/**
- * Routes that read the full season history (player page, team page, league boards, Leaders, History)
- * wait for it behind a skeleton. The file is fetched as soon as the app boots, so this is usually a
- * single frame — but it is never allowed to render a half-filled table.
- */
-function WithSeasons({ children }: { children: React.ReactNode }) {
-  const ready = useSeasons();
-  if (ready) return <>{children}</>;
-  return (
-    <div className="page" aria-busy="true">
-      <span className="sr-only" role="status">
-        Loading season history
-      </span>
-      <div className="page-head">
-        <div>
-          <Skeleton w={64} h={10} />
-          <Skeleton w="min(360px, 60%)" h={30} r={10} />
-        </div>
-      </div>
-      <SkeletonCard title="Season history" rows={7} cols={5} />
-    </div>
-  );
-}
-
 function titleFor(path: string) {
   const seg = path.split("/").filter(Boolean);
   if (seg.length === 0) return "LAXDB — The lacrosse player database";
@@ -98,17 +74,17 @@ function Routes() {
   let page: React.ReactNode;
   if (seg.length === 0) page = <Home />;
   else if (seg[0] === "players") page = <Players />;
-  else if (seg[0] === "player") page = <WithSeasons><PlayerPage /></WithSeasons>;
+  else if (seg[0] === "player") page = <PlayerPage />;
   else if (seg[0] === "teams") page = <TeamsPage />;
-  else if (seg[0] === "team") page = <WithSeasons><TeamPage /></WithSeasons>;
+  else if (seg[0] === "team") page = <TeamPage />;
   else if (seg[0] === "leagues") page = <LeaguesPage />;
   else if (seg[0] === "coaches") page = <Coaches />;
-  else if (seg[0] === "league") page = <WithSeasons><LeaguePage /></WithSeasons>;
+  else if (seg[0] === "league") page = <LeaguePage />;
   else if (seg[0] === "compare") page = <ComparePage />;
   else if (seg[0] === "my-roster") page = <MyRoster />;
-  else if (seg[0] === "history") page = <WithSeasons><History /></WithSeasons>;
+  else if (seg[0] === "history") page = <History />;
   else if (seg[0] === "origins") page = <Origins />;
-  else if (seg[0] === "leaders") page = <WithSeasons><Leaders /></WithSeasons>;
+  else if (seg[0] === "leaders") page = <Leaders />;
   else if (seg[0] === "scores") page = <Scores />;
   else if (seg[0] === "vs") page = <Versus />;
   else if (seg[0] === "game") page = <Game />;

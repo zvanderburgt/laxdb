@@ -140,21 +140,6 @@ export interface CareerTotals {
   ppg: number;
 }
 
-/**
- * What the index file carries so a list can render without the season history: the latest row, the
- * career totals, the best season per competition, and the clubs he played for. Absent on a fallback
- * build that still ships `seasons` inline — in that case the helpers sum the rows instead.
- */
-export interface PlayerSummary {
-  seasonCount: number;
-  current: SeasonRow | null;
-  career: CareerTotals;
-  /** leagueId → the season he is best known for there */
-  peaks: Record<string, PeakLine>;
-  /** distinct clubs, as team ids */
-  clubs: string[];
-}
-
 export interface GameRow {
   date: string;
   opponent: string;
@@ -225,8 +210,6 @@ export interface Player {
   bio: string;
   strengths: string[];
   seasons: SeasonRow[];
-  /** precomputed summary from the index file; absent when the build ships seasons inline */
-  summary?: PlayerSummary;
   /** the league's own career aggregate (box feeds publish this separately) */
   careerLine?: {
     gp: number; g: number; a: number; pts: number; pen: number; seasons: number; w?: number; l?: number;

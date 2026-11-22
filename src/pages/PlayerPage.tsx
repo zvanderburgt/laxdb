@@ -97,9 +97,6 @@ function Profile({ player }: { player: Player }) {
   // 411 players are roster entries whose competition published no stat line — the
   // page should say that rather than draw an empty chart and a column of zeros
   const hasStats = player.seasons.some((s) => (s.gp ?? 0) > 0);
-  // the rows live in a second file; if it failed to load the page must say so rather than claim
-  // this is a roster entry with no stat line
-  const historyMissing = !player.seasons.length && (player.summary?.seasonCount ?? 0) > 0;
 
   const roster = useRoster();
   const saved = roster.some((p) => p.id === player.id);
@@ -207,11 +204,7 @@ function Profile({ player }: { player: Player }) {
                   Statistics only — {league?.short ?? "this competition"} publishes no player bios.
                 </p>
               ) : null}
-              {historyMissing ? (
-                <p className="bio-note hero-bio-note">
-                  Season history didn’t load — reload to see the full record.
-                </p>
-              ) : !hasStats ? (
+              {!hasStats ? (
                 <p className="bio-note hero-bio-note">
                   Roster entry — no stat line was published for {player.name.split(" ")[0]} in{" "}
                   {[...new Set(player.seasons.map((s) => s.season))].join(", ")}.

@@ -9,17 +9,6 @@
   content-type: application/json; charset=utf-8
   x-robots-tag: noindex, nofollow, noarchive
 
-# the split payload: one record per player, then the season history on demand
-/index.wire.json
-  cache-control: public, max-age=300
-  content-type: application/json; charset=utf-8
-  x-robots-tag: noindex, nofollow, noarchive
-
-/seasons.wire.json
-  cache-control: public, max-age=300
-  content-type: application/json; charset=utf-8
-  x-robots-tag: noindex, nofollow, noarchive
-
 /data.json
   cache-control: public, max-age=300
   content-type: application/json; charset=utf-8

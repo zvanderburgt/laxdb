@@ -34,7 +34,16 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
   `entity-index.json` grew the facts a card needs (club colours, career totals, the last four scoring
   seasons, a club's and a league's top three scorers) so a cold start never parses the dataset.
 
-**2026-11-21 — the payload split**
+**2026-11-21 — the payload split, measured and reverted**
+- The two-file payload (index + season history) measured **slower on every route** — the summaries
+  that let a list skip the history cost 717 KB gzip while the entire history costs 237 KB, plus a
+  second request and a gate. Reverted to one file the same day: 13.45 MB decoded / 1653 KB gzip, and
+  `/` 708 → 478 ms, `/player` 961 → 785 ms, `/team` 848 → 558 ms against the split build. The
+  shell pruning from that work stays. `docs/dataset.md` carries the table.
+- What the pass *did* keep: `gaa`/`svp` are in `SEASON_COLS` now (1,287 box goaltender rows had been
+  silently losing their published rates), and the writer drops empty shell objects recursively.
+
+**2026-11-21 — the payload split (first attempt)**
 - `data.json` (23.76 MB) is re-encoded into `index.wire.json` (13.65 MB: one record per player plus
   his latest line, career totals, per-competition peak and clubs) and `seasons.wire.json` (2.02 MB:
   every season row but each player's newest, which rides in the index). First paint decodes 13.65 MB

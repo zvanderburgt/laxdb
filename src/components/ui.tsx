@@ -964,7 +964,7 @@ export function GradeBar({ label, value, rank }: { label: string; value: number;
 /* --------------------------------- player card ------------------------------ */
 
 export function PlayerCard({ player, team }: { player: Player; team?: Team }) {
-  // the newest line — from the index summary until the season history lands
+  // the newest line we hold for him
   const s = currentSeason(player);
   return (
     <Link to={`/player/${player.slug}`} className="pcard">

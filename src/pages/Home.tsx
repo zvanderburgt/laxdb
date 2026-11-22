@@ -13,9 +13,8 @@ import {
   TEAM_COUNT,
   SEASON_COUNT,
   teamOf,
-  useSeasons,
 } from "../lib/data";
-import { Avatar, PlayerCard, PositionBadge, SectionHead, Segmented, Skeleton, Sparkline, PlayerAvatar } from "../components/ui";
+import { Avatar, PlayerCard, PositionBadge, SectionHead, Segmented, Sparkline, PlayerAvatar } from "../components/ui";
 import { site } from "../lib/site";
 import type { Player } from "../lib/types";
 
@@ -466,9 +465,6 @@ function HeroCard({ player }: { player: Player }) {
   const p = player;
   const team = teamOf(p);
   const s = currentSeason(p);
-  // the series is the one thing on this card that needs the full history: hold its space with a
-  // skeleton rather than drawing a blank chart that then pops
-  const history = useSeasons();
   return (
     <div className="hv-card">
       <div className="hv-top">
@@ -516,24 +512,20 @@ function HeroCard({ player }: { player: Player }) {
           <div><span className="hv-num num">{s.min}</span><span className="hv-lbl">PIM</span></div>
         ) : null}
       </div>
-      {history ? (
-        (() => {
-          const bySeason = new Map<string, number>();
-          for (const s of p.seasons) bySeason.set(s.season, (bySeason.get(s.season) ?? 0) + (s.pts ?? 0));
-          const years = [...bySeason.keys()].sort();
-          return (
-            <Sparkline
-              values={years.map((y) => bySeason.get(y) ?? 0)}
-              labels={years}
-              width={330}
-              height={104}
-              showValues={false}
-            />
-          );
-        })()
-      ) : (
-        <Skeleton w="100%" h={104} r={12} />
-      )}
+      {(() => {
+        const bySeason = new Map<string, number>();
+        for (const s of p.seasons) bySeason.set(s.season, (bySeason.get(s.season) ?? 0) + (s.pts ?? 0));
+        const years = [...bySeason.keys()].sort();
+        return (
+          <Sparkline
+            values={years.map((y) => bySeason.get(y) ?? 0)}
+            labels={years}
+            width={330}
+            height={104}
+            showValues={false}
+          />
+        );
+      })()}
       <div className="hv-foot">
         <span>Points by season</span>
         <span className="num">{s.season} · {s.gp} GP</span>
