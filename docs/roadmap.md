@@ -182,6 +182,15 @@ feed and health report are in the dock too. Left:
 10. **Transfer portal** — the only public tracker (College Lacrosse News) injects its table with JS
     and exposes no JSON, so this needs a browser fetch per page.
 
+## Scoped, not started — a real backend
+
+`docs/backend.md` (2026-11-22): the measured case, the data model, the API surface, free-tier numbers
+per host, and three options. Headline: the boot payload is the load-time cost (1,578 KB / 13.45 MB
+decoded; 8.4 s to content on a 1.6 Mbps link, while each route needs 7–80 KB), so the win comes from
+per-route data — which build-time slicing achieves with no backend at all. If a real backend is wanted
+for the importer, writes and server-side analytics, Supabase free is the pick and the free MSSQL
+offers are not production tiers.
+
 ## Later — new modelling or a new source
 
 19. **Season depth to 2000** — the biggest credibility gap. LaxGrid and College Lacrosse News carry
