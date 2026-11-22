@@ -75,6 +75,19 @@ def deploy_via_cli(site_id, draft):
     fns = os.path.join(ROOT, "netlify", "functions-build")
     if not os.path.exists(cli) or not os.path.isdir(fns):
         return None
+
+    # Always rebundle the functions from source: netlify.toml ships `functions-build` with
+    # `node_bundler = "none"`, so a stale bundle is deployed verbatim. That is how a fixed
+    # meta.ts can sit in the repo while production keeps serving the old behaviour.
+    print("bundling functions…")
+    built = subprocess.run(
+        [os.environ.get("NODE_BIN", "node"), os.path.join(ROOT, "scripts", "build-functions.mjs")],
+        cwd=ROOT, capture_output=True, text=True, timeout=900,
+    )
+    if built.returncode != 0:
+        print((built.stderr or built.stdout)[-1500:])
+        sys.exit("build-functions failed")
+
     cmd = [cli, "deploy", "--dir", "dist", "--functions", fns, "--site", site_id, "--json"]
     if not draft:
         cmd.append("--prod")

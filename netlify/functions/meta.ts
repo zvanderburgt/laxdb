@@ -36,15 +36,19 @@ const esc = (s: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-let shellCache: string | null = null;
-
-/** The built shell, fetched once per warm function. */
+/**
+ * The built shell, fetched on every request.
+ *
+ * It used to be cached for the life of a warm function, which was wrong in a way that only shows
+ * up after a deploy: the cached copy carries the previous build's `assets/index-<hash>.js`, and
+ * publishing deletes that file. Every entity page (/player, /team, /league) then answered with a
+ * shell whose only script 404s — a blank page — until the instance recycled. `index.html` is 2 KB
+ * and edge-served from this site, so per-request is the honest cost.
+ */
 async function shell(): Promise<string> {
-  if (shellCache) return shellCache;
   const res = await fetch(`${SITE}/index.html`, { headers: { "cache-control": "no-cache" } });
   if (!res.ok) throw new Error(`shell fetch failed: ${res.status}`);
-  shellCache = await res.text();
-  return shellCache;
+  return res.text();
 }
 
 type Meta = {
@@ -225,8 +229,9 @@ export default async (req: Request, context: { ip?: string; geo?: unknown }) => 
       headers: {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "public, max-age=60, must-revalidate",
-        // the CDN may hold it longer than a browser; a deploy replaces the function anyway
-        "netlify-cdn-cache-control": "public, max-age=600, stale-while-revalidate=86400",
+        // An edge copy of this HTML names a bundle hash, and the next deploy deletes that bundle —
+        // so the CDN must not hold it for long. 60s covers a burst, not a release cycle.
+        "netlify-cdn-cache-control": "public, max-age=60, stale-while-revalidate=30",
       },
     });
   } catch (err) {
