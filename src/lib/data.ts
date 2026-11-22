@@ -97,6 +97,7 @@ export async function loadDataset(): Promise<void> {
     playerBySlug.set(p.slug, p);
   }
   for (const t of data.teams) {
+    t.logo = assetUrl(t.logo);
     teamById.set(t.id, t);
     teamBySlug.set(t.slug, t);
   }
@@ -111,8 +112,19 @@ export async function loadDataset(): Promise<void> {
   SEASON_RANGE = years.length ? [String(Math.min(...years)), String(Math.max(...years))] : ["", ""];
 }
 
+/** The writer and the CMS store asset paths relative to the deploy root ("players/pll/x.webp").
+ *  A detail route such as /player/cj-kirst has a directory base, so a bare relative src resolves
+ *  against that directory and asks for /player/players/… (404). Resolve every dataset asset path
+ *  against the site root once, at ingest. */
+export function assetUrl(path?: string): string | undefined {
+  if (!path) return undefined;
+  if (/^(?:[a-z]+:)?\/\//i.test(path) || /^(?:data|blob):/i.test(path) || path.startsWith("/")) return path;
+  return `/${path.replace(/^\.\//, "")}`;
+}
+
 /** The writer omits empty fields; restore the shape the UI expects, once. */
 function normalizePlayer(p: Player) {
+  p.photo = assetUrl(p.photo) ?? "";
   p.awards ??= [];
   p.rankings ??= [];
   p.strengths ??= [];
