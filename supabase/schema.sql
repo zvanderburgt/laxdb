@@ -16,6 +16,7 @@ create extension if not exists pg_trgm;
 
 create table if not exists public.leagues (
   "id"         text primary key,
+  "ord"        integer not null default 0,
   "name"       text,
   "short"      text,
   "level"      text,
@@ -108,6 +109,7 @@ alter table public.teams add column if not exists "history" jsonb;
 alter table public.teams add column if not exists "pollRanks" jsonb;
 alter table public.teams add column if not exists "franchise" jsonb;
 alter table public.players add column if not exists "careerLine" jsonb;
+alter table public.leagues add column if not exists "ord" integer not null default 0;
 
 -- added 2026-11-25 after the first load: the client's `.find()` picks the first of a player's rows
 -- for a season, so the ordinal is what makes a split season resolve to the same row in both modes
@@ -191,6 +193,49 @@ from (select distinct "teamId", "playerSlug" from public.seasons) r
 join public.player_career pc on pc."slug" = r."playerSlug"
 group by 1;
 
+-- The leaders page ranks inside one competition. Two shapes it needs that the season table cannot
+-- answer directly: which seasons a league published, and a player's career totals *within* that
+-- league (a man can play college and pro; those careers must not be added together).
+create or replace view public.league_seasons as
+select distinct "leagueId", "season" from public.seasons;
+
+create or replace view public.career_by_league as
+select
+  s."leagueId", s."playerSlug",
+  coalesce(sum(s."gp"), 0)::int  as "gp",
+  coalesce(sum(s."g"), 0)::int   as "g",
+  coalesce(sum(s."a"), 0)::int   as "a",
+  coalesce(sum(s."pts"), 0)::int as "pts",
+  coalesce(sum(s."sh"), 0)::int  as "sh",
+  coalesce(sum(s."gb"), 0)::int  as "gb",
+  coalesce(sum(s."ct"), 0)::int  as "ct",
+  coalesce(sum(s."foW"), 0)::int as "foW",
+  coalesce(sum(s."foA"), 0)::int as "foA",
+  coalesce(sum(s."sv"), 0)::int  as "sv",
+  coalesce(sum(s."ga"), 0)::int  as "ga",
+  coalesce(sum(s."w"), 0)::int   as "w",
+  coalesce(sum(s."l"), 0)::int   as "l"
+from public.seasons s
+group by 1, 2;
+
+-- One row per leaderboard entry, name included: joining identity in the function meant players whose
+-- *current* league differs from the league they played in (a college man in a summer box league) went
+-- missing from the board.
+create or replace view public.leader_season as
+select s."leagueId", s."season", s."ord", p."slug", p."name", p."position", p."positionName",
+       p."photo", coalesce(s."teamId", p."teamId") as "teamId",
+       s."gp", s."g", s."a", s."pts", s."sh", s."gb", s."ct",
+       s."foW", s."foA", s."sv", s."ga", s."w", s."l", p."leagueId" as "playerLeague"
+from public.seasons s
+join public.players p on p."slug" = s."playerSlug";
+
+create or replace view public.leader_career as
+select c."leagueId", p."slug", p."name", p."position", p."positionName", p."photo", p."teamId",
+       c."gp", c."g", c."a", c."pts", c."sh", c."gb", c."ct",
+       c."foW", c."foA", c."sv", c."ga", c."w", c."l", p."leagueId" as "playerLeague"
+from public.career_by_league c
+join public.players p on p."slug" = c."playerSlug";
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -246,7 +291,7 @@ grant select, insert, update, delete on
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
-  public.league_top_scorer, public.team_totals to service_role;
+  public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;

@@ -101,9 +101,93 @@ async function coachesPage() {
   return { route: "/coaches", leagues, teams };
 }
 
+/**
+ * The leaders page ranks inside one competition, so this branch takes the league and the scope rather
+ * than shipping all 53k season rows: a league-season is a few hundred KB, and the edge caches each
+ * combination.
+ *
+ * The page can also rank a player's *career within that league* (`career_by_league`) and by a
+ * league-relative index, which needs the competition's own points per game.
+ */
+async function leadersPage(params: URLSearchParams) {
+  const scope = params.get("scope") === "career" ? "career" : "season";
+  // the page's default is the first league the dataset lists, so the order has to travel with it
+  const leagues = await rows<LeagueRow>(
+    "leagues?select=id,name,short,level,type,country,tier&order=ord",
+  );
+  let league = params.get("league") ?? "";
+  if (!league) {
+    const seen = await rows<{ leagueId: string }>("league_seasons?select=leagueId&limit=1");
+    league = leagues.find((l) => seen.some((s) => s.leagueId === l.id))?.id ?? leagues[0]?.id ?? "";
+  }
+  const seasons = await rows<{ season: number }>(
+    `league_seasons?leagueId=eq.${encodeURIComponent(league)}&select=season`,
+  );
+  const seasonList = seasons.map((s) => String(s.season)).sort().reverse();
+  const season = params.get("season") ?? seasonList[0] ?? "";
+
+  // one row per entry, identity included; a split season has two rows, and the page's `.find()`
+  // means the first one in the player's own order
+  const raw =
+    scope === "career"
+      ? await rows<any>(
+          // both filters matter: the man must *be* in this league now, and the seasons summed must be
+          // this league's (his junior career does not belong on his college board)
+          `leader_career?playerLeague=eq.${encodeURIComponent(league)}` +
+            `&leagueId=eq.${encodeURIComponent(league)}&select=*&order=pts.desc`,
+        )
+      : await rows<any>(
+          // the board filters on the player's *current* league, which is what the page does — a man
+          // whose newest row is a summer box league still appears on his college board
+          `leader_season?playerLeague=eq.${encodeURIComponent(league)}&season=eq.${Number(season)}` +
+            `&select=*&order=ord`,
+        );
+
+  const teams = await rows<{ id: string; shortName: string; name: string }>(
+    "teams?select=id,shortName,name",
+  );
+  const teamName = new Map(teams.map((t) => [t.id, t.shortName || t.name]));
+
+  const firstPerPlayer = new Map<string, any>();
+  for (const r of raw) if (!firstPerPlayer.has(r.slug)) firstPerPlayer.set(r.slug, r);
+
+  const out = [...firstPerPlayer.values()]
+    .sort((a, b) => (b.pts ?? 0) - (a.pts ?? 0))
+    .map((r) => ({
+      slug: r.slug, name: r.name, position: r.position, positionName: r.positionName,
+      teamId: r.teamId, photo: r.photo, team: teamName.get(r.teamId) ?? "",
+      gp: r.gp ?? 0, g: r.g ?? 0, a: r.a ?? 0, pts: r.pts ?? 0, sh: r.sh ?? 0, gb: r.gb ?? 0,
+      ct: r.ct ?? 0, foW: r.foW ?? 0, foA: r.foA ?? 0, sv: r.sv ?? 0, ga: r.ga ?? 0,
+      w: r.w ?? 0, l: r.l ?? 0,
+    }));
+
+  const gp = out.reduce((n, r) => n + r.gp, 0);
+  const pts = out.reduce((n, r) => n + r.pts, 0);
+
+  const stamp = await rows<{ body: { generated?: string } }>(
+    "snapshots?key=eq.meta&select=body&limit=1",
+  );
+
+  return {
+    route: "/leaders",
+    generated: stamp[0]?.body?.generated ?? "",
+    league,
+    scope,
+    season,
+    seasons: seasonList,
+    leagues,
+    leaguePpg: gp ? pts / gp : 0,
+    rows: out,
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
-  const path = new URL(req.url).searchParams.get("path") ?? "";
+  const url = new URL(req.url);
+  const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/leaders") {
+      return new Response(JSON.stringify(await leadersPage(url.searchParams)), { headers: CACHE_HEADERS });
+    }
     if (path === "/coaches") {
       return new Response(JSON.stringify(await coachesPage()), { headers: CACHE_HEADERS });
     }

@@ -21,10 +21,21 @@ export type TeamRow = {
   leagueId: string; logo: string | null; city: string | null; players: number; pts: number;
 };
 
+export type LeaderRow = {
+  slug: string; name: string; position: string; positionName: string; teamId: string;
+  photo: string | null; team: string;
+  gp: number; g: number; a: number; pts: number; sh: number; gb: number; ct: number;
+  foW: number; foA: number; sv: number; ga: number; w: number; l: number;
+};
+
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
   | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
+  | {
+      route: "/leaders"; generated: string; league: string; scope: "season" | "career"; season: string;
+      seasons: string[]; leagues: League[]; leaguePpg: number; rows: LeaderRow[];
+    }
   | { route: string; [k: string]: unknown };
 
 let current: PageSlice | null = null;
@@ -39,6 +50,19 @@ export function pageSlice(route: string): PageSlice | null {
 }
 
 export const pageSliceActive = (): boolean => current !== null;
+
+/** A leaderboard row as the page's avatar and link expect it. */
+export function leaderPlayer(r: LeaderRow): Player {
+  return {
+    id: r.slug, slug: r.slug, name: r.name,
+    firstName: (r.name ?? "").split(" ")[0] ?? "",
+    lastName: (r.name ?? "").split(" ").slice(1).join(" "),
+    position: r.position, positionName: r.positionName,
+    teamId: r.teamId, leagueId: "",
+    photo: r.photo ? `${import.meta.env.BASE_URL}${r.photo}` : undefined,
+    seasons: [],
+  } as unknown as Player;
+}
 
 /** The leader on a league card is drawn with the same avatar component as everywhere else. */
 export function miniPlayer(row: NonNullable<LeagueCardRow["top"]>): Player {

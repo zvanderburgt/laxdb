@@ -27,7 +27,7 @@ const dryRun = process.argv.includes("--dry-run");
 
 const TABLES = {
   leagues: [
-    ["id", "t"], ["name", "t"], ["short", "t"], ["level", "t"], ["type", "t"], ["country", "t"],
+    ["id", "t"], ["ord", "i"], ["name", "t"], ["short", "t"], ["level", "t"], ["type", "t"], ["country", "t"],
     ["tier", "i"], ["strength", "n"], ["standings", "j"], ["polls", "j"], ["ratings", "j"],
   ],
   teams: [
@@ -92,7 +92,9 @@ function readEnv(path) {
 console.log(`reading ${DATA_PATH}`);
 const data = JSON.parse(readFileSync(DATA_PATH, "utf8"));
 
-const leagues = data.leagues.map((r) => project(r, TABLES.leagues));
+// the dataset's own order decides the default league on /leaders, exactly as `seasons.ord` decides
+// which of a player's rows `currentSeason()` means
+const leagues = data.leagues.map((r, ord) => project({ ...r, ord }, TABLES.leagues));
 const teams = data.teams.map((r) => project(r, TABLES.teams));
 const players = data.players.map((r) => project(r, TABLES.players));
 
@@ -129,6 +131,7 @@ assertCoverage("seasons", data.players.flatMap((p) => p.seasons ?? []), TABLES.s
 
 const snapshots = [
   { key: "history", body: data.history },
+  // the page heads quote the dataset's own build stamp, so it has to travel with the data
   { key: "meta", body: data.meta },
 ];
 

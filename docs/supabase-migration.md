@@ -18,6 +18,7 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/leaders` | **97,946 B** season / **210,400 B** career (was 1,608,531) | **1.64 s / 1.66 s / 1.67 s** (was 9.70 / 9.77 / 9.95) | head line, the default board, the career board, a season switch, the Pts-per-game category and the Attack filter, all compared row for row |
 | `/coaches` | **23,368 B** (was 1,608,531) | **1.29 s / 1.30 s / 1.30 s** (was 9.64 / 9.69 / 9.72) | head line and the first ten rows; the page needed no change at all, because it reads `data.teams` and the staff already lives in each team record |
 
 What that route needed: the counts and the leading scorer per competition are aggregates over 26k
@@ -32,6 +33,18 @@ dropped — and 3,212 players' `careerLine`. The row counts and the points total
 nothing checked *columns*. All nine are now real columns, and the loader refuses to run when the
 source carries a key the table does not (`assertCoverage`), which is the check that should have existed
 from the first load.
+
+**Three separate correctness findings on `/leaders`**, each caught by diffing rows rather than trusting
+the shape:
+
+1. The default league was wrong because the dataset's league *order* is a page concern: `leagues[0]` is
+   ncaa-d1 only because the importer writes it first. `leagues."ord"` now carries that order, the same
+   way `seasons."ord"` carries `currentSeason()`'s "last row" rule.
+2. Joining player identity in the function dropped every man whose *current* league differs from the
+   league the season row belongs to — 22 of the top 25 were missing. The join belongs in the view, and
+   the board filters on the player's league, which is what the page does.
+3. The career board summed across leagues: a man's Junior A career showed up on his college board. The
+   career view now filters on both the player's league and the row's league, matching `careerRow()`.
 
 Two things that only showed up in the parity sweep: the grid's order is a *product* decision that
 lived in the page (the endpoint answers alphabetically, so the sort moved into the slice branch), and

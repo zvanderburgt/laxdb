@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useFlipRows } from "../lib/motion";
 import { Link } from "../lib/app";
 import { data, leagueById, loadGames, teamById, teamByName } from "../lib/data";
+import { leaderPlayer, pageSlice, type LeaderRow, type PageSlice } from "../lib/page";
 import { adjustedRate } from "../lib/adjusted";
 import { BlockList, Card, PlayerAvatar, Provenance, Segmented, Term } from "../components/ui";
 import type { GameRow, Player } from "../lib/types";
@@ -96,22 +97,34 @@ function linkTeam(name: string) {
   );
 }
 
+type LeadersSlice = Extract<PageSlice, { route: "/leaders" }>;
+
 export default function Leaders() {
+  /* A database-backed load carries one competition's rows. Changing the league, the scope or the
+   * season asks for that competition's rows again — the edge caches each combination, so the second
+   * look at a league costs almost nothing. */
+  const first = pageSlice("/leaders") as LeadersSlice | null;
+  const [remote, setRemote] = useState<LeadersSlice | null>(first);
+
   const leagues = useMemo(
-    () => data.leagues.filter((l) => data.players.some((p) => p.leagueId === l.id)),
-    [],
+    () =>
+      remote
+        ? remote.leagues
+        : data.leagues.filter((l) => data.players.some((p) => p.leagueId === l.id)),
+    [remote],
   );
   const [leagueId, setLeagueId] = useState(leagues[0]?.id ?? "ncaa-d1");
   const [catKey, setCatKey] = useState("pts");
 
   const seasons = useMemo(() => {
+    if (remote && remote.league === leagueId) return remote.seasons;
     const set = new Set<string>();
     for (const p of data.players) {
       if (p.leagueId !== leagueId) continue;
       for (const s of p.seasons) set.add(s.season);
     }
     return [...set].sort().reverse();
-  }, [leagueId]);
+  }, [leagueId, remote]);
 
   const [season, setSeason] = useState<string | null>(null);
   // the adjusted board needs each player's game log, which ships separately
@@ -126,7 +139,27 @@ export default function Leaders() {
   const [scope, setScope] = useState<"season" | "career">("season");
   const [pos, setPos] = useState<"all" | "A" | "M" | "D" | "G">("all");
   const activeSeason = season && seasons.includes(season) ? season : seasons[0];
+
+  React.useEffect(() => {
+    if (!first) return; // dataset mode: everything is already in memory
+    if (remote && remote.league === leagueId && remote.scope === scope && remote.season === activeSeason) return;
+    const ctl = new AbortController();
+    const qs = new URLSearchParams({ path: "/leaders", league: leagueId, scope, season: activeSeason ?? "" });
+    fetch(`/data/page?${qs}`, { signal: ctl.signal, cache: "no-cache" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setRemote(d as LeadersSlice))
+      .catch(() => null);
+    return () => ctl.abort();
+  }, [leagueId, scope, activeSeason, remote, first]);
   const rows = useMemo<Row[]>(() => {
+    if (remote) {
+      return remote.rows.map((r: LeaderRow) => ({
+        player: leaderPlayer(r),
+        gp: r.gp, g: r.g, a: r.a, pts: r.pts, sh: r.sh, gb: r.gb, ct: r.ct,
+        foW: r.foW, foA: r.foA, sv: r.sv, ga: r.ga, w: r.w, l: r.l,
+        team: r.team,
+      }));
+    }
     if (!activeSeason) return [];
     const out: Row[] = [];
     for (const p of data.players) {
@@ -152,13 +185,14 @@ export default function Leaders() {
       });
     }
     return out;
-  }, [leagueId, activeSeason, scope]);
+  }, [leagueId, activeSeason, scope, remote]);
 
   const leaguePpg = useMemo(() => {
+    if (remote) return remote.leaguePpg;
     const gp = rows.reduce((n, r) => n + r.gp, 0);
     const pts = rows.reduce((n, r) => n + r.pts, 0);
     return gp ? pts / gp : 0;
-  }, [rows]);
+  }, [rows, remote]);
   const cats = useMemo(() => {
     const idx = indexCat(leaguePpg);
     // only the competitions we hold a game log for can be re-weighted
