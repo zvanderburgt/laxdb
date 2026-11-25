@@ -3,6 +3,9 @@
 Scoping note, 2026-11-22. Nothing here is built. It exists so the decision is made on measurements
 rather than on the appeal of having a database.
 
+**The route to the Supabase version of this is `docs/supabase-migration.md`** — destination, the eight
+decisions still open, what stays on Netlify, and the sequence. This doc answers "should we".
+
 ## The measurement that matters
 
 The site today is a static SPA. Every route downloads the whole dataset before it can render:

@@ -1,0 +1,224 @@
+# Migration map — the backend onto Supabase
+
+Charted **2026-11-25**. Nothing here is built. `docs/backend.md` is the case for having a backend at
+all (measured load cost, three options, free-tier table); this doc is the route to the Supabase one:
+the destination, what is already decided, and the decisions that are still open, one session each.
+
+Read `docs/backend.md` first if the question is "should we". Read this one if the question is "how".
+
+## Destination
+
+**Postgres on Supabase is the system of record** for players, seasons, teams, games and the CMS
+override layer; **the SPA asks for one route's data** instead of downloading the dataset; **the CMS
+writes rows under real auth** instead of a passphrase cookie and a blob document.
+
+Netlify does not go away: it keeps the SPA shell, the ~50 MB of media, and the meta/OG functions.
+
+Arrival is measured, not declared:
+
+- `/player/<slug>` and `/players` reach real content in **under 1 s** on the 1.6 Mbps / 150 ms-RTT
+  profile that produced today's 8.4 s (method and numbers: `docs/backend.md`).
+- A data refresh is a **loader run**, not a commit plus a deploy.
+- The CMS survives one full re-import with every published value intact — the property the override
+  layer exists for.
+
+## The measurement that decides everything
+
+Every visit downloads the whole dataset. Measured from today's `public/data.json` (2026-11-25):
+
+| | |
+| --- | --- |
+| `data.json` | 23.31 MB |
+| `data.wire.json` (what the browser fetches) | 13.19 MB decoded, **1.70 MB gzip** |
+| players / season rows / teams / leagues | 26,234 / 53,465 / 475 / 19 |
+| one player detail page (bio + 13 season rows) | **3.2 KB** |
+| 150 players, table fields | ~25 KB |
+| all 475 teams, card fields | ~209 KB |
+| media in the repo (7,025 photos + 347 logos) | 48.2 MB + 1.95 MB |
+
+The JSON figures are uncompressed; the wire encoding plus gzip take each one down by roughly 4×. So
+the prize is **1.70 MB → 8–60 KB per route**, and it is the payload, not the server: TTFB is 66–380 ms.
+
+Two honest caveats, both of which shape the route:
+
+1. **This win does not require Supabase.** Build-time slices (`Option A` in `backend.md`) reach the
+   same payload reduction and keep the site static, with no account, no egress meter and no uptime
+   dependency. The reasons to take on a database are the *other* three: query-shaped reads,
+   writes that are not a file rewrite, and derived numbers computed once instead of per render.
+2. **A cheaper version of this idea already measured slower.** The index/history payload split
+   shipped and was reverted the same day (717 KB of summaries against 237 KB for all 54k season rows;
+   `/` 554 → 708 ms). Any phase here is judged on throttled time-to-content, never on payload size
+   alone. That is why phase 2 exists and why it is allowed to kill the effort.
+
+## What moves, what stays
+
+**Moves to Supabase**
+
+- players, teams, leagues, seasons, games → Postgres tables
+- the CMS override layer (drafts, published values, revisions) → tables
+- admin auth → Supabase Auth (magic link) + RLS
+- the daily refresh → a loader run instead of a commit + deploy
+
+**Stays on Netlify**
+
+- the SPA shell and its hashed assets (CDN, 100 GB/month free)
+- all media — 50 MB, served by the CDN. See D5: this is the one asset class that must not move.
+- `meta.ts` and `og.ts` with the generated `entity-index.json` — a crawler must never parse 13 MB
+  from a database, and a cold OG render must not wait on a query.
+
+## The decisions
+
+Each is sized for one session and has a recommendation, so the plan is a route and not a menu.
+
+### D1 — Read path: who talks to Postgres?
+
+*Question:* browser → PostgREST with an anon key, browser → Netlify function → Postgres, or no
+database reads at all?
+
+*Recommendation:* **Netlify function proxy, edge-cached.** Entity routes go through a function that
+sets `netlify-cdn-cache-control: max-age=300, stale-while-revalidate=86400` (the `meta.ts` pattern
+already in the repo), so the database sees one query per distinct URL per cache window, and egress
+is counted per cache fill rather than per view. Direct PostgREST lowers latency on a cache miss and
+removes the function from the path, but it ships the anon key to every visitor, needs a read policy
+on every table, and puts every view on the metered egress with no CDN in front.
+
+*Resolved when:* one route serves from Postgres through the proxy and the cache hit is visible in the
+response headers.
+
+### D2 — Ingest: port the importer, or load its output?
+
+*Question:* does `scripts/fetch-real-data.py` grow a Postgres writer, or does a new loader push the
+`data.json` the pipeline already produces into the database?
+
+*Recommendation:* **loader** — `scripts/load-supabase.py` reads `public/data.json` and upserts. The
+importer is 40+ scripts of merge, repair, position and franchise logic that is the most expensive and
+best-tested code in the repo; porting it is the largest hidden cost in this migration and buys
+nothing until the database has proven itself. Ids are already stable (`p-pll-000339`, `t-cornell-big-red`),
+and season rows key cleanly on `(player_id, season, team_id, league_id, type)` — the same tuple the
+importer already dedupes on.
+
+*Resolved when:* row counts match the dataset exactly (26,234 / 53,465 / 475 / 19) and a re-run is
+idempotent.
+
+### D3 — Where the derived numbers live
+
+*Question:* Elo, SOS, peer ranks, similarity, leaders — computed per request, at import, or in the
+browser over a slice?
+
+*Recommendation:* split by cost. **Elo and SOS are whole-graph computations** (every game, shadow ids
+for opponents outside our roster) and become a `team_ratings` table written by the loader. Standings,
+polls, records and leaders are *already* materialised by the importer — they keep that shape, as
+tables or as a `snapshots` row. **Peers and similarity** are per-league reads over a small slice and
+are the only ones that may become RPCs; measure them before writing one.
+
+*Resolved when:* a player page renders without ever loading more than its own row set.
+
+### D4 — CMS auth and RLS
+
+*Question:* keep the passphrase + HMAC cookie, or move to Supabase Auth?
+
+*Recommendation:* **Supabase Auth, magic link, plus an `editors` allowlist table and RLS.** The
+session code (`netlify/lib/auth.ts`, scrypt passphrase, HMAC cookie, Origin check) exists because
+there was no auth provider; a bearer JWT in `Authorization` removes the cookie and with it the CSRF
+class of bug that cost a day in the CMS build. Revisions gain a real `auth.uid()` author for free.
+What must survive untouched: the draft/publish document model, `src/lib/cms-registry.ts` as the one
+validator, and `bumpRevision()` after every write.
+
+*Resolved when:* `scripts/cms-smoke.mjs` passes against the new backend — including its foreign-origin
+403 and full-revert checks.
+
+### D5 — Media stays where it is
+
+*Question:* do photos and logos move to Supabase Storage?
+
+*Recommendation:* **no.** 50 MB of images is the largest byte volume the site serves, and moving it
+would put that volume on the metered side (1 GB storage is ample; 5 GB/month egress is not, once a
+single player page pulls twenty headshots). Every URL is already root-relative through `assetUrl()`,
+so a move is cheap to do later if the repo ever gets too big to deploy. Recorded here as a decision
+so it does not get re-litigated mid-migration.
+
+### D6 — Egress and the 7-day pause
+
+*Question:* what does free tier actually allow, and what keeps the project awake?
+
+*Recommendation:* budget from the cache, not the traffic. 5 GB/month at ~25 KB per response is
+~200k responses; behind the D1 cache that is cache *fills*, which a site this size will not approach.
+The database itself is 60–100 MB with indexes against 500 MB. The free project pauses after **7 days
+without traffic** — the daily rankings refresh already runs on the box, so its loader call doubles as
+the keep-alive; add an explicit `select 1` so it survives a failed import.
+
+*Resolved when:* the loader's cron is the documented keep-alive and a paused-project recovery is
+written down (one manual unpause, no data loss).
+
+### D7 — Cutover and rollback
+
+*Question:* how does the site switch, and how does it switch back?
+
+*Recommendation:* a data-source flag (`VITE_DATA_SOURCE=wire|api`) compiled in, defaulting to `wire`,
+with the wire file still shipped for one release. Per route: flip, deploy, measure on the throttled
+profile, keep or revert. The importer writes JSON and rows (via the D2 loader) until the last route
+flips, so no phase leaves the site without a working dataset.
+
+*Resolved when:* every route is on the API and `data.wire.json` has been absent from a production
+deploy for one week without a regression.
+
+### D8 — Games and scores
+
+*Question:* do `games.json` (901 KB) and `scores.json` (69 KB) become tables in phase 1?
+
+*Recommendation:* **yes, cheaply** — two tables, no client change, and `src/lib/schedule.ts` already
+isolates the fixture derivation behind `fixturesFor` / `gameHref` / `seasonRecord`. Box scores are the
+one thing that genuinely wants to be a query on a per-game page.
+
+## Fog — not yet specified
+
+- **Search.** The ⌘K palette currently matches against all 26k names in memory and is deliberately
+  forgiving (punctuation, token-spacing, high-school branch). A trigram index changes its behaviour,
+  and nobody has decided whether that is acceptable.
+- **`/my-roster`** — bookmarks are local today. Real accounts would make them portable; nothing
+  requires it.
+- **Per-version history UI** (CMS phase 4) — the shape of the query depends on D4 landing first.
+- **Live anything** — Supabase Realtime for scores or edit presence is plausible and unscoped.
+- **`entity-index.json` and the sitemap** — today both are generated from `data.json` at build. If the
+  database becomes the source of truth, they are generated from it, and that touches the deploy.
+- **`leagues`** — 19 rows carrying standings, polls and ratings. Whether those become tables or one
+  JSON snapshot column is a schema decision D3 will force.
+
+## Out of scope
+
+- **Supabase Storage for media** (D5) — metered egress for the biggest bytes, no gain.
+- **Edge Functions replacing `meta.ts` / `og.ts`** — a Deno port of satori + resvg-wasm with cold
+  starts, to replace functions that already work and cost nothing.
+- **Dropping Netlify** — the shell, the media and the SEO layer are free and proven there.
+- **MSSQL / self-hosted Postgres on the Proxmox box** — uptime, TLS, patching and backups become the
+  site's problem; `backend.md` already ruled it out.
+- **Visitor accounts** — nothing on the site asks a visitor to sign in.
+
+## Sequence
+
+| # | Step | Effort | Kills the effort if… |
+| --- | --- | --- | --- |
+| 0 | Supabase project + keys (his, 5 min — see below) | — | — |
+| 1 | Schema + loader + count verification (D2) | 1–2 days | counts do not reconcile |
+| 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | 2–3 days | it is not faster on the throttled profile |
+| 3 | `/players` — filters, sort, pagination in SQL | 3–4 days | SQL cannot replace the in-memory sort |
+| 4 | Derived numbers: ratings table, peers/similar (D3) | 3–5 days | **the risky phase** — O(n) JS has to become indexed SQL |
+| 5 | CMS onto Postgres + Supabase Auth (D4) | 1–2 days | the smoke suite cannot be made to pass |
+| 6 | Cutover, wire file demoted to fallback (D7) | 1 day | — |
+
+Total: **2–3 weeks of focused work**, matching `backend.md`'s estimate, with the important property
+that step 2 can end the effort having cost three days and changed nothing user-facing.
+
+## The first step (needs him)
+
+Create the project at supabase.com (free tier), then write the connection details into
+`data/supabase-env.txt` — gitignored, never pasted in chat:
+
+```
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service_role key, from Project settings → API>
+SUPABASE_DB_URL=postgresql://postgres:<db password>@db.<project-ref>.supabase.co:5432/postgres
+SUPABASE_ANON_KEY=<anon public key>
+```
+
+`SERVICE_ROLE_KEY` stays on this box and is used only by the loader; the site never sees it.

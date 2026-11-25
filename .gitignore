@@ -14,6 +14,7 @@ data/cms-netlify-env.txt
 data/cms-store/
 data/cms-passphrase
 data/cms-passphrase.netlify
+data/supabase-env.txt
 
 # generated per build by scripts/gen-entity-index.mjs (bundled into the meta function)
 netlify/functions/entity-index.json

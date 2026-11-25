@@ -191,6 +191,11 @@ per-route data — which build-time slicing achieves with no backend at all. If 
 for the importer, writes and server-side analytics, Supabase free is the pick and the free MSSQL
 offers are not production tiers.
 
+`docs/supabase-migration.md` (2026-11-25) is the route: destination, what moves and what stays on
+Netlify, eight decisions (read path, ingest, derived numbers, CMS auth, media, egress, cutover,
+games), the fog, and a six-step sequence whose step 2 can kill the effort after three days. Nothing
+is built; the first step needs a Supabase project and its keys in `data/supabase-env.txt`.
+
 ## Later — new modelling or a new source
 
 19. **Season depth to 2000** — the biggest credibility gap. LaxGrid and College Lacrosse News carry
