@@ -212,6 +212,42 @@ const orphanPass = seasons_without_player === 0;
 ok &&= orphanPass;
 console.log(`  ${orphanPass ? "ok  " : "FAIL"} orphans    ${seasons_without_player}`);
 
+/* ------------------------- materialised pools ----------------------------- */
+/* The player route used to rebuild the similarity pool per request: 17k rows, 17 paginated reads at
+ * 1000 rows each, ~6 s on a cold function. The same rows, grouped once here, are one snapshot read.
+ * Nothing about the maths moves — the pool is the same `player_career` output the request used. */
+
+const GROUP_OF = { G: "G", D: "D", LSM: "D", M: "M", SSDM: "M", FO: "FO", A: "A", F: "A", T: "M", R: "M" };
+const POOL_FIELDS = [
+  "slug", "id", "name", "position", "heightIn", "teamId", "leagueId", "photo",
+  "gp", "g", "a", "sh", "gb", "ct", "to", "foW", "foA", "sv", "ga", "w",
+];
+
+const { rows: career } = await client.query("select * from public.player_career");
+const pools = new Map();
+for (const r of career) {
+  if ((r.gp ?? 0) < 5) continue; // the same floor `similarTo` applies
+  const g = GROUP_OF[r.position] ?? "M";
+  const list = pools.get(g) ?? [];
+  list.push(Object.fromEntries(POOL_FIELDS.map((f) => [f, r[f]])));
+  pools.set(g, list);
+}
+
+await client.query(
+  `delete from public.snapshots where "key" like 'pool:career:%'`,
+);
+for (const [g, list] of pools) {
+  await client.query(
+    `insert into public.snapshots ("key", "body") values ($1, $2::jsonb)`,
+    [`pool:career:${g}`, JSON.stringify(list)],
+  );
+}
+console.log(
+  `pools: ${[...pools].map(([g, l]) => `${g}=${l.length}`).join(" ")} (${(
+    [...pools.values()].reduce((n, l) => n + l.length, 0) / 1000
+  ).toFixed(0)}k rows)`,
+);
+
 const [{ size }] = (
   await client.query('select pg_size_pretty(pg_database_size(current_database())) as size')
 ).rows;

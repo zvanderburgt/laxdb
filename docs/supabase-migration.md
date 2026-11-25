@@ -1,8 +1,8 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. **Steps 1–3 are built and live** — the dataset is in Postgres, and the player route and the players
-table both answer from it on a flag (see [Step 1](#step-1-done), [Step 2](#step-2-done),
-[Step 3](#step-3-done)). Everything after it is plan.
+Charted **2026-11-25**. **Steps 1–4 are built and live** — the dataset is in Postgres, the player route and the players table
+answer from it on a flag, and the similarity pools are materialised at load (see [Step 1](#step-1-done),
+[Step 2](#step-2-done), [Step 3](#step-3-done), [Step 4](#step-4-done-partly)). What is left is plan.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -113,6 +113,32 @@ Three things had to match exactly, each found by that sweep and not by reading t
 
 Cold fill is 5.2 s for the first request (26k-row read of `player_list`), 0.46 s warm, cached per
 query string at the edge — step 4 is what removes that cost.
+
+## Step 4, done (partly)
+
+Two findings, one of them good news:
+
+- **There are no client-side ratings to move.** Elo, SOS and the rank are computed by the importer
+  (`compute_elo` in `fetch-real-data.py`) into `league.ratings`, and they arrived with the leagues
+  table on the first load. The "ratings table" half of this step needed no work at all.
+- **The similarity pool is now materialised.** The player route used to rebuild a position group's
+  pool per cold request: 21k rows paged 1000 at a time, 17 requests, ~6 s. The loader writes one
+  `snapshots` row per group (`pool:career:M` = 13,307 rows) and the request reads it once. The
+  club-season roster queries for teammates also run in parallel now instead of thirteen in series.
+
+Measured live: **cold 6.1 s → 4.2 s, warm 1.0 s → 0.5 s**, with `slice:check` still asserting the
+peer ranks and similarity scores are identical for three players.
+
+What is left of this step is the honest part: 13k rows is still ~1.6 MB moved per cold instance, and
+the only way to remove it is to answer similarity *in* Postgres — a pgvector index over the same
+feature vector. That changes the score itself (L2 over all features, rather than mean-squared over the
+ones both players have), so it is a product decision about the similarity block, not a migration
+detail. Not taken here.
+
+One deployment lesson worth keeping: a block deletion in `slice.ts` took `export const config` with
+it. The bundle still built, still ran correctly when called directly, and the *route* silently
+disappeared — `/data/player` answered 404 while `/players?slice=1` kept working. Check the deploy's
+route list (`/api/v1/deploys/<id>/functions` → `ro`), not just a 200 on the URL you happen to try.
 
 ## The measurement that decides everything
 
@@ -294,7 +320,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | 1 | Schema + loader + count verification (D2) | ~~1–2 days~~ **done 2026-11-25** | counts do not reconcile |
 | 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | ~~2–3 days~~ **done 2026-11-25** | it is not faster on the throttled profile — **it is: 9.8 s → 1.5 s** |
 | 3 | `/players` — filters, sort, pagination in SQL | ~~3–4 days~~ **done 2026-11-25** | SQL cannot replace the in-memory sort — it can: 9.9 s → 1.5 s |
-| 4 | Derived numbers: ratings table, peers/similar (D3) | 3–5 days | **the risky phase** — O(n) JS has to become indexed SQL |
+| 4 | Derived numbers: ratings table, peers/similar (D3) | ~~3–5 days~~ **partly done 2026-11-25**: ratings were already importer-side; pools materialised, cold 6.1 → 4.2 s | the O(n) JS had to become indexed SQL — it did not, and the last 1.6 MB needs pgvector |
 | 5 | CMS onto Postgres + Supabase Auth (D4) | 1–2 days | the smoke suite cannot be made to pass |
 | 6 | Cutover, wire file demoted to fallback (D7) | 1 day | — |
 

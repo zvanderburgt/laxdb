@@ -17,6 +17,9 @@ import { peerRanks } from "../../src/lib/peers";
 import { similarTo, type Similar } from "../../src/lib/similar";
 import { rows, CACHE_HEADERS } from "./supabase";
 
+// not /api/*: the admin API registers that wildcard and answers everything else "no such route"
+export const config = { path: "/data/player" };
+
 /* ------------------------------ player shaping ----------------------------- */
 /* A pool member only needs enough to be drawn and to be scored: identity, and one row carrying his
  * career sums, because `careerTotals()` sums `seasons`. */
@@ -92,23 +95,28 @@ async function slice(slug: string) {
     peerPool.push({ ...mini(c), seasons: [s as unknown as SeasonRow] } as Player);
   }
 
-  /* similarity — every player in his position group, career sums only (one row each). */
-  const groupPositions = similarGroupPositions(player.position);
-  const groupCareer = await rows<any>(
-    `player_career?position=in.(${groupPositions.join(",")})&select=*&order=slug`,
-  );
-  const groupPool = groupCareer.map(mini);
+  /* similarity — the position group's career sums, materialised by the loader into one snapshot:
+   * the same rows this used to page through 17 requests at a time. */
+  const group = groupOf(player.position);
+  const pool = await rows<any>(`snapshots?key=eq.${encodeURIComponent(`pool:career:${group}`)}&select=body`);
+  const groupPool = ((pool[0]?.body as any[]) ?? []).map(mini);
   // the player himself must be scored against the same career sums the pool uses
   const self = selfCareer[0] ? mini(selfCareer[0]) : player;
 
   /* teammates — every roster he shared a club-season with, newest clubs first. */
   const pairs = seasonRows.map((s) => ({ teamId: s.teamId, season: s.season }));
   const mateSlugs = new Set<string>();
-  for (const p of pairs) {
-    const roster = await rows<any>(
-      `seasons?teamId=eq.${encodeURIComponent(p.teamId)}&season=eq.${p.season}` +
-        `&select=playerSlug`,
-    );
+  // one round trip per club-season, all in flight together: thirteen in series cost more than the
+  // rest of this handler put together
+  const rosters = await Promise.all(
+    pairs.map((p) =>
+      rows<any>(
+        `seasons?teamId=eq.${encodeURIComponent(p.teamId)}&season=eq.${p.season}` +
+          `&select=playerSlug`,
+      ),
+    ),
+  );
+  for (const roster of rosters) {
     for (const r of roster) if (r.playerSlug !== slug) mateSlugs.add(r.playerSlug);
   }
   const mateCareer = mateSlugs.size
@@ -140,16 +148,11 @@ async function slice(slug: string) {
 }
 
 /** The similarity groups are the client's: G, D(D/LSM), M(M/SSDM/F/T/R), A(A/F), FO. */
-function similarGroupPositions(position: string): string[] {
-  const g = GROUP_OF[position] ?? "M";
-  return Object.entries(GROUP_OF)
-    .filter(([, v]) => v === g)
-    .map(([k]) => k);
-}
-
 const GROUP_OF: Record<string, string> = {
   G: "G", D: "D", LSM: "D", M: "M", SSDM: "M", FO: "FO", A: "A", F: "A", T: "M", R: "M",
 };
+
+const groupOf = (position: string): string => GROUP_OF[position] ?? "M";
 
 /* --------------------------------- handler -------------------------------- */
 
