@@ -199,8 +199,10 @@ players, 53,465 season rows, 475 teams, points total reconciled, 49 MB, `npm run
 `/player/<slug>?slice=1` now answers from it: **1.5 s to content on a 1.6 Mbps link against 9.8 s**
 for the dataset file, on a page whose peer ranks and similarity scores are asserted identical
 (`npm run slice:check`). `/players?slice=1` answers from it too: **1.5 s and 11 KB against 9.9 s and
-1.6 MB**, with the count and the first twelve rows identical across six filter and sort cases. Step 4
-(derived numbers — a ratings table and SQL similarity) is the open one.
+1.6 MB**, with the count and the first twelve rows identical across six filter and sort cases. Those two routes
+are now the **default**: `/player/<slug>` and `/players` reach real content in 1.5 s against 9.8 s for
+the dataset file, with `?slice=0` as the escape hatch and a redirect fallback. Step 5 (the CMS onto
+Postgres with Supabase Auth) is the one left; the remaining cold-cache fill needs pgvector.
 
 ## Later — new modelling or a new source
 

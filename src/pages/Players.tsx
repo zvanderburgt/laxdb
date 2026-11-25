@@ -19,6 +19,7 @@ import {
 } from "../lib/data";
 import { Avatar, BlockList, Empty, PositionBadge, Provenance, Segmented, PlayerAvatar, Term } from "../components/ui";
 import { fetchPlayerList, listMode, playerFromRow, seasonFromRow, type PlayerListResult } from "../lib/list";
+import { fallbackToWire } from "../lib/data";
 
 /** In list mode the row carries its club; the dataset's team map is empty there. */
 const clubOf = (p: { teamId?: string; teamName?: string }) =>
@@ -75,7 +76,10 @@ export default function Players() {
           setLoadError(null);
         })
         .catch((err) => {
-          if (!ctl.signal.aborted) setLoadError(String(err));
+          if (ctl.signal.aborted) return;
+          // the dataset is still on the CDN, so one redirect beats an empty table
+          fallbackToWire();
+          setLoadError(String(err));
         });
     }, 180);
     return () => {

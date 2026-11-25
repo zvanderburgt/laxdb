@@ -1,8 +1,10 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. **Steps 1–4 are built and live** — the dataset is in Postgres, the player route and the players table
-answer from it on a flag, and the similarity pools are materialised at load (see [Step 1](#step-1-done),
-[Step 2](#step-2-done), [Step 3](#step-3-done), [Step 4](#step-4-done-partly)). What is left is plan.
+Charted **2026-11-25**. **Steps 1–4 and 6 are built and live** — the dataset is in Postgres, the player route and the players
+table answer from it *by default*, the similarity pools are materialised at load, and every other
+route still takes the dataset file (see [Step 1](#step-1-done), [Step 2](#step-2-done),
+[Step 3](#step-3-done), [Step 4](#step-4-done-partly), [Step 6](#step-6-done)). Step 5 (the CMS onto
+Postgres) is the one left.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -139,6 +141,35 @@ One deployment lesson worth keeping: a block deletion in `slice.ts` took `export
 it. The bundle still built, still ran correctly when called directly, and the *route* silently
 disappeared — `/data/player` answered 404 while `/players?slice=1` kept working. Check the deploy's
 route list (`/api/v1/deploys/<id>/functions` → `ro`), not just a 200 on the URL you happen to try.
+
+## Step 6, done
+
+The two verified routes are the default now. `/player/<slug>` and `/players` ask the database without
+being told to; `?slice=0` on any URL forces the dataset file.
+
+Measured **live, cold cache, 1.6 Mbps / 150 ms RTT**, three runs each, time to the route's real content:
+
+| route | first run (edge cache cold) | then | bytes |
+| --- | --- | --- | --- |
+| `/player/cj-kirst` | 3.99 s | **1.50 s / 1.52 s** | 59,604 |
+| `/player/cj-kirst?slice=0` | 9.80 s | 9.80 s / 9.77 s | 1,608,615 |
+| `/players` | 6.01 s | **1.52 s / 1.54 s** | 11,577 |
+| `/players?slice=0` | 10.08 s | 9.92 s / 9.93 s | 1,608,615 |
+
+The first run is the edge cache being filled — 4 s for a player page, 6 s for the table, because that
+one also pays the function's cold pool read. Every later visitor gets 1.5 s until the cache window
+closes.
+
+**Nothing else changed.** `/`, `/teams` and `/leaders` were re-checked after the deploy: each still
+takes `data.wire.json` in full. Routes the database has not been verified for keep the old path.
+
+**The failure path is a redirect, not an error.** If the endpoint fails or 404s, the page redirects
+once to the same URL with `?slice=0` and loads the dataset — verified by requesting a player that does
+not exist: the endpoint answered 404, the page landed on `?slice=0` and rendered the old not-found
+page. The redirect is guarded so a failure on the `?slice=0` page shows the error instead of looping.
+
+**Revert:** `?slice=0` per URL today, and deleting the two `if (sliceSlug())` / `if (listSlice())`
+branches in `src/lib/data.ts` returns every visitor to the file.
 
 ## The measurement that decides everything
 
@@ -322,7 +353,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | 3 | `/players` — filters, sort, pagination in SQL | ~~3–4 days~~ **done 2026-11-25** | SQL cannot replace the in-memory sort — it can: 9.9 s → 1.5 s |
 | 4 | Derived numbers: ratings table, peers/similar (D3) | ~~3–5 days~~ **partly done 2026-11-25**: ratings were already importer-side; pools materialised, cold 6.1 → 4.2 s | the O(n) JS had to become indexed SQL — it did not, and the last 1.6 MB needs pgvector |
 | 5 | CMS onto Postgres + Supabase Auth (D4) | 1–2 days | the smoke suite cannot be made to pass |
-| 6 | Cutover, wire file demoted to fallback (D7) | 1 day | — |
+| 6 | Cutover, wire file demoted to fallback (D7) | ~~1 day~~ **done 2026-11-25** | — (measured: 9.8 s → 1.5 s on the plain URLs) |
 
 Total: **2–3 weeks of focused work**, matching `backend.md`'s estimate, with the important property
 that step 2 can end the effort having cost three days and changed nothing user-facing.

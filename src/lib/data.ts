@@ -80,20 +80,33 @@ export let SEASON_RANGE: [string, string] = ["", ""];
  * encoding `scripts/compact-data.mjs` writes at build time (35% smaller, same in-memory shape);
  * `data.json` is the fallback for a deploy or a cached shell that predates it.
  */
-/** `?slice=1` on a player route asks the database for this page only (docs/supabase-migration.md). */
+/**
+ * The database answers the two routes it has been verified for (docs/supabase-migration.md, step 6).
+ * `?slice=0` on any URL forces the dataset file, which is the escape hatch and the revert.
+ */
+function forceWire(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("slice") === "0";
+}
+
 function sliceSlug(): string | null {
-  if (typeof window === "undefined") return null;
-  if (new URLSearchParams(window.location.search).get("slice") !== "1") return null;
+  if (typeof window === "undefined" || forceWire()) return null;
   const hit = window.location.pathname.match(/^\/player\/([^/]+)\/?$/);
   return hit ? decodeURIComponent(hit[1]) : null;
 }
 
+/** One redirect to the dataset-backed page, and only one: a failure on that page shows the error. */
+export function fallbackToWire(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("slice") === "0") return;
+  url.searchParams.set("slice", "0");
+  window.location.replace(url.toString());
+}
+
 function listSlice(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    new URLSearchParams(window.location.search).get("slice") === "1" &&
-    /^\/players\/?$/.test(window.location.pathname)
-  );
+  if (typeof window === "undefined" || forceWire()) return false;
+  return /^\/players\/?$/.test(window.location.pathname);
 }
 
 export async function loadDataset(): Promise<void> {
@@ -153,9 +166,16 @@ export async function loadDataset(): Promise<void> {
  */
 async function loadSlice(slug: string): Promise<void> {
   const base = import.meta.env.BASE_URL;
-  const res = await fetch(`${base}data/player?slug=${encodeURIComponent(slug)}`, { cache: "no-cache" });
-  if (!res.ok) throw new Error(`slice fetch failed: ${res.status}`);
-  const slice = (await res.json()) as PlayerSlice;
+  let slice: PlayerSlice;
+  try {
+    const res = await fetch(`${base}data/player?slug=${encodeURIComponent(slug)}`, { cache: "no-cache" });
+    if (!res.ok) throw new Error(`slice fetch failed: ${res.status}`);
+    slice = (await res.json()) as PlayerSlice;
+  } catch (err) {
+    // the dataset is still on the CDN: one redirect and the page is the old page, not an error
+    fallbackToWire();
+    throw err;
+  }
 
   const players = [slice.player, ...slice.mates, ...slice.similar.map((s) => s.player)];
   for (const p of players) normalizePlayer(p);
