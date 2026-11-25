@@ -6,7 +6,11 @@ materialised at load, every other route still takes the dataset file, and the CM
 Postgres (see [Step 1](#step-1-done), [Step 2](#step-2-done), [Step 3](#step-3-done),
 [Step 4](#step-4-done-partly), [Step 5](#step-5-the-store-is-done-auth-is-left),
 [Step 6](#step-6-done)). The only thing still standing from the old world is the passphrase fallback,
-which goes once the emailed code has been used successfully once.
+which now goes on request — an emailed sign-in has worked end to end.
+
+**What this plan did not cover:** it moves two routes (`/player/<slug>`, `/players`). Every other route
+— home, teams, leagues, leaders, history, compare, roster, coaches — still downloads the whole
+13.19 MB file. The same slice-and-endpoint shape applies to them, one route per session.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -407,7 +411,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | ~~2–3 days~~ **done 2026-11-25** | it is not faster on the throttled profile — **it is: 9.8 s → 1.5 s** |
 | 3 | `/players` — filters, sort, pagination in SQL | ~~3–4 days~~ **done 2026-11-25** | SQL cannot replace the in-memory sort — it can: 9.9 s → 1.5 s |
 | 4 | Derived numbers: ratings table, peers/similar (D3) | ~~3–5 days~~ **partly done 2026-11-25**: ratings were already importer-side; pools materialised, cold 6.1 → 4.2 s | the O(n) JS had to become indexed SQL — it did not, and the last 1.6 MB needs pgvector |
-| 5 | CMS onto Postgres + Supabase Auth (D4) | store **done 2026-11-25** (smoke passes on Postgres, documents migrated); auth is the open half | the smoke suite cannot be made to pass — it does |
+| 5 | CMS onto Postgres + Supabase Auth (D4) | **done 2026-11-25**: store on Postgres, documents migrated, code/link sign-in live, editor hidden until signed in. Left: deleting the passphrase fallback and its cookie/CSRF code (an hour, deliberately last) | the smoke suite cannot be made to pass — it does |
 | 6 | Cutover, wire file demoted to fallback (D7) | ~~1 day~~ **done 2026-11-25** | — (measured: 9.8 s → 1.5 s on the plain URLs) |
 
 Total: **2–3 weeks of focused work**, matching `backend.md`'s estimate, with the important property
