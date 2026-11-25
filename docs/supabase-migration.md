@@ -208,7 +208,15 @@ validator's 422s, stage, publish, edge-cache behaviour, history, revert, the 409
 - the account is `zvanderburgt@gmail.com`, created through the admin API and allowlisted in
   `editors`.
 
-**Verified against production without touching an inbox**: `admin/generate_link` minted a real code,
+**The link path works without Pro.** The default email template only ships `{{ .ConfirmationURL }}`, and
+editing templates is gated in this account, so the code field is best-effort — the *link* is the
+supported flow. It needs one dashboard setting: **Site URL** must be the site, or GoTrue verifies the
+token and then redirects to `localhost:3000` (the default) and the session lands nowhere. With
+`https://laxdb.netlify.app` set, the link redirects to `https://laxdb.netlify.app#access_token=…`, and
+`absorbAuthHash()` in `src/lib/overrides.ts` takes it on arrival, strips it out of the address bar and
+stores it — verified in a browser: token stored, `/api/session` → `{ method: "bearer", user: … }`.
+
+**Also verified against production without touching an inbox**: `admin/generate_link` minted a real code,
 `/api/auth/verify` exchanged it, `/api/session` answered `{ method: "bearer", user: … }`, a draft
 write went through **with no CSRF header at all**, and the draft was dropped again.
 

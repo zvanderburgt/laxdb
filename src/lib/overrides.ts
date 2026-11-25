@@ -382,7 +382,30 @@ export async function logOut(): Promise<void> {
  * The cookie is HttpOnly, so the only way to know is to ask — and asking costs a request, which is why
  * this runs when the editor is opened rather than on every page load.
  */
+/**
+ * A magic link comes back with the session in the fragment (`#access_token=…`). The dock cannot see
+ * that until it opens, so take it here and strip it from the address bar — a token in a URL that gets
+ * copied into a chat is a session leak.
+ */
+function absorbAuthHash(): boolean {
+  if (typeof window === "undefined" || !window.location.hash) return false;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const token = params.get("access_token");
+  if (!token) return false;
+  setAuthToken(token);
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return true;
+}
+
+/* Run on arrival, not on demand: the link lands on whatever page the editor was on, and the dock may
+ * not open for minutes — by which time the fragment could have been lost to a navigation. */
+if (typeof window !== "undefined") absorbAuthHash();
+
 export async function probeSession(): Promise<boolean> {
+  if (absorbAuthHash()) {
+    const s = (await fetchJson("/api/session")) as CmsSession | null;
+    if (s) return true;
+  }
   if (cmsSession) return true;
   if (authToken()) {
     const s = (await fetchJson("/api/session")) as CmsSession | null;

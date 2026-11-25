@@ -1613,6 +1613,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .cms-signin-label { font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
 .cms-signin .cms-input { width: 210px; box-shadow: 0 0 0 3px var(--accent-soft); }
 .cms-signin-err { font-size: 12px; color: var(--red); white-space: nowrap; }
+.cms-signin-hint { font-size: 12px; color: var(--muted, var(--text-2)); white-space: nowrap; }
 
 /* review sheet: the command palette's geometry */
 .cms-sheet-backdrop {
