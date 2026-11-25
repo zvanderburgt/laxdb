@@ -34,6 +34,19 @@ nothing checked *columns*. All nine are now real columns, and the loader refuses
 source carries a key the table does not (`assertCoverage`), which is the check that should have existed
 from the first load.
 
+**`games.json` is gone from the page's request path.** The Opp-adj board weights every game by the
+opponent's Elo over the 1500 baseline, which resolves to one number per player-season, so the loader
+now computes it into `player_adj` (2,077 player-seasons from 3,043 game logs) and the board reads a
+number. Three things had to be got right for the number to match the wire build:
+
+- the club index has to hold *every* team, including the ones with no Elo: "UMass" must find the
+  Minutemen and drop that game, not slide down a prefix match onto "UMass Lowell" and borrow its Elo;
+- prefix matching must be order-independent — longest key wins — because the browser, the database and
+  the loader do not list 475 clubs in the same order, and "first prefix hit" gave a different club;
+- `rows()` cached for five minutes per instance and the CDN for up to a day, so a reload could serve
+  a stale board: the query cache is 60 s now, `stale-while-revalidate` is 10 minutes, and the client
+  keys its refetch on the dataset's build stamp.
+
 **Three separate correctness findings on `/leaders`**, each caught by diffing rows rather than trusting
 the shape:
 

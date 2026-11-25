@@ -26,6 +26,7 @@ export type LeaderRow = {
   photo: string | null; team: string;
   gp: number; g: number; a: number; pts: number; sh: number; gb: number; ct: number;
   foW: number; foA: number; sv: number; ga: number; w: number; l: number;
+  adj?: number | null;
 };
 
 export type PageSlice =

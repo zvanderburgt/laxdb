@@ -35,10 +35,18 @@ export function teamByName(name: string): Team | undefined {
   const key = nameKey(name);
   const direct = teamNameIndex.get(key);
   if (direct) return direct;
+  // longest match wins: the wire, the database and the loader do not list teams in the same order, so
+  // "first prefix hit" would give a different club (and a different Elo) depending on how data arrived
+  let best: Team | undefined;
+  let bestLen = -1;
   for (const [k, t] of teamNameIndex) {
-    if (k.startsWith(key) || key.startsWith(k)) return t;
+    if (!(k.startsWith(key) || key.startsWith(k))) continue;
+    if (k.length > bestLen) {
+      bestLen = k.length;
+      best = t;
+    }
   }
-  return undefined;
+  return best;
 }
 /**
  * Loose player lookup by printed name ("CJ Kirst" ⇄ "C.J. Kirst"). Record books,

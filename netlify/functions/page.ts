@@ -161,6 +161,16 @@ async function leadersPage(params: URLSearchParams) {
       w: r.w ?? 0, l: r.l ?? 0,
     }));
 
+  // the Opp-adj board needs the weighting, which the loader resolved to one number per player-season;
+  // only the two competitions with a game log can carry it
+  if (scope === "season" && (league === "ncaa-d1" || league === "pll")) {
+    const adj = await rows<{ playerSlug: string; adjusted: number }>(
+      `player_adj?season=eq.${encodeURIComponent(season)}&select=playerSlug,adjusted`,
+    );
+    const byPlayer = new Map(adj.map((a) => [a.playerSlug, a.adjusted]));
+    for (const r of out) (r as any).adj = byPlayer.get(r.slug) ?? null;
+  }
+
   const gp = out.reduce((n, r) => n + r.gp, 0);
   const pts = out.reduce((n, r) => n + r.pts, 0);
 

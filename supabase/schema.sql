@@ -236,6 +236,20 @@ select c."leagueId", p."slug", p."name", p."position", p."positionName", p."phot
 from public.career_by_league c
 join public.players p on p."slug" = c."playerSlug";
 
+-- The Opp-adj board weights every game by the opponent's Elo over the 1500 baseline, which resolves
+-- to one number per player per season. It is computed at load time from the game log the importer
+-- writes, so the page never fetches games.json.
+create table if not exists public.player_adj (
+  "playerSlug" text not null,
+  "season"     text not null,
+  "games"      integer,
+  "raw"        numeric,
+  "adjusted"   numeric,
+  "avgOppElo"  numeric,
+  "ranked"     integer,
+  primary key ("playerSlug", "season")
+);
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -291,7 +305,7 @@ grant select, insert, update, delete on
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
-  public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career to service_role;
+  public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;

@@ -130,12 +130,13 @@ export default function Leaders() {
   // the adjusted board needs each player's game log, which ships separately
   const [games, setGames] = useState<Record<string, GameRow[]> | null>(null);
   React.useEffect(() => {
+    if (first) return; // the database already resolved the weighting to one number per player
     let alive = true;
     loadGames().then((g) => alive && setGames(g));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [first]);
   const [scope, setScope] = useState<"season" | "career">("season");
   const [pos, setPos] = useState<"all" | "A" | "M" | "D" | "G">("all");
   const activeSeason = season && seasons.includes(season) ? season : seasons[0];
@@ -144,7 +145,14 @@ export default function Leaders() {
     if (!first) return; // dataset mode: everything is already in memory
     if (remote && remote.league === leagueId && remote.scope === scope && remote.season === activeSeason) return;
     const ctl = new AbortController();
-    const qs = new URLSearchParams({ path: "/leaders", league: leagueId, scope, season: activeSeason ?? "" });
+    const qs = new URLSearchParams({
+      path: "/leaders",
+      league: leagueId,
+      scope,
+      season: activeSeason ?? "",
+      // the dataset's build stamp is part of the key, so a reload cannot be served from an old cache
+      v: remote?.generated ?? first.generated ?? "",
+    });
     fetch(`/data/page?${qs}`, { signal: ctl.signal, cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setRemote(d as LeadersSlice))
@@ -197,9 +205,22 @@ export default function Leaders() {
     const idx = indexCat(leaguePpg);
     // only the competitions we hold a game log for can be re-weighted
     const hasLogs = leagueId === "ncaa-d1" || leagueId === "pll";
-    const adj = scope === "season" && hasLogs ? adjustedCat(activeSeason, games) : null;
+    const supplied = scope === "season" && remote?.rows.some((r) => r.adj != null);
+    const adj = supplied
+      ? {
+          key: "adj",
+          label: "Opp-adj PTS",
+          value: (r: Row) => {
+            const hit = remote?.rows.find((x) => x.slug === r.player.id);
+            return hit?.adj ?? null;
+          },
+          format: (n: number) => n.toFixed(2),
+        }
+      : scope === "season" && hasLogs
+        ? adjustedCat(activeSeason, games)
+        : null;
     return [...CATS, ...(idx ? [idx] : []), ...(adj ? [adj] : [])];
-  }, [leaguePpg, scope, activeSeason, games, leagueId]);
+  }, [leaguePpg, scope, activeSeason, games, leagueId, remote]);
   const cat = cats.find((c) => c.key === catKey) ?? cats[0];
 
   const board = useMemo(() => {

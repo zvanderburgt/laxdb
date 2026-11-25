@@ -8,7 +8,9 @@
  */
 import { readFileSync } from "node:fs";
 
-const CACHE_TTL = 5 * 60 * 1000;
+// short enough that a reload of the dataset is live within a minute, long enough that a page's
+// handful of reads share one round trip each
+const CACHE_TTL = 60 * 1000;
 const PAGE = 1000;
 
 function env(): { url: string; key: string } {
@@ -105,5 +107,6 @@ export async function count(path: string): Promise<number> {
 /** The response preamble every read route shares: one query per URL per cache window. */
 export const CACHE_HEADERS = {
   "content-type": "application/json",
-  "netlify-cdn-cache-control": "public, max-age=300, stale-while-revalidate=86400",
+  // a reload of the dataset should show up in minutes, not the next day
+  "netlify-cdn-cache-control": "public, max-age=300, stale-while-revalidate=600",
 };

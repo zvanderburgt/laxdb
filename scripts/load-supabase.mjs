@@ -14,7 +14,7 @@
  * nothing. Values are coerced per column type — a "" in an integer column is the one thing that
  * would otherwise abort a load that is 99% valid.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { Client } from "pg";
 
 const ENV_PATH = process.env.SUPABASE_ENV_FILE ?? "data/supabase-env.txt";
@@ -42,6 +42,10 @@ const TABLES = {
     ["dob", "t"], ["birthplace", "j"], ["classYear", "i"], ["gradYear", "i"], ["teamId", "t"],
     ["leagueId", "t"], ["jersey", "i"], ["status", "t"], ["scouting", "j"], ["photo", "t"],
     ["experience", "i"], ["highSchool", "t"], ["careerLine", "j"],
+  ],
+  player_adj: [
+    ["playerSlug", "t"], ["season", "t"], ["games", "i"], ["raw", "n"], ["adjusted", "n"],
+    ["avgOppElo", "n"], ["ranked", "i"],
   ],
   seasons: [
     ["playerSlug", "t"], ["playerId", "t"], ["ord", "i"], ["season", "i"], ["teamId", "t"], ["leagueId", "t"], ["type", "t"],
@@ -135,6 +139,82 @@ const snapshots = [
   { key: "meta", body: data.meta },
 ];
 
+/* --------------------------- opponent-adjusted ---------------------------- */
+/**
+ * The Opp-adj board multiplies each game's points by the opponent's Elo over the 1500 baseline and
+ * averages. That is one number per player per season, so it is computed here from the game log the
+ * importer writes beside the dataset — the page then never fetches games.json.
+ */
+let adjRows = [];
+const gamesPath = process.env.LAXDB_GAMES ?? "public/games.json";
+if (existsSync(gamesPath)) {
+  const logs = JSON.parse(readFileSync(gamesPath, "utf8"));
+  // the same key the site uses: lowercased, letters only, last team wins, and each club answers to
+  // its name, its short name and its slug read as words. Every team is indexed — including the ones
+  // with no Elo, because "UMass" must find the Minutemen (and drop the game) rather than slide down a
+  // prefix match onto "UMass Lowell", whose Elo it would then borrow.
+  const nameKey = (v) => String(v ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  const teamsByKey = new Map();
+  for (const t of data.teams) {
+    for (const n of [t.name, t.shortName, t.slug?.replace(/-/g, " ")]) {
+      if (!n) continue;
+      teamsByKey.set(nameKey(n), t);
+    }
+  }
+
+  const lookup = (opponent) => {
+    const key = nameKey(opponent);
+    if (!key) return undefined;
+    if (teamsByKey.has(key)) return teamsByKey.get(key);
+    let best, bestLen = -1;
+    for (const [k, v] of teamsByKey) {
+      if (!(k.startsWith(key) || key.startsWith(k))) continue;
+      if (k.length > bestLen) {
+        bestLen = k.length;
+        best = v;
+      }
+    }
+    return best;
+  };
+
+  // data.json's player ids are not unique (four collisions), and the log is keyed by id, so the first
+  // record wins — the same record the id-based lookups on the page would reach
+  const slugById = new Map();
+  for (const p of data.players) if (!slugById.has(p.id)) slugById.set(p.id, p.slug);
+
+  for (const [playerId, games] of Object.entries(logs)) {
+    const slug = slugById.get(playerId);
+    if (!slug || !Array.isArray(games)) continue;
+    const bySeason = new Map();
+    for (const g of games) {
+      const season = String(g?.date ?? "").slice(0, 4);
+      const team = lookup(g?.opponent);
+      const elo = Number(team?.elo);
+      if (!Number.isFinite(elo) || !elo) continue;
+      if (!season || !elo) continue;
+      if (!bySeason.has(season)) bySeason.set(season, []);
+      bySeason.get(season).push({ g, elo, rpi: Number(team?.pollRanks?.rpi) || 99 });
+    }
+    for (const [season, list] of bySeason) {
+      if (list.length < 5) continue; // the page refuses to rank a player on fewer than five games
+      const pts = (g) => (g.g || 0) + (g.a || 0);
+      let raw = 0, adjusted = 0, eloSum = 0, ranked = 0;
+      for (const { g, elo, rpi } of list) {
+        raw += pts(g);
+        adjusted += pts(g) * (elo / 1500);
+        eloSum += elo;
+        if (rpi <= 25) ranked += 1;
+      }
+      const n = list.length;
+      adjRows.push({
+        playerSlug: slug, season, games: n,
+        raw: raw / n, adjusted: adjusted / n, avgOppElo: eloSum / n, ranked,
+      });
+    }
+  }
+  console.log(`opponent-adjusted: ${adjRows.length} player-seasons from ${Object.keys(logs).length} game logs`);
+}
+
 const expected = {
   leagues: leagues.length,
   teams: teams.length,
@@ -188,12 +268,13 @@ async function insert(table, rows) {
 try {
   await client.query("begin");
   await client.query(
-    'truncate public.seasons, public.players, public.teams, public.leagues, public.snapshots',
+    'truncate public.player_adj, public.seasons, public.players, public.teams, public.leagues, public.snapshots',
   );
   await insert("leagues", leagues);
   await insert("teams", teams);
   await insert("players", players);
   await insert("seasons", seasons);
+  await insert("player_adj", adjRows);
   await client.query(
     `insert into public.snapshots ("key", "body") values ('history', $1::jsonb), ('meta', $2::jsonb)`,
     [JSON.stringify(snapshots[0].body), JSON.stringify(snapshots[1].body)],
