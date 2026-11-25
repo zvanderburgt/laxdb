@@ -29,6 +29,8 @@ function parseLocation(): Route {
 
 const RouteCtx = createContext<Route>({ path: "/", query: new URLSearchParams() });
 
+import { sliceMode } from "./slice";
+
 const ROUTE_EVENT = "laxdb:navigate";
 
 export function RouterProvider({ children }: { children: React.ReactNode }) {
@@ -62,6 +64,13 @@ export const useRoute = () => useContext(RouteCtx);
 /** Push a new URL. `to` is a path with an optional query ("/players?league=ncaa-d1"). */
 export function navigate(to: string, { replace = false }: { replace?: boolean } = {}) {
   const here = window.location.pathname + window.location.search;
+  // a slice-built page holds one route's data only, so any move is a fresh document: the next page
+  // loads the full dataset unless its own URL asks for a slice
+  if (sliceMode()) {
+    if (to === here) return;
+    window.location.assign(to);
+    return;
+  }
   if (here === to) {
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;

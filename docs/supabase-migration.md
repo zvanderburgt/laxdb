@@ -1,7 +1,7 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. **Step 1 is built and verified** — schema and loader are live against the
-project in `us-east-2` (see [Step 1, done](#step-1-done)). Everything after it is plan.
+Charted **2026-11-25**. **Steps 1 and 2 are built and live** — the dataset is in Postgres and the player route answers from
+it on a flag (see [Step 1](#step-1-done) and [Step 2](#step-2-done)). Everything after it is plan.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -50,6 +50,37 @@ Two things the load forced, both now in the schema:
 The grant posture is the D1 decision in practice: `service_role` has explicit grants (auto-grant is
 off), the read model has RLS on and no policies, and the publishable key is answered
 `42501 permission denied` — verified, not assumed.
+
+## Step 2, done
+
+`/player/<slug>?slice=1` is answered by `GET /data/player?slug=<slug>` (`netlify/functions/slice.ts`),
+which reads Postgres through the Data API and returns that page's data with the three expensive blocks
+already computed. Measured **live, cold cache, 1.6 Mbps / 150 ms RTT**, three runs each, time to the
+comparable-players block actually in the DOM:
+
+| | transferred | time to content |
+| --- | --- | --- |
+| `/player/<slug>?slice=1` | **59,418 B** | **1.51 s / 1.52 s / 1.88 s** |
+| `/player/<slug>` (today) | 1,609,141 B | 9.75 s / 9.81 s / 9.93 s |
+
+**~6.4× faster, 27× fewer bytes**, and the page is the same page: `npm run slice:check -- connor-kelly`
+asserts the peer ranks and the six similarity scores are *identical* to what the browser computes from
+the full dataset, and the rendered similar rows and title match in both modes.
+
+How it stays identical: the slice is computed with the same functions the browser uses
+(`src/lib/peers.ts`, `src/lib/similar.ts`), imported by the function and given Postgres-built pools.
+Two things had to change for the pools to agree — `seasons."ord"` (the client's `.find()` takes the
+first row of a split season, and a database has no inherent order) and a deterministic tie-break in
+`similarTo` (`score`, then slug), which also makes the client's own output stable.
+
+Costs and limits, measured:
+
+- **cold fill 6.1 s** for the first request after a deploy — 17k-row similarity pool, 17 paginated
+  reads. The CDN caches the answer per slug (300 s + SWR) and the instance caches the pools, so the
+  second request is 1.0 s and the third 0.67 s. Step 4 replaces the pool with SQL.
+- leaving a slice page is a full document load, which lands back on the 13 MB dataset.
+- 400 KB decoded is still 400 KB of `JSON.parse`; step 3 shrinks it by trimming teams and leagues to
+  the fields the page reads.
 
 ## The measurement that decides everything
 
@@ -229,7 +260,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | --- | --- | --- | --- |
 | 0 | Supabase project + keys (his, 5 min — see below) | — | — |
 | 1 | Schema + loader + count verification (D2) | ~~1–2 days~~ **done 2026-11-25** | counts do not reconcile |
-| 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | 2–3 days | it is not faster on the throttled profile |
+| 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | ~~2–3 days~~ **done 2026-11-25** | it is not faster on the throttled profile — **it is: 9.8 s → 1.5 s** |
 | 3 | `/players` — filters, sort, pagination in SQL | 3–4 days | SQL cannot replace the in-memory sort |
 | 4 | Derived numbers: ratings table, peers/similar (D3) | 3–5 days | **the risky phase** — O(n) JS has to become indexed SQL |
 | 5 | CMS onto Postgres + Supabase Auth (D4) | 1–2 days | the smoke suite cannot be made to pass |

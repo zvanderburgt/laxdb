@@ -1,6 +1,7 @@
 node_modules/
 dist/
 scripts/.cache/
+scripts/.check-slice.mjs
 scripts/.pylibs/
 .netlify/
 *.log

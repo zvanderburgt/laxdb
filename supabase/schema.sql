@@ -75,6 +75,7 @@ create table if not exists public.seasons (
   -- can share a season, a league and a type (one skater line, one goalie line).
   "playerSlug" text not null,
   "playerId" text not null,
+  "ord"      integer not null default 0,
   "season"   integer not null,
   "teamId"   text not null,
   "leagueId" text not null,
@@ -87,6 +88,10 @@ create table if not exists public.seasons (
   primary key ("playerSlug", "season", "teamId", "leagueId", "type")
 );
 
+-- added 2026-11-25 after the first load: the client's `.find()` picks the first of a player's rows
+-- for a season, so the ordinal is what makes a split season resolve to the same row in both modes
+alter table public.seasons add column if not exists "ord" integer not null default 0;
+
 -- Everything that is not a row of the three above: history (champions, programmes, Tewaaraton,
 -- All-Americans, records) and the dataset meta block. One jsonb body per key, so a shape the
 -- database does not model yet is still carried rather than dropped.
@@ -95,6 +100,32 @@ create table if not exists public.snapshots (
   "body"      jsonb not null,
   "updated_at" timestamptz not null default now()
 );
+
+-- Career totals per player, so the similarity pool is one row per player instead of 53k season
+-- rows. The loader never writes this; Postgres maintains it.
+create or replace view public.player_career as
+select
+  p."slug", p."id", p."name", p."position", p."positionName", p."heightIn",
+  p."teamId", p."leagueId", p."photo",
+  coalesce(sum(s."gp"), 0)::int   as "gp",
+  coalesce(sum(s."g"), 0)::int    as "g",
+  coalesce(sum(s."a"), 0)::int    as "a",
+  coalesce(sum(s."sh"), 0)::int   as "sh",
+  coalesce(sum(s."gb"), 0)::int   as "gb",
+  coalesce(sum(s."to"), 0)::int   as "to",
+  coalesce(sum(s."ct"), 0)::int   as "ct",
+  coalesce(sum(s."pen"), 0)::int  as "pen",
+  coalesce(sum(s."sv"), 0)::int   as "sv",
+  coalesce(sum(s."ga"), 0)::int   as "ga",
+  coalesce(sum(s."min"), 0)::int  as "min",
+  coalesce(sum(s."foW"), 0)::int  as "foW",
+  coalesce(sum(s."foA"), 0)::int  as "foA",
+  coalesce(sum(s."w"), 0)::int    as "w",
+  coalesce(sum(s."l"), 0)::int    as "l",
+  count(s.*)::int                 as "seasons"
+from public.players p
+left join public.seasons s on s."playerSlug" = p."slug"
+group by 1,2,3,4,5,6,7,8,9;
 
 /* --------------------------------- indexes -------------------------------- */
 
@@ -152,6 +183,7 @@ grant select, insert, update, delete on
   public.editors, public.overrides, public.revisions
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
+grant select on public.player_career to service_role;
 
 -- The CMS is the one place a browser talks to these tables: signed-in editors, own rows only.
 grant select on public.players, public.teams, public.leagues to authenticated;

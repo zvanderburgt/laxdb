@@ -1,5 +1,6 @@
 import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
 import { decodeDataset, type WireDataset } from "./wire";
+import { setSlice, type PlayerSlice } from "./slice";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -78,8 +79,22 @@ export let SEASON_RANGE: [string, string] = ["", ""];
  * encoding `scripts/compact-data.mjs` writes at build time (35% smaller, same in-memory shape);
  * `data.json` is the fallback for a deploy or a cached shell that predates it.
  */
+/** `?slice=1` on a player route asks the database for this page only (docs/supabase-migration.md). */
+function sliceSlug(): string | null {
+  if (typeof window === "undefined") return null;
+  if (new URLSearchParams(window.location.search).get("slice") !== "1") return null;
+  const hit = window.location.pathname.match(/^\/player\/([^/]+)\/?$/);
+  return hit ? decodeURIComponent(hit[1]) : null;
+}
+
 export async function loadDataset(): Promise<void> {
   const base = import.meta.env.BASE_URL;
+
+  const slug = sliceSlug();
+  if (slug) {
+    await loadSlice(slug);
+    return;
+  }
   let res = await fetch(`${base}data.wire.json`, { cache: "no-cache" });
   let payload: Dataset | WireDataset;
   if (res.ok) {
@@ -109,6 +124,58 @@ export async function loadDataset(): Promise<void> {
   CURRENT = data.meta.season;
 
   const years = data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))).filter(Boolean);
+  SEASON_RANGE = years.length ? [String(Math.min(...years)), String(Math.max(...years))] : ["", ""];
+}
+
+/**
+ * One route, answered by Postgres: the page's player, the teams and leagues its lookups need, and
+ * the three blocks (peers, similarity, teammates) already computed server-side. `data.players` is
+ * only ever these players, so nothing here may fall back to scanning it — see src/lib/slice.ts.
+ */
+async function loadSlice(slug: string): Promise<void> {
+  const base = import.meta.env.BASE_URL;
+  const res = await fetch(`${base}data/player?slug=${encodeURIComponent(slug)}`, { cache: "no-cache" });
+  if (!res.ok) throw new Error(`slice fetch failed: ${res.status}`);
+  const slice = (await res.json()) as PlayerSlice;
+
+  const players = [slice.player, ...slice.mates, ...slice.similar.map((s) => s.player)];
+  for (const p of players) normalizePlayer(p);
+  const seen = new Set<string>();
+  data = {
+    meta: {
+      generated: slice.generated.slice(0, 10),
+      dataset: "Supabase",
+      season: String(
+        Math.max(...slice.player.seasons.map((s) => Number(s.season) || 0)),
+      ),
+      sources: [],
+    },
+    leagues: slice.leagues,
+    teams: slice.teams,
+    players,
+    history: slice.history as Dataset["history"],
+  } as Dataset;
+
+  for (const p of players) {
+    if (seen.has(p.slug)) continue;
+    seen.add(p.slug);
+    playerById.set(p.id, p);
+    playerBySlug.set(p.slug, p);
+  }
+  for (const t of data.teams) {
+    t.logo = assetUrl(t.logo);
+    teamById.set(t.id, t);
+    teamBySlug.set(t.slug, t);
+  }
+  for (const l of data.leagues) leagueById.set(l.id, l);
+
+  setSlice(slice);
+
+  PLAYER_COUNT = data.players.length;
+  TEAM_COUNT = data.teams.length;
+  SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
+  CURRENT = data.meta.season;
+  const years = slice.player.seasons.map((s) => Number(s.season)).filter(Boolean);
   SEASON_RANGE = years.length ? [String(Math.min(...years)), String(Math.max(...years))] : ["", ""];
 }
 

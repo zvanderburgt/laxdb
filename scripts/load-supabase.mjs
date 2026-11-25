@@ -42,7 +42,7 @@ const TABLES = {
     ["experience", "i"], ["highSchool", "t"],
   ],
   seasons: [
-    ["playerSlug", "t"], ["playerId", "t"], ["season", "i"], ["teamId", "t"], ["leagueId", "t"], ["type", "t"],
+    ["playerSlug", "t"], ["playerId", "t"], ["ord", "i"], ["season", "i"], ["teamId", "t"], ["leagueId", "t"], ["type", "t"],
     ["gp", "i"], ["gs", "i"], ["g", "i"], ["a", "i"], ["pts", "i"], ["sh", "i"], ["gb", "i"],
     ["to", "i"], ["ct", "i"], ["foW", "i"], ["foA", "i"], ["pen", "i"], ["min", "i"],
     ["ga", "i"], ["sv", "i"], ["w", "i"], ["l", "i"], ["gaa", "n"], ["svp", "n"],
@@ -96,8 +96,9 @@ const players = data.players.map((r) => project(r, TABLES.players));
 
 const seasons = [];
 for (const p of data.players) {
-  for (const s of p.seasons ?? [])
-    seasons.push(project({ ...s, playerId: p.id, playerSlug: p.slug }, TABLES.seasons));
+  (p.seasons ?? []).forEach((s, ord) =>
+    seasons.push(project({ ...s, playerId: p.id, playerSlug: p.slug, ord }, TABLES.seasons)),
+  );
 }
 
 const snapshots = [

@@ -194,9 +194,11 @@ offers are not production tiers.
 `docs/supabase-migration.md` (2026-11-25) is the route: destination, what moves and what stays on
 Netlify, eight decisions (read path, ingest, derived numbers, CMS auth, media, egress, cutover,
 games), the fog, and a six-step sequence whose step 2 can kill the effort after three days.
-**Step 1 is built**: the Supabase schema and a loader that pushes `data.json` into it — 26,234
-players, 53,465 season rows, 475 teams, points total reconciled, 49 MB, `npm run db:load`. Step 2
-(the first route served from Postgres, measured against the static payload) is the open one.
+**Steps 1 and 2 are built and live.** The schema and loader put the dataset in Postgres (26,234
+players, 53,465 season rows, 475 teams, points total reconciled, 49 MB, `npm run db:load`), and
+`/player/<slug>?slice=1` now answers from it: **1.5 s to content on a 1.6 Mbps link against 9.8 s**
+for the dataset file, on a page whose peer ranks and similarity scores are asserted identical
+(`npm run slice:check`). Step 3 (the players list and its SQL sort/filter) is the open one.
 
 ## Later — new modelling or a new source
 

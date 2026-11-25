@@ -55,12 +55,14 @@ function features(p: Player): Features {
 
 type Pool = { ids: Player[]; z: Map<string, Features> };
 
-let poolCache: Map<Group, Pool> | null = null;
+/** Cache per pool identity: the client passes `data.players`, a server passes its own slice. */
+const poolCaches = new WeakMap<Player[], Map<Group, Pool>>();
 
-function pools(): Map<Group, Pool> {
-  if (poolCache) return poolCache;
+function pools(players: Player[] = data.players): Map<Group, Pool> {
+  const cached = poolCaches.get(players);
+  if (cached) return cached;
   const byGroup = new Map<Group, Player[]>();
-  for (const p of data.players) {
+  for (const p of players) {
     const c = careerTotals(p);
     if (c.gp < 5) continue; // a two-game cameo has no shape to compare
     const g = groupOf(p);
@@ -98,14 +100,14 @@ function pools(): Map<Group, Pool> {
     out.set(g, { ids: players, z });
   }
 
-  poolCache = out;
+  poolCaches.set(players, out);
   return out;
 }
 
 export type Similar = { player: Player; score: number };
 
-export function similarTo(p: Player, n = 6): Similar[] {
-  const pool = pools().get(groupOf(p));
+export function similarTo(p: Player, n = 6, players: Player[] = data.players): Similar[] {
+  const pool = pools(players).get(groupOf(p));
   if (!pool) return [];
   const mine = pool.z.get(p.id);
   if (!mine) return [];
@@ -129,5 +131,7 @@ export function similarTo(p: Player, n = 6): Similar[] {
     const score = Math.max(1, Math.min(99, Math.round(100 * Math.exp(-0.55 * d))));
     scored.push({ player: other, score });
   }
-  return scored.sort((a, b) => b.score - a.score).slice(0, n);
+  return scored
+    .sort((a, b) => b.score - a.score || a.player.slug.localeCompare(b.player.slug))
+    .slice(0, n);
 }

@@ -15,7 +15,8 @@
     "entity-index": "node scripts/gen-entity-index.mjs",
     "db:check": "node scripts/db-check.mjs",
     "db:schema": "node scripts/apply-schema.mjs",
-    "db:load": "node scripts/load-supabase.mjs"
+    "db:load": "node scripts/load-supabase.mjs",
+    "slice:check": "node_modules/.bin/esbuild scripts/check-slice.ts --bundle --platform=node --format=esm --outfile=scripts/.check-slice.mjs --log-level=error && node scripts/.check-slice.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -22,7 +22,7 @@ const GROUPS: Record<string, string[]> = {
   G: ["G"],
 };
 
-export function peerRanks(player: Player): PeerRank[] {
+export function peerRanks(player: Player, players: Player[] = data.players): PeerRank[] {
   const season = player.seasons.reduce<string | null>(
     (best, s) => (!best || s.season > best ? s.season : best),
     null,
@@ -35,7 +35,7 @@ export function peerRanks(player: Player): PeerRank[] {
   const group = GROUPS[player.position] ?? ["M", "SSDM"];
   const isGoal = player.position === "G";
 
-  const peers = data.players.filter(
+  const peers = players.filter(
     (p) => p.leagueId === player.leagueId && group.includes(p.position),
   );
 

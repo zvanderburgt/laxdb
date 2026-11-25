@@ -22,6 +22,7 @@ import {
 import type { GameRow, Player, SeasonRow } from "../lib/types";
 import { downloadCsv, downloadPlayerCard } from "../lib/export";
 import { similarTo } from "../lib/similar";
+import { sliceFor } from "../lib/slice";
 import { clubInk, distinctEach, liftForDark } from "../lib/palette";
 import { peerRanks } from "../lib/peers";
 import { splits } from "../lib/splits";
@@ -100,9 +101,12 @@ function Profile({ player }: { player: Player }) {
 
   const roster = useRoster();
   const saved = roster.some((p) => p.id === player.id);
-  const mates = useMemo(() => teammatesOf(player), [player.id]);
-  const similar = useMemo(() => similarTo(player, 6), [player.id]);
-  const peers = useMemo(() => peerRanks(player), [player.id]);
+  // a database-backed page load carries these three blocks already computed from the full
+  // dataset, because `data.players` here holds one page's worth of people (src/lib/slice.ts)
+  const slice = sliceFor(player.slug);
+  const mates = useMemo(() => slice?.mates ?? teammatesOf(player), [player.id, slice]);
+  const similar = useMemo(() => slice?.similar ?? similarTo(player, 6), [player.id, slice]);
+  const peers = useMemo(() => slice?.peers ?? peerRanks(player), [player.id, slice]);
   // derived honors: the selection sheets and the award archive, not an editorial field
   const honors = useMemo(
     () => ({
