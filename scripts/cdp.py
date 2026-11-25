@@ -13,7 +13,7 @@ CLI:
 """
 import asyncio, json, os, subprocess, sys, time, urllib.request
 
-CHROME = "/opt/hermes/tools/chromium-1208/chrome-linux64/chrome"
+CHROME = "/opt/hermes/tools/chromium-1248/chrome-linux64/chrome"
 PORT = int(os.environ.get("CDP_PORT", "9333"))
 PROFILE = f"/tmp/laxdb-chrome-{PORT}"
 
