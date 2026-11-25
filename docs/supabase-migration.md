@@ -1,10 +1,11 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. **Steps 1–4 and 6 are built and live** — the dataset is in Postgres, the player route and the players
-table answer from it *by default*, the similarity pools are materialised at load, and every other
-route still takes the dataset file (see [Step 1](#step-1-done), [Step 2](#step-2-done),
-[Step 3](#step-3-done), [Step 4](#step-4-done-partly), [Step 6](#step-6-done)). Step 5 (the CMS onto
-Postgres) is the one left.
+Charted **2026-11-25**. **Steps 1–4 and 6 are built and live, and step 5's data half is live** — the dataset is in Postgres,
+the player route and the players table answer from it *by default*, the similarity pools are
+materialised at load, every other route still takes the dataset file, and the CMS now writes to
+Postgres (see [Step 1](#step-1-done), [Step 2](#step-2-done), [Step 3](#step-3-done),
+[Step 4](#step-4-done-partly), [Step 5](#step-5-the-store-is-done-auth-is-left),
+[Step 6](#step-6-done)). The CMS's *auth* is the one piece left.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -170,6 +171,40 @@ page. The redirect is guarded so a failure on the `?slice=0` page shows the erro
 
 **Revert:** `?slice=0` per URL today, and deleting the two `if (sliceSlug())` / `if (listSlice())`
 branches in `src/lib/data.ts` returns every visitor to the file.
+
+## Step 5 — the store is done, auth is left
+
+**The store moved.** `cms_store` is a key/value table, not rows, and that is deliberate: `doc.ts`
+treats the override document as one object and publish as one write, and its lifecycle is the most
+tested code in the CMS. Slicing it into `overrides(entity, field, value)` rows would have fragmented
+that to gain queries nobody asked for. What changed is the substrate — Netlify Blobs (a token that
+can expire mid-session, no backup, no query) to Postgres.
+
+- `netlify/lib/store.ts` gained a `pgStore()` behind the same `KV` interface; `CMS_STORE=fs` still
+  selects the local directory and `CMS_STORE=blobs` the old backend, so nothing is stranded.
+- `scripts/migrate-cms-store.mjs` moved the live documents first: the published document (v12, the
+  hero lede), the draft and all twelve version snapshots. It refuses to overwrite a newer document
+  without `--force`.
+- The speculative `overrides`/`revisions` row tables from step 1 are **dropped** — they were a guess
+  at the shape before the CMS code was read, and empty weight is worse than no weight.
+
+**Verified end-to-end against production**, not just locally: `cms-smoke --base https://laxdb.netlify.app
+--write` runs the whole lifecycle on Postgres — sign-in, CSRF refusal, foreign-origin refusal, the
+validator's 422s, stage, publish, edge-cache behaviour, history, revert, the 409 paths — and ends
+`all checks passed`. The published document came back to one field with the hero lede intact.
+
+**What is left is auth.** The passphrase, the HMAC cookie, the Origin check and the scrypt hash in
+`netlify/lib/auth.ts` exist because there was no auth provider. Supabase Auth replaces them:
+
+1. a magic-link sign-in on the CMS dock (the existing form posts an email instead of a passphrase);
+2. the function verifies the bearer token (`GET /auth/v1/user` with the publishable key) and checks
+   `auth.uid()` against `public.editors`;
+3. `cms-smoke` swaps its passphrase step for an OTP one, keeping every other assertion;
+4. the cookie, `csrfFor`, the Origin check and the scrypt code then delete — a bearer token in a
+   header is not a cookie, so CSRF stops being a class of bug rather than being mitigated.
+
+That is a session of its own and it touches the one surface that writes, so it was not folded into
+this one.
 
 ## The measurement that decides everything
 
@@ -352,7 +387,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | ~~2–3 days~~ **done 2026-11-25** | it is not faster on the throttled profile — **it is: 9.8 s → 1.5 s** |
 | 3 | `/players` — filters, sort, pagination in SQL | ~~3–4 days~~ **done 2026-11-25** | SQL cannot replace the in-memory sort — it can: 9.9 s → 1.5 s |
 | 4 | Derived numbers: ratings table, peers/similar (D3) | ~~3–5 days~~ **partly done 2026-11-25**: ratings were already importer-side; pools materialised, cold 6.1 → 4.2 s | the O(n) JS had to become indexed SQL — it did not, and the last 1.6 MB needs pgvector |
-| 5 | CMS onto Postgres + Supabase Auth (D4) | 1–2 days | the smoke suite cannot be made to pass |
+| 5 | CMS onto Postgres + Supabase Auth (D4) | store **done 2026-11-25** (smoke passes on Postgres, documents migrated); auth is the open half | the smoke suite cannot be made to pass — it does |
 | 6 | Cutover, wire file demoted to fallback (D7) | ~~1 day~~ **done 2026-11-25** | — (measured: 9.8 s → 1.5 s on the plain URLs) |
 
 Total: **2–3 weeks of focused work**, matching `backend.md`'s estimate, with the important property

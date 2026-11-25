@@ -15,7 +15,7 @@
 import type { League, Player, SeasonRow, Team } from "../../src/lib/types";
 import { peerRanks } from "../../src/lib/peers";
 import { similarTo, type Similar } from "../../src/lib/similar";
-import { rows, CACHE_HEADERS } from "./supabase";
+import { rows, CACHE_HEADERS } from "../lib/supabase";
 
 // not /api/*: the admin API registers that wildcard and answers everything else "no such route"
 export const config = { path: "/data/player" };

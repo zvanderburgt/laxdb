@@ -7,7 +7,9 @@
  * Everything above this file (draft document, revisions, rate limits) only knows `KV`.
  */
 import { getStore } from "@netlify/blobs";
+import { pgFetch } from "./supabase";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 export interface KV {
@@ -20,7 +22,56 @@ export interface KV {
 export type StoreName = "cms" | "media";
 
 const FS_ROOT = process.env.CMS_STORE_DIR ?? "data/cms-store";
-const useFs = () => process.env.CMS_STORE === "fs";
+const mode = () => process.env.CMS_STORE ?? "";
+const useFs = () => mode() === "fs";
+/** Postgres is the store whenever the project's credentials are present — `blobs` is the fallback. */
+const usePg = () => mode() === "pg" || (mode() !== "fs" && mode() !== "blobs" && hasSupabase());
+
+function hasSupabase(): boolean {
+  return Boolean(
+    (process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) ||
+      existsSync(process.env.SUPABASE_ENV_FILE ?? "data/supabase-env.txt"),
+  );
+}
+
+/**
+ * The CMS's documents, in Postgres.
+ *
+ * `cms_store` is a key/value table on purpose: `doc.ts` treats the override document as one object
+ * and publish as one write, so the storage layer stays that shape. What changes is the substrate —
+ * one project, one backup, one place to look, and no Netlify Blobs token to expire mid-session.
+ */
+function pgStore(name: StoreName): KV {
+  const base = `cms_store?store=eq.${encodeURIComponent(name)}`;
+  const id = (key: string) => `&key=eq.${encodeURIComponent(key)}`;
+  return {
+    async get(key) {
+      const res = await pgFetch(`${base}${id(key)}&select=value`);
+      if (!res.ok) throw new StoreError(`get ${key}: ${res.status}`);
+      const body = (await res.json()) as { value: string }[];
+      return body[0]?.value ?? null;
+    },
+    async set(key, value) {
+      const res = await pgFetch(`cms_store?on_conflict=store,key`, {
+        method: "POST",
+        headers: { prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify([{ store: name, key, value }]),
+      });
+      if (!res.ok) throw new StoreError(`set ${key}: ${res.status} ${(await res.text()).slice(0, 120)}`);
+    },
+    async del(key) {
+      const res = await pgFetch(`${base}${id(key)}`, { method: "DELETE" });
+      if (!res.ok) throw new StoreError(`del ${key}: ${res.status}`);
+    },
+    async list(prefix = "") {
+      const like = encodeURIComponent(`${prefix}*`);
+      const res = await pgFetch(`${base}&key=like.${like}&select=key&order=key`);
+      if (!res.ok) throw new StoreError(`list ${prefix}: ${res.status}`);
+      const body = (await res.json()) as { key: string }[];
+      return body.map((r) => r.key);
+    },
+  };
+}
 
 /** Keys are slugs we generate ourselves, but never trust that when they reach a path. */
 const safeKey = (key: string) => key.replace(/[^a-zA-Z0-9._/-]/g, "_").replace(/\.\./g, "_");
@@ -95,6 +146,7 @@ function blobsStore(name: StoreName): KV {
 const fsCache = new Map<StoreName, KV>();
 
 export function store(name: StoreName): KV {
+  if (usePg()) return resilient(pgStore(name));
   if (!useFs()) return resilient(blobsStore(name));
   let s = fsCache.get(name);
   if (!s) {

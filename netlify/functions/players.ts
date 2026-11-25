@@ -10,7 +10,7 @@
  * count run here over the narrowed rows using `searchKey`, which is imported rather than copied.
  */
 import { searchKey } from "../../src/lib/data";
-import { rows, CACHE_HEADERS } from "./supabase";
+import { rows, CACHE_HEADERS } from "../lib/supabase";
 
 export const config = { path: "/data/players" };
 

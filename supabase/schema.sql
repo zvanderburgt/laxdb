@@ -178,21 +178,19 @@ create table if not exists public.editors (
   "createdAt" timestamptz not null default now()
 );
 
-create table if not exists public.overrides (
-  "entityType" text not null,
-  "entityId"   text not null,
-  "path"       text not null,
-  "value"      jsonb,
-  "updatedAt"  timestamptz not null default now(),
-  "updatedBy"  text,
-  primary key ("entityType", "entityId", "path")
-);
+-- The CMS's unit of truth is a *document*, not a row: one JSON object holds every editorial field,
+-- keyed entity:field, and publish promotes a draft to published in one write. Slicing that into rows
+-- would fragment a tested lifecycle to gain queries nobody asked for, so the store keeps the shape it
+-- already has and only its substrate changes — Netlify Blobs (token expiry, no backups) to Postgres.
+drop table if exists public.overrides;
+drop table if exists public.revisions;
 
-create table if not exists public.revisions (
-  "id"        bigserial primary key,
-  "doc"       jsonb not null,
-  "author"    text,
-  "createdAt" timestamptz not null default now()
+create table if not exists public.cms_store (
+  "store"      text not null,                  -- cms | media
+  "key"        text not null,                  -- overrides | draft | versions/v12.json | media path
+  "value"      text not null,
+  "updatedAt"  timestamptz not null default now(),
+  primary key ("store", "key")
 );
 
 /* --------------------------- grants and RLS ------------------------------- */
@@ -203,15 +201,13 @@ create table if not exists public.revisions (
 grant usage on schema public to service_role;
 grant select, insert, update, delete on
   public.leagues, public.teams, public.players, public.seasons, public.snapshots,
-  public.editors, public.overrides, public.revisions
+  public.editors, public.cms_store
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span to service_role;
 
--- The CMS is the one place a browser talks to these tables: signed-in editors, own rows only.
+-- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;
-grant select, insert, update, delete on public.overrides to authenticated;
-grant select, insert on public.revisions to authenticated;
 
 alter table public.leagues        enable row level security;
 alter table public.teams          enable row level security;
@@ -219,44 +215,8 @@ alter table public.players        enable row level security;
 alter table public.seasons        enable row level security;
 alter table public.snapshots      enable row level security;
 alter table public.editors        enable row level security;
-alter table public.overrides      enable row level security;
-alter table public.revisions      enable row level security;
+alter table public.cms_store      enable row level security;
 
 -- No policies on the read model: RLS on + no policy = deny for anon/authenticated, which is the
--- intended posture. service_role bypasses RLS entirely.
-drop policy if exists "editors read overrides" on public.overrides;
-create policy "editors read overrides" on public.overrides
-  for select to authenticated
-  using (exists (select 1 from public.editors e where e."userId" = auth.uid()));
-
-drop policy if exists "editors write overrides" on public.overrides;
-create policy "editors write overrides" on public.overrides
-  for insert to authenticated
-  with check (
-    exists (select 1 from public.editors e where e."userId" = auth.uid())
-    and "updatedBy" = auth.uid()::text
-  );
-
-drop policy if exists "editors update overrides" on public.overrides;
-create policy "editors update overrides" on public.overrides
-  for update to authenticated
-  using (exists (select 1 from public.editors e where e."userId" = auth.uid()))
-  with check ("updatedBy" = auth.uid()::text);
-
-drop policy if exists "editors delete overrides" on public.overrides;
-create policy "editors delete overrides" on public.overrides
-  for delete to authenticated
-  using (exists (select 1 from public.editors e where e."userId" = auth.uid()));
-
-drop policy if exists "editors read revisions" on public.revisions;
-create policy "editors read revisions" on public.revisions
-  for select to authenticated
-  using (exists (select 1 from public.editors e where e."userId" = auth.uid()));
-
-drop policy if exists "editors append revisions" on public.revisions;
-create policy "editors append revisions" on public.revisions
-  for insert to authenticated
-  with check (
-    exists (select 1 from public.editors e where e."userId" = auth.uid())
-    and "author" = auth.uid()::text
-  );
+-- intended posture. service_role bypasses RLS entirely, and it is the only role that touches
+-- cms_store (the admin API holds it, the browser never does).
