@@ -143,7 +143,9 @@ export default function Editor() {
   }, []);
 
   useEffect(() => {
-    if (cms.mode === "off" || editing) return;
+    // nothing on the page is editable until the editor is signed in — no hover outlines, no click
+    // targets, no keyboard surprises
+    if (cms.mode === "off" || editing || !cms.signedIn) return;
 
     let frame = 0;
     const onMove = (e: PointerEvent) => {
@@ -206,7 +208,7 @@ export default function Editor() {
       window.removeEventListener("scroll", onScroll, { capture: true } as EventListenerOptions);
       window.removeEventListener("resize", onScroll);
     };
-  }, [cms.mode, editing, hover, read]);
+  }, [cms.mode, editing, hover, read, cms.signedIn]);
 
   // focus the shadow input the moment it appears
   useEffect(() => {
@@ -341,7 +343,7 @@ export default function Editor() {
 
   return (
     <>
-      {hover && !editing ? (
+      {cms.signedIn && hover && !editing ? (
         <div
           className="cms-outline"
           style={{ top: hover.rect.top, left: hover.rect.left, width: hover.rect.width, height: hover.rect.height }}
@@ -351,7 +353,7 @@ export default function Editor() {
         </div>
       ) : null}
 
-      {editing ? (
+      {cms.signedIn && editing ? (
         <div
           className="cms-field"
           style={{
@@ -497,6 +499,9 @@ export default function Editor() {
             }}
           >
             {usePass ? "Use an emailed code" : "Use the passphrase"}
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={exit} title="Leave editing">
+            Cancel
           </button>
           {cms.signInError ? <span className="cms-signin-err">{cms.signInError}</span> : null}
         </form>
@@ -797,6 +802,7 @@ export default function Editor() {
         </div>
       ) : null}
 
+      {cms.signedIn ? (
       <div className="tray tray-cms" role="toolbar" aria-label="Content editor">
         <span className="cms-mode">
           <span className={`cms-dot${notice?.kind === "bad" ? " is-bad" : ""}`} />
@@ -855,6 +861,7 @@ export default function Editor() {
           </button>
         </div>
       </div>
+      ) : null}
 
       {notice && !review ? <div className={`cms-toast is-${notice.kind}`}>{notice.text}</div> : null}
     </>

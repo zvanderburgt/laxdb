@@ -1605,7 +1605,8 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 
 /* sign in */
 .cms-signin {
-  position: fixed; z-index: 81; bottom: 86px; left: 50%; transform: translateX(-50%);
+  /* signed out, the sign-in card is the only chrome on the page: it sits where the dock would be */
+  position: fixed; z-index: 81; bottom: 20px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px; padding: 10px 12px; max-width: calc(100vw - 24px);
   background: var(--nav-bg); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
   border: 1px solid var(--hairline-strong); border-radius: var(--r-md); box-shadow: var(--shadow-lg);

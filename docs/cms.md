@@ -13,6 +13,11 @@ bio, both bars stacked) and `docs/cms-dock-desktop.png` / `docs/cms-dock-phone.p
 at 1440 and 390. Measured from those: the dock is 846×50 at 1440 and 366×50 at 390 — the same 50px as
 the tray — and `scrollWidth === clientWidth` at both widths.
 
+**Before sign-in there is no editor.** ⌘⇧E (or `?edit=1`) shows one thing: the way in — an email field
+that mails a sign-in link, with the passphrase as the fallback. The dock, the in-place hover outlines,
+the clickable fields and the "Add a bio" slots all appear only once `/api/session` confirms a signed-in
+editor, so an anonymous visitor never sees an editing affordance and a stray click cannot open a field.
+
 **Status.** Phases 0–2 are built and verified — locally against a filesystem store, and against a
 deployed draft on real Netlify Blobs. The dock, select mode, the inline field editor and the review
 sheet all work end to end: sign in, click a field, type, save, review, publish, reload and the value is

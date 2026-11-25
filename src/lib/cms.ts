@@ -9,6 +9,7 @@ import { useSyncExternalStore } from "react";
 import { fieldFor, setPath, validatePatch, type EntityType } from "./cms-registry";
 import {
   signInWithLink,
+  authToken,
   entityObject,
   loadOverrides,
   logIn,
@@ -55,7 +56,7 @@ const keyOf = (entity: string, id: string, path: string) => `${entity}:${id}:${p
 
 let state: CmsState = {
   mode: "off",
-  signedIn: Boolean(cmsSession),
+  signedIn: Boolean(cmsSession) || Boolean(authToken()),
   signingIn: false,
   signInError: "",
   pending: [],
@@ -105,10 +106,15 @@ export const useDataRevision = () =>
     () => 0
   );
 
+/**
+ * Is the page editable *right now*? That is not the same as "the editor is open": before sign-in the
+ * only thing on the page is the way in, so empty slots ("Add a bio"), photo hotspots and clickable
+ * fields do not exist yet.
+ */
 export const useIsEditing = () =>
   useSyncExternalStore(
     subscribe,
-    () => state.mode !== "off",
+    () => state.mode !== "off" && state.signedIn,
     () => false
   );
 
@@ -158,7 +164,13 @@ export function stopEditing() {
 
 async function refreshDraft() {
   await loadOverrides(true);
-  set({ pending: draftToPending(), version: overrides.version, signedIn: Boolean(cmsSession) });
+  set({
+    pending: draftToPending(),
+    version: overrides.version,
+    // the passphrase sets cmsSession; an emailed link sets only a bearer token, and this line used to
+    // clear the signed-in flag the moment the draft refreshed
+    signedIn: Boolean(cmsSession) || Boolean(authToken()),
+  });
 }
 
 /** The server's draft, as pending rows. Befores were captured when the draft was applied. */
