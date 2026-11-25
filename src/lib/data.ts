@@ -106,7 +106,7 @@ export function fallbackToWire(): void {
 }
 
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
-const PAGE_ROUTES = new Set(["/leagues", "/teams"]);
+const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches"]);
 
 function pageRoute(): string | null {
   if (typeof window === "undefined" || forceWire()) return null;
@@ -128,13 +128,13 @@ async function loadPageSlice(base: string, route: string): Promise<boolean> {
     return false;
   }
 
-  if (slice.route !== "/leagues" && slice.route !== "/teams") return false;
+  if (slice.route !== "/leagues" && slice.route !== "/teams" && slice.route !== "/coaches") return false;
 
   data = {
     meta: { generated: "", dataset: "Supabase", season: "", sources: [] },
     leagues: slice.leagues as Dataset["leagues"],
     // the teams directory draws its own rows; they are the same shape the dataset holds
-    teams: (slice.route === "/teams"
+    teams: (slice.route === "/teams" || slice.route === "/coaches"
       ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
       : []) as unknown as Dataset["teams"],
     players: [],

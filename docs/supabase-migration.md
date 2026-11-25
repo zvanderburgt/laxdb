@@ -18,6 +18,7 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/coaches` | **23,368 B** (was 1,608,531) | **1.29 s / 1.30 s / 1.30 s** (was 9.64 / 9.69 / 9.72) | head line and the first ten rows; the page needed no change at all, because it reads `data.teams` and the staff already lives in each team record |
 
 What that route needed: the counts and the leading scorer per competition are aggregates over 26k
 players, which is exactly why the browser kept the whole file. A `league_top_scorer` view with

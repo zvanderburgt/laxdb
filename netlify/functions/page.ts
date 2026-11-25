@@ -87,9 +87,26 @@ async function teamsPage() {
   };
 }
 
+/**
+ * The coaches directory is a projection of the staff rows already inside each team record: no player
+ * data at all, which is why it needs its own branch rather than the full dataset.
+ */
+async function coachesPage() {
+  const [teams, leagues] = await Promise.all([
+    rows<TeamRow & { staff: unknown[] | null }>(
+      "teams?select=id,slug,name,shortName,conference,leagueId,logo,staff&order=name",
+    ),
+    rows<LeagueRow>("leagues?select=id,name,short&order=name"),
+  ]);
+  return { route: "/coaches", leagues, teams };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const path = new URL(req.url).searchParams.get("path") ?? "";
   try {
+    if (path === "/coaches") {
+      return new Response(JSON.stringify(await coachesPage()), { headers: CACHE_HEADERS });
+    }
     if (path === "/teams") {
       return new Response(JSON.stringify(await teamsPage()), { headers: CACHE_HEADERS });
     }

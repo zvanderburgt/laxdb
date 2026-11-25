@@ -24,6 +24,7 @@ export type TeamRow = {
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
+  | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
   | { route: string; [k: string]: unknown };
 
 let current: PageSlice | null = null;
