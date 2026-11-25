@@ -2,6 +2,7 @@ import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, P
 import { decodeDataset, type WireDataset } from "./wire";
 import { setSlice, type PlayerSlice } from "./slice";
 import { enableListMode } from "./list";
+import { setPageSlice, type PageSlice } from "./page";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -104,6 +105,49 @@ export function fallbackToWire(): void {
   window.location.replace(url.toString());
 }
 
+/** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
+const PAGE_ROUTES = new Set(["/leagues"]);
+
+function pageRoute(): string | null {
+  if (typeof window === "undefined" || forceWire()) return null;
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  return PAGE_ROUTES.has(path) ? path : null;
+}
+
+/**
+ * One route's data from the database. Returns false when the endpoint has no branch for the route,
+ * and the caller falls through to the dataset file — a missing slice must never be a broken page.
+ */
+async function loadPageSlice(base: string, route: string): Promise<boolean> {
+  let slice: PageSlice;
+  try {
+    const res = await fetch(`${base}data/page?path=${encodeURIComponent(route)}`, { cache: "no-cache" });
+    if (!res.ok) return false;
+    slice = (await res.json()) as PageSlice;
+  } catch {
+    return false;
+  }
+
+  if (slice.route !== "/leagues") return false;
+  const page = slice as Extract<PageSlice, { route: "/leagues" }>;
+
+  data = {
+    meta: { generated: "", dataset: "Supabase", season: "", sources: [] },
+    leagues: page.leagues,
+    teams: [],
+    players: [],
+  } as Dataset;
+  for (const l of page.leagues) leagueById.set(l.id, l);
+
+  PLAYER_COUNT = page.totalPlayers;
+  TEAM_COUNT = 0;
+  SEASON_COUNT = 0;
+  CURRENT = "";
+  SEASON_RANGE = ["", ""];
+  setPageSlice(page);
+  return true;
+}
+
 function listSlice(): boolean {
   if (typeof window === "undefined" || forceWire()) return false;
   return /^\/players\/?$/.test(window.location.pathname);
@@ -117,6 +161,9 @@ export async function loadDataset(): Promise<void> {
     await loadSlice(slug);
     return;
   }
+  const page = pageRoute();
+  if (page && (await loadPageSlice(base, page))) return;
+
   if (listSlice()) {
     // the table asks the database for its page; there is no dataset to load at all
     enableListMode();

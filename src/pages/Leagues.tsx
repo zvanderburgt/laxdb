@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { miniPlayer, pageSlice, type PageSlice } from "../lib/page";
 import { useFlipRows } from "../lib/motion";
 import { Link, useRoute } from "../lib/app";
 import {
@@ -30,10 +31,29 @@ const levelRank = (lvl: string) => {
 };
 
 export function LeaguesPage() {
+  // a database-backed load carries the cards already aggregated: counts and the leading scorer per
+  // competition cost a scan of 26k players in the browser
+  const slice = pageSlice("/leagues") as Extract<PageSlice, { route: "/leagues" }> | null;
   // one grid, ordered by level: a section heading per level left a full row of
   // empty columns whenever a level had a single competition. The level now
   // rides on each card, so nineteen leagues fill four rows instead of eight.
   const cards = useMemo(() => {
+    if (slice) {
+      // the endpoint answers ordered by name; the grid's order is a product decision and lives here
+      return slice.cards
+        .map((c) => ({
+          league: c.league,
+          top: c.top ? miniPlayer(c.top) : undefined,
+          teams: c.teams,
+          players: c.players,
+        }))
+        .sort(
+          (a, b) =>
+            levelRank(a.league.level) - levelRank(b.league.level) ||
+            b.players - a.players ||
+            a.league.name.localeCompare(b.league.name),
+        );
+    }
     const leader = new Map<string, (typeof data.players)[number]>();
     const leaderPts = new Map<string, number>();
     for (const p of data.players) {
@@ -56,7 +76,7 @@ export function LeaguesPage() {
           b.players - a.players ||
           a.league.name.localeCompare(b.league.name),
       );
-  }, []);
+  }, [slice]);
 
   const [level, setLevel] = useState<string>("all");
 
@@ -77,7 +97,7 @@ export function LeaguesPage() {
           <h1>Leagues</h1>
           <p className="muted">
             {level === "all"
-              ? `${data.leagues.length} competitions · field and box · ${data.players.length} players`
+              ? `${data.leagues.length} competitions · field and box · ${(slice?.totalPlayers ?? data.players.length).toLocaleString()} players`
               : `${shown.length} of ${data.leagues.length} competitions · ${level}`}
           </p>
         </div>

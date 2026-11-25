@@ -92,6 +92,16 @@ export async function pgFetch(path: string, init: RequestInit = {}): Promise<Res
   return fetch(`${API}/rest/v1/${path}`, { ...init, headers });
 }
 
+/** How many rows match, without transferring them: PostgREST reports it in Content-Range. */
+export async function count(path: string): Promise<number> {
+  const sep = path.includes("?") ? "&" : "?";
+  const res = await fetch(`${API}/rest/v1/${path}${sep}limit=1`, {
+    headers: { apikey: KEY, accept: "application/json", prefer: "count=exact" },
+  });
+  if (!res.ok) throw new Error(`count ${path}: ${res.status}`);
+  return Number((res.headers.get("content-range") ?? "0-0/0").split("/")[1] ?? 0);
+}
+
 /** The response preamble every read route shares: one query per URL per cache window. */
 export const CACHE_HEADERS = {
   "content-type": "application/json",

@@ -8,9 +8,25 @@ Postgres (see [Step 1](#step-1-done), [Step 2](#step-2-done), [Step 3](#step-3-d
 [Step 6](#step-6-done)). The only thing still standing from the old world is the passphrase fallback,
 which now goes on request — an emailed sign-in has worked end to end.
 
-**What this plan did not cover:** it moves two routes (`/player/<slug>`, `/players`). Every other route
-— home, teams, leagues, leaders, history, compare, roster, coaches — still downloads the whole
-13.19 MB file. The same slice-and-endpoint shape applies to them, one route per session.
+**Route coverage — beyond the plan.** The plan moved two routes. Every other route still downloaded
+the whole 13.19 MB file, so this is the work that turns "two fast routes" into "a fast site". One
+endpoint, `GET /data/page?path=<route>`, with a branch per route; the client keeps a `PAGE_ROUTES` set
+in `src/lib/data.ts` and falls through to the dataset file when there is no branch, so a missing slice
+is never a broken page.
+
+| route | payload | time to content (1.6 Mbps, cold cache) | parity |
+| --- | --- | --- | --- |
+| `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
+
+What that route needed: the counts and the leading scorer per competition are aggregates over 26k
+players, which is exactly why the browser kept the whole file. A `league_top_scorer` view with
+`distinct on` answers 19 rows instead of ordering 26k, and a `count()` helper reads Postgres' own row
+count instead of transferring slugs to `.length` them.
+
+Two things that only showed up in the parity sweep: the grid's order is a *product* decision that
+lived in the page (the endpoint answers alphabetically, so the sort moved into the slice branch), and
+a slice-built page must reload on navigation — `data` holds one route's rows, and a client-side move
+would draw the next page from almost nothing.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.

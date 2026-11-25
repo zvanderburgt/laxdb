@@ -150,6 +150,15 @@ from public.players p
 left join public.player_current c on c."playerSlug" = p."slug"
 left join public.player_career pc on pc."slug" = p."slug";
 
+-- The leading scorer per competition: `distinct on` in SQL so the page asks for 19 rows instead of
+-- ordering 26k to keep the first of each league.
+create or replace view public.league_top_scorer as
+select distinct on ("leagueId")
+  "slug", "id", "name", "position", "positionName", "teamId", "leagueId", "photo", "pts"
+from public.player_list
+where "pts" is not null and "pts" > 0
+order by "leagueId", "pts" desc nulls last, "slug";
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -204,7 +213,8 @@ grant select, insert, update, delete on
   public.editors, public.cms_store
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
-grant select on public.player_career, public.player_current, public.player_list, public.season_span to service_role;
+grant select on public.player_career, public.player_current, public.player_list, public.season_span,
+  public.league_top_scorer to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;
