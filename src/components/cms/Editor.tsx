@@ -24,6 +24,8 @@ import {
   loadVersion,
   loadVersions,
   revertToFeed,
+  sendCode,
+  submitCode,
   type PendingField,
   type VersionChange,
   type VersionRow,
@@ -112,6 +114,10 @@ export default function Editor() {
   const [rows, setRows] = useState<{ target: Target; type: string; label: string; item?: readonly string[]; value: unknown[] } | null>(null);
   const [signOpen, setSignOpen] = useState(false);
   const [pass, setPass] = useState("");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [usePass, setUsePass] = useState(false);
   const [notice, setNotice] = useState<{ text: string; kind: "" | "ok" | "bad" } | null>(null);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>(null);
 
@@ -412,24 +418,84 @@ export default function Editor() {
           className="cms-signin"
           onSubmit={(e) => {
             e.preventDefault();
-            void signIn(pass).then((ok) => {
+            if (usePass) {
+              void signIn(pass).then((ok) => {
+                if (ok) {
+                  setSignOpen(false);
+                  setPass("");
+                }
+              });
+              return;
+            }
+            if (!codeSent) {
+              // step one: ask Supabase to mail the code. The form must not advance unless it went.
+              void sendCode(email).then((ok) => ok && setCodeSent(true));
+              return;
+            }
+            void submitCode(email, code).then((ok) => {
               if (ok) {
                 setSignOpen(false);
-                setPass("");
+                setCode("");
+                setCodeSent(false);
               }
             });
           }}
         >
-          <span className="cms-signin-label">Admin passphrase</span>
-          <input
-            className="cms-input"
-            type="password"
-            autoComplete="current-password"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-          />
-          <button className="btn btn-primary btn-sm" type="submit" disabled={cms.signingIn || pass.length < 6}>
-            {cms.signingIn ? "Signing in…" : "Sign in"}
+          {usePass ? (
+            <>
+              <span className="cms-signin-label">Admin passphrase</span>
+              <input
+                className="cms-input"
+                type="password"
+                autoComplete="current-password"
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+              />
+              <button className="btn btn-primary btn-sm" type="submit" disabled={cms.signingIn || pass.length < 6}>
+                {cms.signingIn ? "Signing in…" : "Sign in"}
+              </button>
+            </>
+          ) : codeSent ? (
+            <>
+              <span className="cms-signin-label">Code sent to {email}</span>
+              <input
+                className="cms-input"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={10}
+                placeholder="6-digit code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              />
+              <button className="btn btn-primary btn-sm" type="submit" disabled={cms.signingIn || code.length < 6}>
+                {cms.signingIn ? "Checking…" : "Sign in"}
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="cms-signin-label">Editor email</span>
+              <input
+                className="cms-input"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <button className="btn btn-primary btn-sm" type="submit" disabled={cms.signingIn || !email.includes("@")}>
+                {cms.signingIn ? "Sending…" : "Email me a code"}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setUsePass((v) => !v);
+              setCodeSent(false);
+            }}
+          >
+            {usePass ? "Use an emailed code" : "Use the passphrase"}
           </button>
           {cms.signInError ? <span className="cms-signin-err">{cms.signInError}</span> : null}
         </form>

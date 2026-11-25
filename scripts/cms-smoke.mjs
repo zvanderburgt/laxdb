@@ -79,6 +79,16 @@ label(r.status === 401, "POST /api/publish anonymously → 401", String(r.status
 r = await call("/api/draft", { method: "POST", body: { patch: PATCH } });
 label(r.status === 401, "POST /api/draft anonymously → 401", String(r.status));
 
+// a bearer token is the primary credential now; a forged one must not be a way in
+{
+  const forged = await fetch(`${base}/api/draft`, {
+    method: "POST",
+    headers: { authorization: "Bearer not-a-real-token", "content-type": "application/json" },
+    body: JSON.stringify({ patch: { entity: "site", id: "site", path: "heroLede", value: "x" } }),
+  });
+  label(forged.status === 401, "POST /api/draft with a forged bearer → 401", String(forged.status));
+}
+
 // a write from another origin is refused before the passphrase is even looked at
 r = await call("/api/session", {
   method: "POST",

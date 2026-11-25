@@ -7,7 +7,17 @@
  */
 import { useSyncExternalStore } from "react";
 import { fieldFor, setPath, validatePatch, type EntityType } from "./cms-registry";
-import { entityObject, loadOverrides, logIn, logOut, probeSession, cmsSession, overrides } from "./overrides";
+import {
+  entityObject,
+  loadOverrides,
+  logIn,
+  logOut,
+  probeSession,
+  requestCode,
+  verifyCode,
+  cmsSession,
+  overrides,
+} from "./overrides";
 
 export type Mode = "off" | "select";
 
@@ -270,6 +280,38 @@ export async function publishDraft() {
     version: overrides.version,
     notice: `published v${overrides.version}`,
     noticeKind: "ok",
+  });
+  return true;
+}
+
+/** Step one: ask Supabase to mail a code. */
+export async function sendCode(email: string): Promise<boolean> {
+  set({ signingIn: true, signInError: "" });
+  const ok = await requestCode(email);
+  set({
+    signingIn: false,
+    signInError: ok ? "" : "That code couldn't be sent — check the address or try again shortly.",
+  });
+  return ok;
+}
+
+/** Step two: exchange the code for a session and open the editor. */
+export async function submitCode(email: string, code: string): Promise<boolean> {
+  set({ signingIn: true, signInError: "" });
+  const ok = await verifyCode(email, code);
+  if (!ok) {
+    set({ signingIn: false, signInError: "That code wasn't accepted, or the account isn't an editor." });
+    return false;
+  }
+  await loadOverrides(true);
+  bumpRevision();
+  set({
+    signingIn: false,
+    signedIn: true,
+    signInError: "",
+    mode: "select",
+    pending: draftToPending(),
+    version: overrides.version,
   });
   return true;
 }

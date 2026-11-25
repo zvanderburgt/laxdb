@@ -1,11 +1,12 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. **Steps 1–4 and 6 are built and live, and step 5's data half is live** — the dataset is in Postgres,
+Charted **2026-11-25**. **Steps 1–6 are built and live** — the dataset is in Postgres,
 the player route and the players table answer from it *by default*, the similarity pools are
 materialised at load, every other route still takes the dataset file, and the CMS now writes to
 Postgres (see [Step 1](#step-1-done), [Step 2](#step-2-done), [Step 3](#step-3-done),
 [Step 4](#step-4-done-partly), [Step 5](#step-5-the-store-is-done-auth-is-left),
-[Step 6](#step-6-done)). The CMS's *auth* is the one piece left.
+[Step 6](#step-6-done)). The only thing still standing from the old world is the passphrase fallback,
+which goes once the emailed code has been used successfully once.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -193,18 +194,29 @@ can expire mid-session, no backup, no query) to Postgres.
 validator's 422s, stage, publish, edge-cache behaviour, history, revert, the 409 paths — and ends
 `all checks passed`. The published document came back to one field with the hero lede intact.
 
-**What is left is auth.** The passphrase, the HMAC cookie, the Origin check and the scrypt hash in
-`netlify/lib/auth.ts` exist because there was no auth provider. Supabase Auth replaces them:
+**Auth is in.** Supabase Auth replaced the passphrase as the primary credential:
 
-1. a magic-link sign-in on the CMS dock (the existing form posts an email instead of a passphrase);
-2. the function verifies the bearer token (`GET /auth/v1/user` with the publishable key) and checks
-   `auth.uid()` against `public.editors`;
-3. `cms-smoke` swaps its passphrase step for an OTP one, keeping every other assertion;
-4. the cookie, `csrfFor`, the Origin check and the scrypt code then delete — a bearer token in a
-   header is not a cookie, so CSRF stops being a class of bug rather than being mitigated.
+- the dock asks for an **email**, then for the **6-digit code** Supabase mails. The code flow was
+  chosen over a magic link deliberately: a link needs the project's Site URL and redirect allowlist
+  configured in the dashboard, and when that is wrong the link lands on `localhost:3000` and looks
+  broken. The code path needs none of it.
+- `/api/auth/otp` and `/api/auth/verify` proxy GoTrue, so the browser never learns the project URL
+  and a rate-limited sender reports one readable message instead of a CORS error.
+- every request resolves an actor: a bearer token verified with `GET /auth/v1/user`, then checked
+  against `public.editors`. Being signed in to the project is not the same as being allowed to edit,
+  and the publishable key lets anyone sign in.
+- the account is `zvanderburgt@gmail.com`, created through the admin API and allowlisted in
+  `editors`.
 
-That is a session of its own and it touches the one surface that writes, so it was not folded into
-this one.
+**Verified against production without touching an inbox**: `admin/generate_link` minted a real code,
+`/api/auth/verify` exchanged it, `/api/session` answered `{ method: "bearer", user: … }`, a draft
+write went through **with no CSRF header at all**, and the draft was dropped again.
+
+**What still stands is the fallback, on purpose.** The passphrase, the HMAC cookie, `csrfFor` and the
+Origin check are still in `netlify/lib/auth.ts`, and `cms-smoke` still drives them — an automated
+suite cannot read an inbox, so the passphrase remains its credential. Deleting that code is the last
+commit of this step and it waits for one thing: a sign-in through the emailed code from a real inbox,
+which proves delivery before the only other way in is removed.
 
 ## The measurement that decides everything
 

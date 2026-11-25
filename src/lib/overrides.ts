@@ -89,11 +89,49 @@ export const setCmsHint = (on: boolean) => {
   }
 };
 
+/* ------------------------------ supabase session ----------------------------- */
+/* The dock signs in with an emailed 6-digit code; the token it gets back rides in a header on every
+ * call. A header is not a cookie, so a cross-site form cannot reproduce it — which is why the CMS
+ * stops needing a CSRF token the moment this path is the one in use. */
+
+const TOKEN_KEY = "laxdb-cms-token";
+let bearer: string | null | undefined;
+
+export function authToken(): string | null {
+  if (bearer !== undefined) return bearer;
+  try {
+    bearer = localStorage.getItem(TOKEN_KEY);
+  } catch {
+    bearer = null;
+  }
+  return bearer;
+}
+
+export function setAuthToken(value: string | null): void {
+  bearer = value;
+  try {
+    if (value) localStorage.setItem(TOKEN_KEY, value);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* private mode: the session lasts until the tab closes */
+  }
+}
+
+const authHeaders = (): Record<string, string> => {
+  const token = authToken();
+  return token ? { authorization: `Bearer ${token}` } : {};
+};
+
 const fetchJson = async (url: string, init?: RequestInit): Promise<unknown> => {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal: ctl.signal, credentials: "same-origin", ...init });
+    const res = await fetch(url, {
+      signal: ctl.signal,
+      credentials: "same-origin",
+      ...init,
+      headers: { ...authHeaders(), ...(init?.headers as Record<string, string> | undefined) },
+    });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -283,6 +321,33 @@ export async function loadOverrides(force = false): Promise<OverridesState> {
  * Sign in and immediately pick up the draft, so the editor opens onto their own unpublished work.
  * The passphrase is only ever sent to `/api/session`; it is not stored anywhere in the browser.
  */
+/** Email a 6-digit code. False means the sender refused — the dock says so instead of showing a form
+ *  that silently never arrives. */
+export async function requestCode(email: string): Promise<boolean> {
+  const res = await fetch("/api/auth/otp", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email }),
+  }).catch(() => null);
+  return Boolean(res?.ok);
+}
+
+/** Exchange the code for a token. Returns false for a wrong code and for a non-editor account. */
+export async function verifyCode(email: string, code: string): Promise<boolean> {
+  const res = await fetch("/api/auth/verify", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, token: code }),
+  }).catch(() => null);
+  if (!res?.ok) return false;
+  const body = (await res.json().catch(() => null)) as { access_token?: string } | null;
+  if (!body?.access_token) return false;
+  setAuthToken(body.access_token);
+  cmsSession = null;
+  setCmsHint(true);
+  return true;
+}
+
 export async function logIn(passphrase: string): Promise<boolean> {
   const res = await fetch("/api/session", {
     method: "POST",
@@ -300,7 +365,12 @@ export async function logIn(passphrase: string): Promise<boolean> {
 }
 
 export async function logOut(): Promise<void> {
-  await fetch("/api/session", { method: "DELETE", credentials: "same-origin" }).catch(() => null);
+  await fetch("/api/session", {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: authHeaders(),
+  }).catch(() => null);
+  setAuthToken(null);
   cmsSession = null;
   overrides.draftFields = [];
   setCmsHint(false);
@@ -314,6 +384,12 @@ export async function logOut(): Promise<void> {
  */
 export async function probeSession(): Promise<boolean> {
   if (cmsSession) return true;
+  if (authToken()) {
+    const s = (await fetchJson("/api/session")) as CmsSession | null;
+    if (s) return true;
+    // expired or revoked: drop it and fall through to the passphrase probe
+    setAuthToken(null);
+  }
   const s = (await fetchJson("/api/session")) as CmsSession | null;
   if (!s) {
     setCmsHint(false);

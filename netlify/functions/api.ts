@@ -45,6 +45,7 @@ import {
   versions,
   withDraft,
 } from "../lib/doc";
+import { bearerUser, isEditor, requestOtp, verifyOtp } from "../lib/supabase-auth";
 import { StoreError, store, usingFs } from "../lib/store";
 
 // `/media/*` is served by this function too: uploaded headshots and logos live in Blobs, on the
@@ -128,14 +129,63 @@ async function route(req: Request): Promise<Response> {
   const token = readCookie(req);
   const session = sessionOf(req);
 
+  /* Who is asking. A Supabase bearer token is the primary credential — it also decides whether the
+   * holder may write at all, because being signed in is not the same as being an allowlisted editor.
+   * The passphrase cookie stays as the fallback until the magic-link path has been used in anger. */
+  const bearer = await bearerUser(req);
+  const actor = bearer
+    ? (await isEditor(bearer.id))
+      ? { method: "bearer" as const, userId: bearer.id }
+      : null
+    : session
+      ? { method: "cookie" as const, userId: undefined }
+      : null;
+
   if (method !== "GET" && !originOk(req)) return fail(403, "cross-origin write refused");
+
+  /* ------------------------------ supabase auth ----------------------------- */
+  /* The dock asks for an email, then for the 6-digit code Supabase mails. Proxied so the browser
+   * never needs the project URL, and so a rate-limited or misconfigured sender reports one message
+   * here instead of a CORS error in the console. */
+
+  if (route === "/auth/otp") {
+    if (method !== "POST") return fail(405, "method not allowed");
+    const body = await readBody(req);
+    const email = typeof body?.email === "string" ? body.email.trim().slice(0, 200) : "";
+    if (!email || !email.includes("@")) return fail(422, "an email address is required");
+    const out = await requestOtp(email);
+    return out.ok ? json({ ok: true }) : fail(502, "could not send the code", { detail: out.error });
+  }
+
+  if (route === "/auth/verify") {
+    if (method !== "POST") return fail(405, "method not allowed");
+    const body = await readBody(req);
+    const email = typeof body?.email === "string" ? body.email.trim().slice(0, 200) : "";
+    const code = typeof body?.token === "string" ? body.token.trim().slice(0, 12) : "";
+    if (!email || !code) return fail(422, "email and code are required");
+    const out = await verifyOtp(email, code);
+    if (!out.tokens) return fail(401, "that code wasn't accepted", { detail: out.error });
+    // the token is useless without an allowlist entry; say so here rather than on the first write
+    const user = await bearerUser(new Request(url, { headers: { authorization: `Bearer ${out.tokens.access_token}` } }));
+    if (!user) return fail(403, "that account is not an editor");
+    return json({ ok: true, ...out.tokens });
+  }
 
   /* --------------------------------- session -------------------------------- */
 
   if (route === "/session") {
     if (method === "GET") {
-      if (!session || !token) return fail(401, "signed out");
-      return json({ exp: session.exp, csrf: csrfFor(token) }, { headers: { "cache-control": "no-store" } });
+      if (!actor) return fail(401, "signed out");
+      return json(
+        {
+          ok: true,
+          method: actor.method,
+          user: actor.userId ?? null,
+          exp: session?.exp,
+          csrf: token ? csrfFor(token) : null,
+        },
+        { headers: { "cache-control": "no-store" } },
+      );
     }
 
     if (method === "POST") {
@@ -175,7 +225,7 @@ async function route(req: Request): Promise<Response> {
     if (method !== "GET") return fail(405, "method not allowed");
 
     if (url.searchParams.get("draft") === "1") {
-      if (!session) return fail(401, "signed out");
+      if (!actor) return fail(401, "signed out");
       const doc = await withDraft();
       return json(doc, { headers: { "cache-control": "no-store" } });
     }
@@ -198,8 +248,9 @@ async function route(req: Request): Promise<Response> {
   /* ---------------------------------- draft --------------------------------- */
 
   if (route === "/draft") {
-    if (!session || !token) return fail(401, "signed out");
-    if (!csrfOk(req, token) && method !== "GET") return fail(403, "missing csrf header");
+    if (!actor) return fail(401, "signed out");
+    if (actor.method === "cookie" && !csrfOk(req, token) && method !== "GET")
+      return fail(403, "missing csrf header");
 
     if (method === "GET") {
       const state = await draftState();
@@ -245,8 +296,8 @@ async function route(req: Request): Promise<Response> {
   /* --------------------------------- publish -------------------------------- */
   if (route === "/publish") {
     if (method !== "POST") return fail(405, "method not allowed");
-    if (!session || !token) return fail(401, "signed out");
-    if (!csrfOk(req, token)) return fail(403, "missing csrf header");
+    if (!actor) return fail(401, "signed out");
+    if (actor.method === "cookie" && !csrfOk(req, token)) return fail(403, "missing csrf header");
 
     const result = await publish();
     if (!result.ok && result.reason === "empty") return fail(409, "nothing to publish");
@@ -266,8 +317,8 @@ async function route(req: Request): Promise<Response> {
   // back to the feed value: dropping the override *is* the revert, and it publishes a version
   if (route === "/revert") {
     if (method !== "POST") return fail(405, "method not allowed");
-    if (!session || !token) return fail(401, "signed out");
-    if (!csrfOk(req, token)) return fail(403, "missing csrf header");
+    if (!actor) return fail(401, "signed out");
+    if (actor.method === "cookie" && !csrfOk(req, token)) return fail(403, "missing csrf header");
 
     const body = await readBody(req);
     const entity = typeof body?.entity === "string" ? body.entity : "";
@@ -284,7 +335,7 @@ async function route(req: Request): Promise<Response> {
   /* --------------------------------- history -------------------------------- */
   if (route === "/history") {
     if (method !== "GET") return fail(405, "method not allowed");
-    if (!session) return fail(401, "signed out");
+    if (!actor) return fail(401, "signed out");
     const v = Number(url.searchParams.get("version"));
     if (Number.isInteger(v) && v > 0) {
       const doc = await versionDoc(v);
@@ -297,7 +348,7 @@ async function route(req: Request): Promise<Response> {
   /* --------------------------------- entity --------------------------------- */
 
   if (route === "/entity") {
-    if (!session) return fail(401, "signed out");
+    if (!actor) return fail(401, "signed out");
     const key = url.searchParams.get("key") ?? "";
     if (!/^[a-z]+:[a-z0-9][a-z0-9-]{0,79}$/.test(key)) return fail(400, "bad entity key");
     return json({ key, fields: await entityFields(key) }, { headers: { "cache-control": "no-store" } });
@@ -324,8 +375,8 @@ async function route(req: Request): Promise<Response> {
 
   if (route === "/media") {
     if (method !== "POST") return fail(405, "method not allowed");
-    if (!session || !token) return fail(401, "signed out");
-    if (!csrfOk(req, token)) return fail(403, "missing csrf header");
+    if (!actor) return fail(401, "signed out");
+    if (actor.method === "cookie" && !csrfOk(req, token)) return fail(403, "missing csrf header");
 
     const body = await readBody(req);
     const kind = body?.kind === "team" ? "team" : body?.kind === "player" ? "player" : "";
