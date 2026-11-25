@@ -8,6 +8,7 @@
 import { useSyncExternalStore } from "react";
 import { fieldFor, setPath, validatePatch, type EntityType } from "./cms-registry";
 import {
+  signInWithLink,
   entityObject,
   loadOverrides,
   logIn,
@@ -292,10 +293,13 @@ export async function sendCode(email: string): Promise<boolean> {
   return out.ok;
 }
 
-/** Step two: exchange the code for a session and open the editor. */
+/** Step two: a code, or the whole link pasted from the inbox. */
 export async function submitCode(email: string, code: string): Promise<boolean> {
   set({ signingIn: true, signInError: "" });
-  const ok = await verifyCode(email, code);
+  const pastedLink = /^https?:\/\//i.test(code.trim());
+  const ok = pastedLink
+    ? await signInWithLink(code)
+    : await verifyCode(email, code.replace(/\D/g, ""));
   if (!ok) {
     set({ signingIn: false, signInError: "That code wasn't accepted, or the account isn't an editor." });
     return false;

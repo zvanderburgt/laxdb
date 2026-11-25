@@ -335,6 +335,35 @@ export async function requestCode(email: string): Promise<{ ok: boolean; error?:
   return { ok: false, error: body?.error ?? `Couldn't send it (${res.status}).` };
 }
 
+/**
+ * The dock's second field takes either the six-digit number or the whole URL from the inbox.
+ *
+ * The URL is what the email actually contains when the template cannot be edited, and pasting it
+ * into the tab the editor is already looking at removes the browser hop that was losing sessions:
+ * a link opens in whatever browser the mail client prefers, and localStorage does not travel.
+ */
+export async function signInWithLink(raw: string): Promise<boolean> {
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return false;
+  }
+  const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const token = fragment.get("access_token") ?? url.searchParams.get("access_token");
+  if (token) {
+    setAuthToken(token);
+    return true;
+  }
+  if (/\/auth\/v1\/verify/.test(url.pathname)) {
+    // hand this tab to the provider: it checks the token and sends the browser back here with the
+    // session in the fragment, which absorbAuthHash() then takes
+    window.location.assign(url.toString());
+    return true;
+  }
+  return false;
+}
+
 /** Exchange the code for a token. Returns false for a wrong code and for a non-editor account. */
 export async function verifyCode(email: string, code: string): Promise<boolean> {
   const res = await fetch("/api/auth/verify", {

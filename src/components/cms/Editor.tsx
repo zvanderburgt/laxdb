@@ -458,17 +458,17 @@ export default function Editor() {
           ) : codeSent ? (
             <>
               <span className="cms-signin-label">Link sent to {email}</span>
-              <span className="cms-signin-hint">Open it in your inbox — it signs this tab in.</span>
+              <span className="cms-signin-hint">Click it, or paste it below to sign this tab in.</span>
               <input
                 className="cms-input"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={10}
-                placeholder="or paste the code"
+                maxLength={800}
+                placeholder="code or the link from the email"
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => setCode(e.target.value)}
               />
-              <button className="btn btn-primary btn-sm" type="submit" disabled={cms.signingIn || code.length < 6}>
+              <button className="btn btn-primary btn-sm" type="submit" disabled={cms.signingIn || code.trim().length < 6}>
                 {cms.signingIn ? "Checking…" : "Sign in"}
               </button>
             </>
