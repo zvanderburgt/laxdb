@@ -18,6 +18,20 @@ import {
   SEASON_RANGE,
 } from "../lib/data";
 import { Avatar, BlockList, Empty, PositionBadge, Provenance, Segmented, PlayerAvatar, Term } from "../components/ui";
+import { fetchPlayerList, listMode, playerFromRow, seasonFromRow, type PlayerListResult } from "../lib/list";
+
+/** In list mode the row carries its club; the dataset's team map is empty there. */
+const clubOf = (p: { teamId?: string; teamName?: string }) =>
+  (p as { teamName?: string }).teamName || teamById.get(p.teamId ?? "")?.name || "";
+
+function clubFor(p: { teamId?: string; teamSlug?: string; teamShort?: string; teamColor?: string }) {
+  const team = teamById.get(p.teamId ?? "");
+  return {
+    slug: p.teamSlug || team?.slug || "",
+    shortName: p.teamShort || team?.shortName || "",
+    color: p.teamColor || team?.colors?.[0] || "",
+  };
+}
 
 type SortKey =
   | "name" | "position" | "team" | "classYear" | "gp" | "g" | "a" | "pts" | "gb" | "ppg"
@@ -43,9 +57,42 @@ export default function Players() {
     typeof window !== "undefined" && window.innerWidth < 700 ? "cards" : "table",
   );
 
+  // list mode: the database answers the page, filters and sort included (src/lib/list.ts)
+  const [remote, setRemote] = useState<PlayerListResult | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!listMode()) return;
+    const ctl = new AbortController();
+    // one request per settled interaction, not per keystroke
+    const t = setTimeout(() => {
+      fetchPlayerList(
+        { q, pos: pos.join(","), league, year, state, hs, gp: minGp, sort, dir },
+        ctl.signal,
+      )
+        .then((r) => {
+          setRemote(r);
+          setLoadError(null);
+        })
+        .catch((err) => {
+          if (!ctl.signal.aborted) setLoadError(String(err));
+        });
+    }, 180);
+    return () => {
+      clearTimeout(t);
+      ctl.abort();
+    };
+  }, [q, pos, league, year, state, hs, minGp, sort, dir]);
+
   // only the positions this scope actually holds: a box league offers Forward /
   // Transition / Defense / Runner, a college league keeps Attack / Midfield / …
   const posOptions = useMemo(() => {
+    if (listMode()) {
+      const seen = new Set(remote?.facets.positions ?? []);
+      const opts: string[] = positionOrder.filter((c) => seen.has(c));
+      for (const c of pos) if (!opts.includes(c)) opts.push(c);
+      return opts;
+    }
     const seen = new Set<string>();
     for (const p of data.players) {
       if (league !== "all" && p.leagueId !== league) continue;
@@ -54,9 +101,17 @@ export default function Players() {
     const opts: string[] = positionOrder.filter((c) => seen.has(c));
     for (const c of pos) if (!opts.includes(c)) opts.push(c);
     return opts;
-  }, [league, pos]);
+  }, [league, pos, remote]);
 
   const rows = useMemo(() => {
+    if (listMode()) {
+      // already filtered, sorted and cut to the page by the server
+      return (remote?.rows ?? []).map((r) => ({
+        p: playerFromRow(r),
+        s: seasonFromRow(r),
+        c: { ppg: r.ppg ?? 0 },
+      }));
+    }
     const needle = searchTokens(q);
     const list = data.players
       .filter((p) => (pos.length ? pos.includes(p.position) : true))
@@ -78,7 +133,7 @@ export default function Players() {
       switch (sort) {
         case "name": return r.p.name;
         case "position": return r.p.position;
-        case "team": return teamById.get(r.p.teamId)?.name ?? "";
+        case "team": return clubOf(r.p);
         case "classYear": return r.p.classYear ?? 0;
         case "gp": return r.s.gp;
         case "g": return r.s.g;
@@ -94,13 +149,15 @@ export default function Players() {
     list.sort((a, b) => {
       const av = val(a);
       const bv = val(b);
-      if (typeof av === "string" && typeof bv === "string") {
-        return dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-      }
-      return dir === "asc" ? Number(av) - Number(bv) : Number(bv) - Number(av);
+      const cmp =
+        typeof av === "string" && typeof bv === "string"
+          ? av.localeCompare(bv)
+          : Number(av) - Number(bv);
+      // ties resolve by slug so the database's page and this one order them the same way
+      return (dir === "asc" ? cmp : -cmp) || a.p.slug.localeCompare(b.p.slug);
     });
     return list;
-  }, [q, pos, league, year, state, hs, minGp, sort, dir]);
+  }, [q, pos, league, year, state, hs, minGp, sort, dir, remote]);
 
   /* every row on this page is keyed, so a filter or a sort re-orders in place
      instead of the list cutting to a new arrangement */
@@ -166,8 +223,9 @@ export default function Players() {
           <div className="eyebrow">Database</div>
           <h1>Players</h1>
           <p className="muted">
-            {rows.length.toLocaleString()} of {data.players.length.toLocaleString()} players ·{" "}
-            {SEASON_RANGE[0]}–{SEASON_RANGE[1]} seasons
+            {(remote?.total ?? rows.length).toLocaleString()} of{" "}
+            {(remote?.universe ?? data.players.length).toLocaleString()} players ·{" "}
+            {(remote?.range ?? SEASON_RANGE)[0]}–{(remote?.range ?? SEASON_RANGE)[1]} seasons
             <Provenance feed="school and league statistics feeds" />
           </p>
         </div>
@@ -181,6 +239,12 @@ export default function Players() {
           onChange={setView}
         />
       </div>
+
+      {loadError ? (
+        <p className="muted small" data-list-error>
+          {loadError}
+        </p>
+      ) : null}
 
       <div className="filterbar">
         <div className="filter-search">
@@ -213,21 +277,21 @@ export default function Players() {
 
         <select value={league} onChange={(e) => setLeague(e.target.value)} aria-label="League">
           <option value="all">All leagues</option>
-          {data.leagues.map((l) => (
+          {(remote?.leagues ?? data.leagues).map((l) => (
             <option key={l.id} value={l.id}>{l.name}</option>
           ))}
         </select>
 
         <select value={year} onChange={(e) => setYear(e.target.value)} aria-label="Class year">
           <option value="all">All classes</option>
-          {classYears().map((y) => (
+          {(remote?.facets.years ?? classYears()).map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
 
         <select value={state} onChange={(e) => setState(e.target.value)} aria-label="State">
           <option value="all">All regions</option>
-          {statesList().map((s) => (
+          {(remote?.facets.states ?? statesList()).map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
@@ -290,7 +354,7 @@ export default function Players() {
         <BlockList
           motionKey={motionKey}
           rows={rows.slice(0, 150).map(({ p, s }) => {
-            const team = teamById.get(p.teamId);
+            const club = clubFor(p as any);
             return {
               key: p.id,
               primary: (
@@ -307,9 +371,9 @@ export default function Players() {
                 </Link>
               ),
               meta: (
-                <Link to={`/team/${team?.slug}`} className="team-link">
-                  <span className="team-dot" style={{ background: team?.colors[0] }} />
-                  {team?.shortName}
+                <Link to={`/team/${club.slug}`} className="team-link">
+                  <span className="team-dot" style={{ background: club.color }} />
+                  {club.shortName}
                 </Link>
               ),
               action: (
@@ -354,7 +418,7 @@ export default function Players() {
             </thead>
             <tbody ref={body}>
               {rows.slice(0, 150).map(({ p, s }) => {
-                const team = teamById.get(p.teamId);
+                const club = clubFor(p as any);
                 return (
                   <tr key={p.id} data-k={p.id}>
                     <td>
@@ -372,12 +436,12 @@ export default function Players() {
                     </td>
                     <td className="c"><PositionBadge pos={p.position} /></td>
                     <td>
-                      <Link to={`/team/${team?.slug}`} className="team-link">
-                        <span className="team-dot" style={{ background: team?.colors[0] }} />
-                        <span className="team-name">{team?.shortName}</span>
+                      <Link to={`/team/${club.slug}`} className="team-link">
+                        <span className="team-dot" style={{ background: club.color }} />
+                        <span className="team-name">{club.shortName}</span>
                       </Link>
                     </td>
-                    <td className="muted small">{leagueById.get(p.leagueId)?.short}</td>
+                    <td className="muted small">{(p as { leagueShort?: string }).leagueShort || leagueById.get(p.leagueId)?.short}</td>
                     <td className="c muted">{p.classYear ?? "—"}</td>
                     <td className="r num">{s.gp}</td>
                     <td className="r num">{s.g}</td>
@@ -416,7 +480,7 @@ export default function Players() {
               <div>
                 <div className="cell-name">{p.name}</div>
                 <div className="cell-sub">
-                  {teamById.get(p.teamId)?.shortName} · {p.positionName}
+                  {clubOf(p)} · {p.positionName}
                 </div>
               </div>
               <div className="mini-card-pts num">{currentSeason(p).pts ?? 0}<span>PTS</span></div>

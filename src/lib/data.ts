@@ -1,6 +1,7 @@
 import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
 import { decodeDataset, type WireDataset } from "./wire";
 import { setSlice, type PlayerSlice } from "./slice";
+import { enableListMode } from "./list";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -87,12 +88,30 @@ function sliceSlug(): string | null {
   return hit ? decodeURIComponent(hit[1]) : null;
 }
 
+function listSlice(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    new URLSearchParams(window.location.search).get("slice") === "1" &&
+    /^\/players\/?$/.test(window.location.pathname)
+  );
+}
+
 export async function loadDataset(): Promise<void> {
   const base = import.meta.env.BASE_URL;
 
   const slug = sliceSlug();
   if (slug) {
     await loadSlice(slug);
+    return;
+  }
+  if (listSlice()) {
+    // the table asks the database for its page; there is no dataset to load at all
+    enableListMode();
+    PLAYER_COUNT = 0;
+    TEAM_COUNT = 0;
+    SEASON_COUNT = 0;
+    CURRENT = "";
+    SEASON_RANGE = ["", ""];
     return;
   }
   let res = await fetch(`${base}data.wire.json`, { cache: "no-cache" });
@@ -670,7 +689,8 @@ export function classYears(): number[] {
 }
 
 export function statesList(): string[] {
-  return [...new Set(data.players.map((p) => p.birthplace.state))].sort();
+  // a player with no recorded birthplace must not add a blank option to the filter
+  return [...new Set(data.players.map((p) => p.birthplace.state).filter(Boolean))].sort();
 }
 
 

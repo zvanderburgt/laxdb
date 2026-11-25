@@ -198,7 +198,9 @@ games), the fog, and a six-step sequence whose step 2 can kill the effort after 
 players, 53,465 season rows, 475 teams, points total reconciled, 49 MB, `npm run db:load`), and
 `/player/<slug>?slice=1` now answers from it: **1.5 s to content on a 1.6 Mbps link against 9.8 s**
 for the dataset file, on a page whose peer ranks and similarity scores are asserted identical
-(`npm run slice:check`). Step 3 (the players list and its SQL sort/filter) is the open one.
+(`npm run slice:check`). `/players?slice=1` answers from it too: **1.5 s and 11 KB against 9.9 s and
+1.6 MB**, with the count and the first twelve rows identical across six filter and sort cases. Step 4
+(derived numbers — a ratings table and SQL similarity) is the open one.
 
 ## Later — new modelling or a new source
 

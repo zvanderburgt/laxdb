@@ -1,7 +1,8 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. **Steps 1 and 2 are built and live** — the dataset is in Postgres and the player route answers from
-it on a flag (see [Step 1](#step-1-done) and [Step 2](#step-2-done)). Everything after it is plan.
+Charted **2026-11-25**. **Steps 1–3 are built and live** — the dataset is in Postgres, and the player route and the players
+table both answer from it on a flag (see [Step 1](#step-1-done), [Step 2](#step-2-done),
+[Step 3](#step-3-done)). Everything after it is plan.
 `docs/backend.md` is the case for having a backend at all (measured load cost, three options,
 free-tier table); this doc is the route to the Supabase one: the destination, what is already
 decided, and the decisions that are still open, one session each.
@@ -81,6 +82,37 @@ Costs and limits, measured:
 - leaving a slice page is a full document load, which lands back on the 13 MB dataset.
 - 400 KB decoded is still 400 KB of `JSON.parse`; step 3 shrinks it by trimming teams and leagues to
   the fields the page reads.
+
+## Step 3, done
+
+`/players?slice=1` is answered by `GET /data/players?<filters>&sort=&dir=` (`netlify/functions/players.ts`).
+The table has always shown 150 rows and said "narrow the filters to see more" — but it needed all
+26,234 players in memory to decide which 150 and how many matched. The database decides now.
+
+Measured **live, cold cache, 1.6 Mbps / 150 ms RTT**, three runs each, time until the table's rows are
+in the DOM:
+
+| | transferred | time to rows |
+| --- | --- | --- |
+| `/players?slice=1` | **11,380 B** | **1.51 s / 1.52 s / 1.58 s** |
+| `/players` (today) | 1,608,678 B | 9.88 s / 9.89 s / 9.92 s |
+
+**6.5× faster, 141× fewer bytes.** Parity was then swept across six cases — default, league+position,
+class year, minimum games, a name search and a sort click — and the count line and the first twelve
+rows are identical in both modes.
+
+Three things had to match exactly, each found by that sweep and not by reading the code:
+
+- **`currentSeason()` is `seasons[seasons.length - 1]`**, not the newest season. The `player_current`
+  view orders by the ordinal for the same reason `seasons."ord"` exists at all — the importer can
+  write an older season last.
+- the list needs the club *and the league short code* per row, because in slice mode there is no team
+  or league map to look them up in — the row carries `teamShort`, `teamSlug`, `teamColor`,
+  `leagueShort`.
+- `statesList()` was emitting a blank option for players with no birthplace; both modes filter it now.
+
+Cold fill is 5.2 s for the first request (26k-row read of `player_list`), 0.46 s warm, cached per
+query string at the edge — step 4 is what removes that cost.
 
 ## The measurement that decides everything
 
@@ -261,7 +293,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | 0 | Supabase project + keys (his, 5 min — see below) | — | — |
 | 1 | Schema + loader + count verification (D2) | ~~1–2 days~~ **done 2026-11-25** | counts do not reconcile |
 | 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | ~~2–3 days~~ **done 2026-11-25** | it is not faster on the throttled profile — **it is: 9.8 s → 1.5 s** |
-| 3 | `/players` — filters, sort, pagination in SQL | 3–4 days | SQL cannot replace the in-memory sort |
+| 3 | `/players` — filters, sort, pagination in SQL | ~~3–4 days~~ **done 2026-11-25** | SQL cannot replace the in-memory sort — it can: 9.9 s → 1.5 s |
 | 4 | Derived numbers: ratings table, peers/similar (D3) | 3–5 days | **the risky phase** — O(n) JS has to become indexed SQL |
 | 5 | CMS onto Postgres + Supabase Auth (D4) | 1–2 days | the smoke suite cannot be made to pass |
 | 6 | Cutover, wire file demoted to fallback (D7) | 1 day | — |

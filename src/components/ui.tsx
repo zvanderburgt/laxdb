@@ -393,7 +393,10 @@ export function Provenance({ feed }: { feed: string }) {
   return (
     <>
       {" "}
-      · {feed} · updated <time dateTime={updated}>{fmtDate(updated)}</time>
+      · {feed}
+      {updated ? (
+        <> · updated <time dateTime={updated}>{fmtDate(updated)}</time></>
+      ) : null}
     </>
   );
 }

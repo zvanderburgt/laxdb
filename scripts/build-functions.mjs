@@ -21,7 +21,7 @@ const SRC = join(ROOT, "netlify/functions");
 const OUT = join(ROOT, "netlify/functions-build");
 
 const options = {
-  entryPoints: [join(SRC, "api.ts"), join(SRC, "meta.ts"), join(SRC, "og.ts"), join(SRC, "slice.ts")],
+  entryPoints: [join(SRC, "api.ts"), join(SRC, "meta.ts"), join(SRC, "og.ts"), join(SRC, "slice.ts"), join(SRC, "players.ts")],
   outdir: OUT,
   outExtension: { ".js": ".mjs" },
   bundle: true,

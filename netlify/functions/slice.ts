@@ -15,96 +15,7 @@
 import type { League, Player, SeasonRow, Team } from "../../src/lib/types";
 import { peerRanks } from "../../src/lib/peers";
 import { similarTo, type Similar } from "../../src/lib/similar";
-import { readFileSync } from "node:fs";
-
-// not /api/*: the admin API registers that wildcard and answers everything else "no such route"
-export const config = { path: "/data/player" };
-
-const CACHE_TTL = 5 * 60 * 1000;
-
-/* ---------------------------------- config --------------------------------- */
-
-function env(): { url: string; key: string } {
-  let url = process.env.SUPABASE_URL;
-  let key = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) {
-    // local runs read the gitignored file; a deployed function only ever gets the env vars
-    try {
-      const raw = readFileSync(process.env.SUPABASE_ENV_FILE ?? "data/supabase-env.txt", "utf8");
-      for (const line of raw.split("\n")) {
-        const i = line.indexOf("=");
-        if (i <= 0) continue;
-        const k = line.slice(0, i).trim();
-        const v = line.slice(i + 1).trim();
-        if (k === "SUPABASE_URL") url ??= v;
-        if (k === "SUPABASE_SECRET_KEY") key ??= v;
-      }
-    } catch {
-      /* nothing to fall back to */
-    }
-  }
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SECRET_KEY missing");
-  return { url: url.replace(/\/$/, ""), key };
-}
-
-const { url: API, key: KEY } = env();
-
-/* --------------------------------- fetching -------------------------------- */
-
-const cache = new Map<string, { at: number; rows: any[] }>();
-
-/**
- * PostgREST caps a response at 1000 rows (db-max-rows), and a silent truncation here would change
- * every rank and similarity score on the page. So page until a short response: the pool sizes are
- * known only after the query, and a wrong pool is worse than a slow one.
- */
-const PAGE = 1000;
-
-async function rows<T = any>(path: string): Promise<T[]> {
-  const hit = cache.get(path);
-  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.rows as T[];
-
-  const sep = path.includes("?") ? "&" : "?";
-
-  // one cheap call for the count, then the pages in parallel: a 17k-row pool is 17 requests that
-  // would cost ~6 s in series and ~1.5 s in parallel
-  const head = await fetch(`${API}/rest/v1/${path}${sep}limit=1`, {
-    headers: { apikey: KEY, accept: "application/json", prefer: "count=exact" },
-  });
-  if (!head.ok) {
-    throw new Error(`supabase ${head.status} on ${path}: ${(await head.text()).slice(0, 200)}`);
-  }
-  const total = Number((head.headers.get("content-range") ?? "0-0/0").split("/")[1] ?? 0);
-  if (total <= 1) {
-    const only = (await head.json()) as T[];
-    cache.set(path, { at: Date.now(), rows: only as any[] });
-    return only;
-  }
-
-  const offsets: number[] = [];
-  for (let o = 0; o < total; o += PAGE) offsets.push(o);
-
-  const out: T[] = [];
-  const WAVE = 8;
-  for (let i = 0; i < offsets.length; i += WAVE) {
-    const wave = offsets.slice(i, i + WAVE);
-    const pages = await Promise.all(
-      wave.map(async (offset) => {
-        const res = await fetch(`${API}/rest/v1/${path}${sep}limit=${PAGE}&offset=${offset}`, {
-          headers: { apikey: KEY, accept: "application/json" },
-        });
-        if (!res.ok) {
-          throw new Error(`supabase ${res.status} on ${path}: ${(await res.text()).slice(0, 200)}`);
-        }
-        return (await res.json()) as T[];
-      }),
-    );
-    for (const page of pages) out.push(...page);
-  }
-
-  cache.set(path, { at: Date.now(), rows: out as any[] });
-  return out;
-}
+import { rows, CACHE_HEADERS } from "./supabase";
 
 /* ------------------------------ player shaping ----------------------------- */
 /* A pool member only needs enough to be drawn and to be scored: identity, and one row carrying his
@@ -249,13 +160,8 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const body = await slice(slug);
     if (!body) return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
-    return new Response(JSON.stringify(body), {
-      headers: {
-        "content-type": "application/json",
-        // one query per slug per cache window, the pattern meta.ts already uses for the shell
-        "netlify-cdn-cache-control": "public, max-age=300, stale-while-revalidate=86400",
-      },
-    });
+    // one query per slug per cache window, the pattern meta.ts already uses for the shell
+    return new Response(JSON.stringify(body), { headers: CACHE_HEADERS });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,

@@ -127,6 +127,29 @@ from public.players p
 left join public.seasons s on s."playerSlug" = p."slug"
 group by 1,2,3,4,5,6,7,8,9;
 
+-- The players table's row, and the two numbers a list row needs: his latest season line and his
+-- career rates. One view so the list route is a single read instead of a join it cannot express.
+-- `currentSeason()` in the client is `seasons[seasons.length - 1]`, i.e. the last row the importer
+-- wrote for him, which is not always the newest season. The ordinal is what makes the two agree.
+create or replace view public.player_current as
+select distinct on (s."playerSlug") s.*
+from public.seasons s
+order by s."playerSlug", s."ord" desc;
+
+create or replace view public.season_span as
+select min("season")::int as "lo", max("season")::int as "hi" from public.seasons;
+
+create or replace view public.player_list as
+select
+  p."slug", p."id", p."name", p."position", p."positionName", p."teamId", p."leagueId",
+  p."classYear", p."photo", p."birthplace" ->> 'state' as "state", p."highSchool",
+  c."season", c."gp", c."g", c."a", c."pts", c."gb", c."sh", c."foW", c."foA", c."sv", c."ga",
+  round((pc."g" + pc."a")::numeric / greatest(pc."gp", 1), 2) as "ppg",
+  p."birthplace" ->> 'city' as "city"
+from public.players p
+left join public.player_current c on c."playerSlug" = p."slug"
+left join public.player_career pc on pc."slug" = p."slug";
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -183,7 +206,7 @@ grant select, insert, update, delete on
   public.editors, public.overrides, public.revisions
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
-grant select on public.player_career to service_role;
+grant select on public.player_career, public.player_current, public.player_list, public.season_span to service_role;
 
 -- The CMS is the one place a browser talks to these tables: signed-in editors, own rows only.
 grant select on public.players, public.teams, public.leagues to authenticated;
