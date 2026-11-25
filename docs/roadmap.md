@@ -193,8 +193,10 @@ offers are not production tiers.
 
 `docs/supabase-migration.md` (2026-11-25) is the route: destination, what moves and what stays on
 Netlify, eight decisions (read path, ingest, derived numbers, CMS auth, media, egress, cutover,
-games), the fog, and a six-step sequence whose step 2 can kill the effort after three days. Nothing
-is built; the first step needs a Supabase project and its keys in `data/supabase-env.txt`.
+games), the fog, and a six-step sequence whose step 2 can kill the effort after three days.
+**Step 1 is built**: the Supabase schema and a loader that pushes `data.json` into it — 26,234
+players, 53,465 season rows, 475 teams, points total reconciled, 49 MB, `npm run db:load`. Step 2
+(the first route served from Postgres, measured against the static payload) is the open one.
 
 ## Later — new modelling or a new source
 
@@ -266,6 +268,12 @@ tooltip showing the split.
 - **Prep/high school**: no reliable public stats source; MaxPreps is JavaScript-gated.
 
 ## Known data issues
+
+- **Four players share a player id with a namesake at the same club** (`p-nf-wcjll-brenden-hooper` is
+  a skater and a goalie; two more pairs in RMLL/PnwJLL). The importer disambiguates the *slug*
+  (`-3`, `-6`) but not the id, so anything keyed on a player id — the CMS override layer does —
+  resolves to both people. The database therefore keys players on `slug` and indexes `id`. The fix
+  belongs in the id generator: append the same discriminator the slug already carries.
 
 - **Blaze Riorden carries skater lines in the NLL** (34 G / 39 A in 2022, career 107 G / 132 A for a
   goalie) while his PLL rows are correct goalie lines with zero goals. Only 3 of 1,704 goalies have a

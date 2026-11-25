@@ -1,8 +1,10 @@
 # Migration map — the backend onto Supabase
 
-Charted **2026-11-25**. Nothing here is built. `docs/backend.md` is the case for having a backend at
-all (measured load cost, three options, free-tier table); this doc is the route to the Supabase one:
-the destination, what is already decided, and the decisions that are still open, one session each.
+Charted **2026-11-25**. **Step 1 is built and verified** — schema and loader are live against the
+project in `us-east-2` (see [Step 1, done](#step-1-done)). Everything after it is plan.
+`docs/backend.md` is the case for having a backend at all (measured load cost, three options,
+free-tier table); this doc is the route to the Supabase one: the destination, what is already
+decided, and the decisions that are still open, one session each.
 
 Read `docs/backend.md` first if the question is "should we". Read this one if the question is "how".
 
@@ -21,6 +23,33 @@ Arrival is measured, not declared:
 - A data refresh is a **loader run**, not a commit plus a deploy.
 - The CMS survives one full re-import with every published value intact — the property the override
   layer exists for.
+
+## Step 1, done
+
+`supabase/schema.sql` + `scripts/load-supabase.mjs`, applied and run on 2026-11-25 against
+`yxikpqorffsaoiysicxw` (us-east-2, session pooler — the direct host is IPv6-only on free).
+
+- rows: **26,234 players · 53,465 season rows · 475 teams · 19 leagues · 2 snapshots**
+- integrity: points total **420,479** in the database vs the dataset, **0** orphan season rows
+- 7.2 s to load, **49 MB** of database, 500 MB free
+- one route's slice, measured from SQL: a player detail is **4,182 B (813 B gzip)**, 150 players of
+  table fields **24,147 B (3,428 B gzip)**, all 475 teams as cards **99,833 B (13,122 B gzip)** —
+  against 1.70 MB gzip for the whole dataset that every visit downloads today
+
+Two things the load forced, both now in the schema:
+
+- **`slug` is the player key, not `id`.** Four players share an id with a namesake at the same club
+  (`p-nf-wcjll-brenden-hooper` is both a skater and a goalie). The importer resolves the slug
+  collision and not the id collision, so `id` is an indexed column and `slug` is the primary key.
+  Season rows lead with `playerSlug` for the same reason: two of those pairs collide on
+  (season, team, league, type) as well.
+- **Column names are the dataset's own keys**, quoted camelCase. The loader maps nothing; a
+  snake_case view can be added for query ergonomics later. Renaming is how `gaa`/`svp` were lost once
+  already.
+
+The grant posture is the D1 decision in practice: `service_role` has explicit grants (auto-grant is
+off), the read model has RLS on and no policies, and the publishable key is answered
+`42501 permission denied` — verified, not assumed.
 
 ## The measurement that decides everything
 
@@ -199,7 +228,7 @@ one thing that genuinely wants to be a query on a per-game page.
 | # | Step | Effort | Kills the effort if… |
 | --- | --- | --- | --- |
 | 0 | Supabase project + keys (his, 5 min — see below) | — | — |
-| 1 | Schema + loader + count verification (D2) | 1–2 days | counts do not reconcile |
+| 1 | Schema + loader + count verification (D2) | ~~1–2 days~~ **done 2026-11-25** | counts do not reconcile |
 | 2 | `/player/<slug>` served from Postgres behind the flag (D1, D7) | 2–3 days | it is not faster on the throttled profile |
 | 3 | `/players` — filters, sort, pagination in SQL | 3–4 days | SQL cannot replace the in-memory sort |
 | 4 | Derived numbers: ratings table, peers/similar (D3) | 3–5 days | **the risky phase** — O(n) JS has to become indexed SQL |
@@ -222,3 +251,7 @@ SUPABASE_ANON_KEY=<anon public key>
 ```
 
 `SERVICE_ROLE_KEY` stays on this box and is used only by the loader; the site never sees it.
+
+Done — the file holds `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY` and
+`SUPABASE_DB_URL`, and the loader runs against it. Refresh with `npm run db:load` after an import;
+`schema.sql` is re-applied idempotently with `npm run db:schema` (`--reset` drops first, dev only).
