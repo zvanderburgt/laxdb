@@ -33,13 +33,15 @@ const TABLES = {
   teams: [
     ["id", "t"], ["name", "t"], ["shortName", "t"], ["slug", "t"], ["leagueId", "t"],
     ["conference", "t"], ["colors", "j"], ["record", "j"], ["staff", "j"], ["logo", "t"],
+    ["city", "t"], ["cityName", "t"], ["region", "t"], ["elo", "n"], ["sos", "n"],
+    ["history", "j"], ["pollRanks", "j"], ["franchise", "j"],
   ],
   players: [
     ["slug", "t"], ["id", "t"], ["firstName", "t"], ["lastName", "t"], ["name", "t"],
     ["position", "t"], ["positionName", "t"], ["hand", "t"], ["heightIn", "i"], ["weightLb", "i"],
     ["dob", "t"], ["birthplace", "j"], ["classYear", "i"], ["gradYear", "i"], ["teamId", "t"],
     ["leagueId", "t"], ["jersey", "i"], ["status", "t"], ["scouting", "j"], ["photo", "t"],
-    ["experience", "i"], ["highSchool", "t"],
+    ["experience", "i"], ["highSchool", "t"], ["careerLine", "j"],
   ],
   seasons: [
     ["playerSlug", "t"], ["playerId", "t"], ["ord", "i"], ["season", "i"], ["teamId", "t"], ["leagueId", "t"], ["type", "t"],
@@ -100,6 +102,30 @@ for (const p of data.players) {
     seasons.push(project({ ...s, playerId: p.id, playerSlug: p.slug, ord }, TABLES.seasons)),
   );
 }
+
+/**
+ * A field in data.json with no column is dropped by `jsonb_populate_recordset` without a word. That
+ * is how the first pass lost every team's Elo, city and franchise history, and 3,212 career lines.
+ * The load refuses to run when the source carries a key the table does not.
+ */
+function assertCoverage(label, source, spec, ignore = []) {
+  const columns = new Set(spec.map(([c]) => c));
+  const missing = new Set();
+  for (const row of source) {
+    for (const k of Object.keys(row ?? {})) {
+      if (!columns.has(k) && !ignore.includes(k)) missing.add(k);
+    }
+  }
+  if (missing.size) {
+    console.error(`FAIL ${label}: data.json has fields with no column — ${[...missing].join(", ")}`);
+    process.exit(1);
+  }
+}
+
+assertCoverage("leagues", data.leagues, TABLES.leagues);
+assertCoverage("teams", data.teams, TABLES.teams);
+assertCoverage("players", data.players, TABLES.players, ["seasons"]);
+assertCoverage("seasons", data.players.flatMap((p) => p.seasons ?? []), TABLES.seasons);
 
 const snapshots = [
   { key: "history", body: data.history },

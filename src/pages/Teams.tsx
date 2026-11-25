@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { pageSlice, type PageSlice } from "../lib/page";
 import { clubInk } from "../lib/palette";
 import { Link, useRoute, useTheme } from "../lib/app";
 import { useFlipRows } from "../lib/motion";
@@ -499,6 +500,8 @@ function ScheduleCard({ team }: { team: Team }) {
 }
 
 export function TeamsPage() {
+  // a database-backed load carries each club's roster size and career points, which the card prints
+  const slice = pageSlice("/teams") as Extract<PageSlice, { route: "/teams" }> | null;
   const [q, setQ] = useState("");
   const [league, setLeague] = useState("all");
 
@@ -565,8 +568,10 @@ export function TeamsPage() {
           />
           <div className="team-grid">
             {list.map((t) => {
-              const roster = rosterOf(t.id);
-              const pts = roster.reduce((n, p) => n + careerTotals(p).pts, 0);
+              const given = (t as unknown as { players?: number; pts?: number }).players;
+              const roster = given === undefined ? rosterOf(t.id) : null;
+              const pts = (t as unknown as { pts?: number }).pts ?? (roster ?? []).reduce((n, p) => n + careerTotals(p).pts, 0);
+              const count = given ?? roster?.length ?? 0;
               return (
                 <Link key={t.id} to={`/team/${t.slug}`} className="team-card" data-k={t.id}>
                   <span className={`team-crest ${t.logo ? "has-logo" : ""}`}>
@@ -576,7 +581,7 @@ export function TeamsPage() {
                     <span className="team-card-name">{t.shortName}</span>
                     <span className="team-card-sub">{[t.conference, t.city].filter(Boolean).join(" · ")}</span>
                     <span className="team-card-meta">
-                      {roster.length} players · {pts.toLocaleString()} career pts
+                      {count} players · {pts.toLocaleString()} career pts
                     </span>
                   </span>
                 </Link>

@@ -16,8 +16,14 @@ export type LeagueCardRow = {
   } | null;
 };
 
+export type TeamRow = {
+  id: string; slug: string; name: string; shortName: string; conference: string | null;
+  leagueId: string; logo: string | null; city: string | null; players: number; pts: number;
+};
+
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
+  | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
   | { route: string; [k: string]: unknown };
 
 let current: PageSlice | null = null;

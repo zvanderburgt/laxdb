@@ -106,7 +106,7 @@ export function fallbackToWire(): void {
 }
 
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
-const PAGE_ROUTES = new Set(["/leagues"]);
+const PAGE_ROUTES = new Set(["/leagues", "/teams"]);
 
 function pageRoute(): string | null {
   if (typeof window === "undefined" || forceWire()) return null;
@@ -128,23 +128,30 @@ async function loadPageSlice(base: string, route: string): Promise<boolean> {
     return false;
   }
 
-  if (slice.route !== "/leagues") return false;
-  const page = slice as Extract<PageSlice, { route: "/leagues" }>;
+  if (slice.route !== "/leagues" && slice.route !== "/teams") return false;
 
   data = {
     meta: { generated: "", dataset: "Supabase", season: "", sources: [] },
-    leagues: page.leagues,
-    teams: [],
+    leagues: slice.leagues as Dataset["leagues"],
+    // the teams directory draws its own rows; they are the same shape the dataset holds
+    teams: (slice.route === "/teams"
+      ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
+      : []) as unknown as Dataset["teams"],
     players: [],
   } as Dataset;
-  for (const l of page.leagues) leagueById.set(l.id, l);
+  for (const l of data.leagues) leagueById.set(l.id, l);
+  for (const t of data.teams) {
+    t.logo = assetUrl(t.logo);
+    teamById.set(t.id, t);
+    teamBySlug.set(t.slug, t);
+  }
 
-  PLAYER_COUNT = page.totalPlayers;
+  PLAYER_COUNT = slice.route === "/leagues" ? (slice as Extract<PageSlice, { route: "/leagues" }>).totalPlayers : 0;
   TEAM_COUNT = 0;
   SEASON_COUNT = 0;
   CURRENT = "";
   SEASON_RANGE = ["", ""];
-  setPageSlice(page);
+  setPageSlice(slice);
   return true;
 }
 

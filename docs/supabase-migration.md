@@ -17,11 +17,20 @@ is never a broken page.
 | route | payload | time to content (1.6 Mbps, cold cache) | parity |
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
+| `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
 
 What that route needed: the counts and the leading scorer per competition are aggregates over 26k
 players, which is exactly why the browser kept the whole file. A `league_top_scorer` view with
 `distinct on` answers 19 rows instead of ordering 26k, and a `count()` helper reads Postgres' own row
 count instead of transferring slugs to `.length` them.
+
+**A silent field loss, found while building `/teams`.** The loader's column list for `teams` named ten
+fields; `data.json` carries eighteen. `jsonb_populate_recordset` ignores keys with no column, so every
+team's `elo`, `sos`, `city`, `cityName`, `region`, `history`, `pollRanks` and `franchise` had been
+dropped — and 3,212 players' `careerLine`. The row counts and the points total both passed, because
+nothing checked *columns*. All nine are now real columns, and the loader refuses to run when the
+source carries a key the table does not (`assertCoverage`), which is the check that should have existed
+from the first load.
 
 Two things that only showed up in the parity sweep: the grid's order is a *product* decision that
 lived in the page (the endpoint answers alphabetically, so the sort moved into the slice branch), and

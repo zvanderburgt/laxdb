@@ -61,9 +61,38 @@ async function leaguesPage() {
   };
 }
 
+type TeamRow = {
+  id: string; slug: string; name: string; shortName: string; conference: string | null;
+  leagueId: string; logo: string | null; city: string | null;
+};
+
+async function teamsPage() {
+  const [teams, leagues, totals] = await Promise.all([
+    rows<TeamRow>(
+      "teams?select=id,slug,name,shortName,conference,leagueId,logo,city&order=name",
+    ),
+    rows<LeagueRow>(`leagues?select=${LEAGUE_COLUMNS}&order=name`),
+    rows<{ teamId: string; players: number; pts: number }>("team_totals?select=*"),
+  ]);
+
+  const byTeam = new Map(totals.map((t) => [t.teamId, t]));
+  return {
+    route: "/teams",
+    leagues,
+    teams: teams.map((t) => ({
+      ...t,
+      players: byTeam.get(t.id)?.players ?? 0,
+      pts: byTeam.get(t.id)?.pts ?? 0,
+    })),
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const path = new URL(req.url).searchParams.get("path") ?? "";
   try {
+    if (path === "/teams") {
+      return new Response(JSON.stringify(await teamsPage()), { headers: CACHE_HEADERS });
+    }
     if (path === "/leagues") {
       return new Response(JSON.stringify(await leaguesPage()), { headers: CACHE_HEADERS });
     }

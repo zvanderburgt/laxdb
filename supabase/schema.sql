@@ -38,7 +38,15 @@ create table if not exists public.teams (
   "colors"     jsonb,
   "record"     jsonb,
   "staff"      jsonb,
-  "logo"       text
+  "logo"       text,
+  "city"       text,
+  "cityName"   text,
+  "region"     text,
+  "elo"        numeric,
+  "sos"        numeric,
+  "history"    jsonb,
+  "pollRanks"  jsonb,
+  "franchise"  jsonb
 );
 
 create table if not exists public.players (
@@ -67,7 +75,8 @@ create table if not exists public.players (
   "scouting"     jsonb,
   "photo"        text,
   "experience"   integer,
-  "highSchool"   text
+  "highSchool"   text,
+  "careerLine"   jsonb
 );
 
 create table if not exists public.seasons (
@@ -87,6 +96,18 @@ create table if not exists public.seasons (
   "gaa" numeric, "svp" numeric,
   primary key ("playerSlug", "season", "teamId", "leagueId", "type")
 );
+
+-- added after the first load: these were in data.json and had no column, so the loader dropped them
+-- silently (3,212 players carry a careerLine; 81 teams a city; 64 an Elo and a strength of schedule)
+alter table public.teams add column if not exists "city" text;
+alter table public.teams add column if not exists "cityName" text;
+alter table public.teams add column if not exists "region" text;
+alter table public.teams add column if not exists "elo" numeric;
+alter table public.teams add column if not exists "sos" numeric;
+alter table public.teams add column if not exists "history" jsonb;
+alter table public.teams add column if not exists "pollRanks" jsonb;
+alter table public.teams add column if not exists "franchise" jsonb;
+alter table public.players add column if not exists "careerLine" jsonb;
 
 -- added 2026-11-25 after the first load: the client's `.find()` picks the first of a player's rows
 -- for a season, so the ordinal is what makes a split season resolve to the same row in both modes
@@ -159,6 +180,17 @@ from public.player_list
 where "pts" is not null and "pts" > 0
 order by "leagueId", "pts" desc nulls last, "slug";
 
+-- What a directory card prints next to the crest: how many players have appeared for the club and
+-- what their careers add up to. Both are aggregates the browser used to compute over 26k players.
+create or replace view public.team_totals as
+select
+  r."teamId",
+  count(*)::int as "players",
+  coalesce(sum(pc."g" + pc."a"), 0)::int as "pts"
+from (select distinct "teamId", "playerSlug" from public.seasons) r
+join public.player_career pc on pc."slug" = r."playerSlug"
+group by 1;
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -214,7 +246,7 @@ grant select, insert, update, delete on
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
-  public.league_top_scorer to service_role;
+  public.league_top_scorer, public.team_totals to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;
