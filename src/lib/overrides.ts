@@ -323,13 +323,16 @@ export async function loadOverrides(force = false): Promise<OverridesState> {
  */
 /** Email a 6-digit code. False means the sender refused — the dock says so instead of showing a form
  *  that silently never arrives. */
-export async function requestCode(email: string): Promise<boolean> {
+export async function requestCode(email: string): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch("/api/auth/otp", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email }),
   }).catch(() => null);
-  return Boolean(res?.ok);
+  if (!res) return { ok: false, error: "The request didn't reach the server." };
+  if (res.ok) return { ok: true };
+  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+  return { ok: false, error: body?.error ?? `Couldn't send it (${res.status}).` };
 }
 
 /** Exchange the code for a token. Returns false for a wrong code and for a non-editor account. */

@@ -154,7 +154,13 @@ async function route(req: Request): Promise<Response> {
     const email = typeof body?.email === "string" ? body.email.trim().slice(0, 200) : "";
     if (!email || !email.includes("@")) return fail(422, "an email address is required");
     const out = await requestOtp(email);
-    return out.ok ? json({ ok: true }) : fail(502, "could not send the code", { detail: out.error });
+    if (out.ok) return json({ ok: true });
+    // GoTrue's built-in sender allows a couple of messages an hour per project; saying "try again"
+    // when the answer is "not for 60 minutes" is how an editor concludes the login is broken
+    if (/over_email_send_rate_limit|rate limit/i.test(out.error ?? "")) {
+      return fail(429, "Too many sign-in emails in the last hour — wait for the window to reset, or use the passphrase.");
+    }
+    return fail(502, "could not send the sign-in email", { detail: out.error });
   }
 
   if (route === "/auth/verify") {

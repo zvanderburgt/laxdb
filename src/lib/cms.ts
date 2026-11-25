@@ -287,12 +287,9 @@ export async function publishDraft() {
 /** Step one: ask Supabase to mail a code. */
 export async function sendCode(email: string): Promise<boolean> {
   set({ signingIn: true, signInError: "" });
-  const ok = await requestCode(email);
-  set({
-    signingIn: false,
-    signInError: ok ? "" : "That code couldn't be sent — check the address or try again shortly.",
-  });
-  return ok;
+  const out = await requestCode(email);
+  set({ signingIn: false, signInError: out.ok ? "" : (out.error ?? "Couldn't send it.") });
+  return out.ok;
 }
 
 /** Step two: exchange the code for a session and open the editor. */
