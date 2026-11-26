@@ -18,6 +18,12 @@ import { readFileSync, existsSync } from "node:fs";
 import { Client } from "pg";
 
 const ENV_PATH = process.env.SUPABASE_ENV_FILE ?? "data/supabase-env.txt";
+
+/** A cron log wants one line that names the problem, not a stack trace. */
+const die = (what, err) => {
+  console.error(`FAIL ${what}${err ? `: ${String(err?.message ?? err).split("\n")[0]}` : ""}`);
+  process.exit(1);
+};
 const DATA_PATH = process.env.LAXDB_DATA ?? "public/data.json";
 const BATCH = Number(process.env.LAXDB_BATCH ?? 2000);
 const dryRun = process.argv.includes("--dry-run");
@@ -287,8 +293,13 @@ if (dryRun) {
   process.exit(0);
 }
 
-const env = readEnv(ENV_PATH);
-if (!env.SUPABASE_DB_URL) throw new Error(`SUPABASE_DB_URL missing from ${ENV_PATH}`);
+let env;
+try {
+  env = readEnv(ENV_PATH);
+} catch (err) {
+  die(`cannot read ${ENV_PATH} (SUPABASE_URL, SUPABASE_DB_URL, SUPABASE_SECRET_KEY)`, err);
+}
+if (!env.SUPABASE_DB_URL) die(`SUPABASE_DB_URL is missing from ${ENV_PATH}`);
 
 const client = new Client({
   connectionString: env.SUPABASE_DB_URL,
@@ -297,7 +308,11 @@ const client = new Client({
   application_name: "laxdb-loader",
 });
 
-await client.connect();
+try {
+  await client.connect();
+} catch (err) {
+  die("cannot reach the database", err);
+}
 const started = Date.now();
 
 /** Inserts `rows` into `table` straight from jsonb, so no value is ever re-serialised by hand. */

@@ -14,15 +14,21 @@ public/history-results.json, franchises.json, rankings*.json → snapshots
 Postgres                          the only thing a request reads
 ```
 
-**A pull does not update the site.** The fetchers write files; the database changes only when the
-loader runs. After an import:
+**Every process that changes data ends by loading Postgres.** The fetchers still write files — they
+are 41 scripts mutating one shared `data.json`, so they have to finish before anything can read it —
+and the loader is the last stage of each pipeline:
 
-```
-node scripts/load-supabase.mjs        # or: npm run db:load
-```
+| process | when | loader |
+| --- | --- | --- |
+| `scripts/rebuild-all.sh [--refresh]` — the full pipeline | biweekly cron, 3am on the 1st and 15th, and by hand | `── postgres` stage, after the integrity check, before the build |
+| `laxdb-rankings-refresh` cron — polls + scores | daily, 9am | step 5, after `check-data.py`, before build/deploy/commit |
 
-It truncates and reloads every table in one transaction (~17 s) and verifies row counts, the points
-total and the orphan join before committing. The build no longer produces `data.wire.json`.
+The loader truncates and reloads every table in one transaction (~15 s) and verifies row counts, the
+points total and the orphan join before committing; it exits non-zero on any of those, and both
+pipelines stop before building or deploying when it does. Running a single fetcher by hand still
+needs `npm run db:load` afterwards — the site reads only the database.
+
+The build no longer produces `data.wire.json`.
 
 ## Why one file and not two
 

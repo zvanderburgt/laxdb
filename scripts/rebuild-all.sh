@@ -57,6 +57,9 @@ python3 scripts/fetch-scores.py 2026 2025 || true
 echo "── integrity check"
 python3 scripts/check-data.py
 
+echo "── postgres (the site reads only the database: this is what publishes the data)"
+node scripts/load-supabase.mjs
+
 echo "── editorial overrides (snapshot before the build: the site falls back to it)"
 python3 scripts/cms-snapshot.py || true
 
