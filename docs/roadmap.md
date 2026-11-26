@@ -11,6 +11,21 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
 
 ## Shipped
 
+**2026-11-26 — the leaderboard query: 178 requests and 33 MB → 51 and 568 KB**
+- `/home` was not slow because the function was cold: it made **178 PostgREST requests and read
+  33.1 MB of rows** for a 451 KB page. `rows()` counted and re-paged every read, so an explicit
+  `limit=900` was overridden by the pager's own `limit=1000` and every "top N" query fetched the whole
+  table. It is one request now.
+- The six leaderboards come from a new `league_leaderboard` view that ranks inside each competition.
+  Not a shortcut: `gb` and `ct` are thin in most leagues, so a league's sixth-best sits at global rank
+  18,370 and the only correct global window is all 18,671 rows.
+- Cold `/home`: 21–30 s → **6.1 s**; 33.1 MB → **568 KB** of rows.
+- Parity captured for all 14 routes before and after: 13 byte-identical, and `/home` differs only in
+  which of two tied players is named — the value multiset is identical across all 98 boards. Ties now
+  break on name, deterministically.
+- Next lever, measured: `/players` reads `player_list?select=*` — **10.5 MB for an 83 KB payload** —
+  and sorts and facets in the function. That one wants the sort and window pushed into SQL.
+
 **2026-11-26 — cold loads: the shell seed, the device cache, and a warm edge**
 - A cold `/` took **19.83 s** to content (1.59 s warm) because the first useful pixel waited on a
   function instance that answered in 20 s cold and 0.3 s warm. Three caches later: **1.31 / 1.53 s**

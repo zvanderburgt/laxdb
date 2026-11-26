@@ -45,6 +45,31 @@ export async function rows<T = any>(path: string): Promise<T[]> {
 
   const sep = path.includes("?") ? "&" : "?";
 
+  // A caller that names a limit wants that many rows, not the table.
+  //
+  // Paging the whole result set and letting the caller slice afterwards is what made the home page
+  // 178 requests and 33 MB of rows for six top-six leaderboards — `limit=900` was overridden by the
+  // page loop's own `limit=1000`. A named limit is one request now; only a limit larger than
+  // PostgREST's page cap still pages, and only as far as it asked.
+  const asked = Number(new URLSearchParams(path.split("?")[1] ?? "").get("limit") ?? 0);
+  if (asked > 0) {
+    const out: T[] = [];
+    for (let offset = 0; offset < asked; offset += PAGE) {
+      const want = Math.min(PAGE, asked - offset);
+      const res = await fetch(`${API}/rest/v1/${path}${sep}limit=${want}&offset=${offset}`, {
+        headers: { apikey: KEY, accept: "application/json" },
+      });
+      if (!res.ok) {
+        throw new Error(`supabase ${res.status} on ${path}: ${(await res.text()).slice(0, 200)}`);
+      }
+      const page = (await res.json()) as T[];
+      out.push(...page);
+      if (page.length < want) break;
+    }
+    cache.set(path, { at: Date.now(), rows: out as any[] });
+    return out;
+  }
+
   const head = await fetch(`${API}/rest/v1/${path}${sep}limit=1`, {
     headers: { apikey: KEY, accept: "application/json", prefer: "count=exact" },
   });

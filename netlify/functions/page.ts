@@ -140,7 +140,9 @@ async function leadersPage(params: URLSearchParams) {
   );
   let league = params.get("league") ?? "";
   if (!league) {
-    const seen = await rows<{ leagueId: string }>("league_seasons?select=leagueId&limit=1");
+    // every league with seasons, not one row: the find below walks the leagues in dataset order and
+    // takes the first that has any. `limit=1` only worked while the pager ignored it.
+    const seen = await rows<{ leagueId: string }>("league_seasons?select=leagueId");
     league = leagues.find((l) => seen.some((s) => s.leagueId === l.id))?.id ?? leagues[0]?.id ?? "";
   }
   const seasons = await rows<{ season: number }>(
@@ -260,7 +262,7 @@ async function leaguePage(params: URLSearchParams) {
     origins: { schools: top("school"), towns: top("town") },
     rows: rowsOut.map((r) => ({
       slug: r.slug, name: r.name, position: r.position, positionName: r.positionName,
-      teamId: r.teamId, photo: r.photo, season: r.season,
+      teamId: r.teamId, photo: r.photo, season: String(r.season),
       gp: r.gp ?? 0, g: r.g ?? 0, a: r.a ?? 0, pts: r.pts ?? 0, sh: r.sh ?? 0, gb: r.gb ?? 0,
       ct: r.ct ?? 0, foW: r.foW ?? 0, foA: r.foA ?? 0, sv: r.sv ?? 0, ga: r.ga ?? 0,
       w: r.w ?? 0, l: r.l ?? 0,
@@ -799,16 +801,25 @@ async function homePage() {
   const latest = String(span[0]?.hi ?? "");
 
   // `leaderboard()` ranks the player's *last* season row inside his current competition, so this
-  // reads `league_player_current` — the same row the page means by currentSeason()
+  // reads `league_leaderboard` — `league_player_current` with a rank per stat inside each competition.
+  //
+  // Ordering the whole table by a stat and keeping the first six per league needs the whole table:
+  // the sixth-best rebounder in a thin competition sits at global rank 18,370. Ranking per league
+  // returns 114 rows per stat instead of 18,671 — one request, once, for all six boards.
   const stats = ["pts", "g", "a", "gb", "ct", "svp"] as const;
+  const ranks = stats.map((stat) => (stat === "svp" ? "rank_sv" : `rank_${stat}`));
+  const board = await rows<any>(
+    `league_leaderboard?select=playerLeague,slug,name,position,positionName,photo,teamId,playerTeamId,classYear,gp,g,a,pts,gb,ct,sv,ga,${ranks.join(",")}` +
+      `&or=(${ranks.map((r) => `${r}.lte.6`).join(",")})`,
+  );
   const leaders: Record<string, any[]> = {};
   for (const stat of stats) {
-    const order = stat === "svp" ? "sv" : stat;
-    const top = await rows<any>(
-      `league_player_current?select=playerLeague,slug,name,position,positionName,photo,teamId,playerTeamId,classYear,gp,g,a,pts,gb,ct,sv,ga` +
-        `&gp=gte.5&order=${order}.desc&limit=900`,
-    );
-    for (const r of top) {
+    const rank = stat === "svp" ? "rank_sv" : `rank_${stat}`;
+    // per competition, in the stat's own order — the ranking is already inside the league
+    const ordered = board
+      .filter((r) => (r[rank] ?? 99) <= 6)
+      .sort((a, b) => (a["playerLeague"] < b["playerLeague"] ? -1 : a["playerLeague"] > b["playerLeague"] ? 1 : a[rank] - b[rank]));
+    for (const r of ordered) {
       if (stat === "svp" && (r.sv ?? 0) <= 20) continue;
       const value = stat === "svp" ? ((r.sv ?? 0) + (r.ga ?? 0) > 0 ? r.sv / (r.sv + r.ga) : 0) : (r[stat] ?? 0);
       const key = `${r.playerLeague}|${stat}`;
@@ -829,7 +840,7 @@ async function homePage() {
     const pool = await rows<any>(
       `player_list?leagueId=eq.${encodeURIComponent(leagueId)}&peakGp=gte.12&peakPts=gt.0` +
         `&select=slug,id,name,position,positionName,teamId,leagueId,photo,peakPts,peakSeason` +
-        `&order=peakPts.desc&limit=12`,
+        `&order=peakPts.desc&limit=60`,
     );
     if (!pool.length) continue;
     const withPhoto = pool.filter((p) => p.photo);

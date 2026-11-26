@@ -335,6 +335,50 @@ came back to 1.94–2.62 s, which is the old number within noise.
 answers in 0.3 s, cold it does not. Hiding it behind a seed and a warm edge is this pass; making it
 cheap is a separate change.
 
+## The leaderboard query, and what `rows()` was doing
+
+The 20 s was not a cold start. Instrumenting every PostgREST call the handler makes: `/home` issued
+**178 requests and read 33.1 MB of rows** to build a 451 KB page, and 120 of those requests were the
+same leaderboard query re-paged.
+
+The cause was `rows()`: it counts the result, then pages at 1000 with its own `limit=1000`, which
+overrode the caller's `limit=900`. Every "top N" read fetched the whole result set and sliced it later.
+
+Two changes:
+
+- **`rows()` honours an explicit `limit`** — one request, and only a limit above PostgREST's page cap
+  pages at all. Three call sites had come to depend on the old behaviour and were corrected with it:
+  the leaders page's default league (`league_seasons?limit=1`, which had been returning every row —
+  the `find` below it only worked because of that), and the home spotlight pool (12 → 60, because 12
+  of *anything* can miss a player with a photo).
+- **`league_leaderboard`** — a view ranking `league_player_current` inside each competition, one rank
+  column per stat, so the home page's six boards are one request instead of six whole-table scans.
+  Ranking per league is not a shortcut: `gb` and `ct` are thin in most competitions, so a league's
+  sixth-best rebounder sits at global rank **18,370** and the only globally-ordered window that is
+  correct is all 18,671 rows.
+
+Measured on the same machine, same database:
+
+| | requests | rows read | time |
+| --- | --- | --- | --- |
+| before | **178** | **33.1 MB** | 20.5 s |
+| after | **51** | **568 KB** | 6.0 s |
+
+Live `/home`, cold: 21–30 s before, **6.1 s** after. Ties break on name in the view, which is
+deterministic where the old global sort was not.
+
+**Parity, because a query change is a product change.** Every route the client maps was captured
+before and after and diffed structurally: 13 of 14 payloads are **byte-identical** (`/leaders`,
+`/league`, `/team`, `/player`, `/players`, `/coaches`, `/history`, `/origins`, `/teams`, `/leagues`,
+`/scores`, `/search`, `/player-set`). `/home` differs only inside `leaders`, where 58 of 98 boards name
+a different player — every one of them tied on the value shown, and the **value multiset is identical
+across all 98 boards**, so no board gained or lost a number. 32 of those boards are entirely tied
+(a box league recording no ground balls), where any pick is arbitrary.
+
+**Still the biggest read in the codebase:** `/players` fetches `player_list?select=*` — 28 pages,
+**10.5 MB for an 83 KB payload** — then sorts, facets and slices in the function. Pushing the sort,
+the page window and the facets into SQL is the next lever, and a bigger one than this was.
+
 ## Step 5 — the store is done, auth is left
 
 **The store moved.** `cms_store` is a key/value table, not rows, and that is deliberate: `doc.ts`

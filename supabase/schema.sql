@@ -281,6 +281,27 @@ select p."leagueId" as "playerLeague", p."slug", p."name", p."position", p."posi
 from public.players p
 join public.player_current c on c."playerSlug" = p."slug";
 
+-- The home page's six leaderboards, ranked inside each competition.
+--
+-- Ranking globally and then taking the first six per league reads the whole table: `gb` and `ct` are
+-- thin in most competitions, so a league's sixth-best rebounder sits at global rank 18,370 and the
+-- only correct window is all 18,671 rows — 120 requests and 33 MB for 114 entries. These window
+-- functions rank per competition, so one request returns every league's top six for every stat.
+create or replace view public.league_leaderboard as
+with base as (
+  select * from public.league_player_current where "gp" >= 5
+)
+select b.*,
+  -- ties break on name, which is what the unordered global sort used to produce: a board where every
+  -- value is equal (a box league with no ground balls recorded) otherwise picks an arbitrary six
+  row_number() over (partition by b."playerLeague" order by b."pts" desc nulls last, b."name") as "rank_pts",
+  row_number() over (partition by b."playerLeague" order by b."g"   desc nulls last, b."name") as "rank_g",
+  row_number() over (partition by b."playerLeague" order by b."a"   desc nulls last, b."name") as "rank_a",
+  row_number() over (partition by b."playerLeague" order by b."gb"  desc nulls last, b."name") as "rank_gb",
+  row_number() over (partition by b."playerLeague" order by b."ct"  desc nulls last, b."name") as "rank_ct",
+  row_number() over (partition by b."playerLeague" order by b."sv"  desc nulls last, b."name") as "rank_sv"
+from base b;
+
 -- Two numbers the hero prints: how many players and what their careers add up to.
 create or replace view public.league_totals as
 select p."leagueId",
@@ -527,7 +548,7 @@ grant select, insert, update, delete on
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
   public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
-                public.league_player_current, public.league_totals, public.league_origins, public.player_games,
+                public.league_player_current, public.league_leaderboard, public.league_totals, public.league_origins, public.player_games,
                 public.team_seasons, public.team_season_leader, public.team_roster, public.team_origins, public.player_lookup,
                 public.climb_window, public.d1_climb, public.d1_origins, public.player_peak, public.featured_attackers,
                 public.team_current_totals,
