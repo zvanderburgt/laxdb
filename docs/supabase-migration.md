@@ -316,9 +316,12 @@ URL in IndexedDB with a timestamp and an FNV-1a fingerprint of the bytes; `src/m
 device → network, so a revisit paints before its own fetch settles and only re-renders when the
 payload differs. `/leaders` went from 1.83 s to 0.21 s on a repeat visit.
 
-**The edge is kept warm.** `scripts/warm-cache.mjs` asks for the seven page routes; `deploy-netlify.py`
-runs it with `--refresh` after a publish, and the Hermes cron `laxdb edge warm` runs it every ten
-minutes — inside the 300 s + 600 s window, so an entry can always be answered without a cold instance.
+**The instance is kept warm.** `scripts/warm-cache.mjs` asks for the page routes; `deploy-netlify.py`
+runs it with `--refresh` over all seven after a publish, and the Hermes cron `laxdb edge warm` asks for
+`/home` alone every five minutes. The five minutes came from a measurement, not a guess: six minutes
+after a full sweep `/home` was cold again and took **17.9 s**, because the function instance is recycled
+sooner than the entry expires. One request per five minutes holds the `page.mjs` instance every
+`/data/page` route shares, at ~8.6k invocations a month — a full sweep every ten minutes was ~30k.
 
 **What did not work and was reverted the same hour:** warming `/leagues` and `/teams` on idle from the
 first paint. On a 1.6 Mbps link those two slices competed with the route the visitor was waiting for,

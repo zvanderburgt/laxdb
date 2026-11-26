@@ -15,6 +15,12 @@
  *   node scripts/warm-cache.mjs --base https://deploy-preview-1--laxdb.netlify.app
  *   node scripts/warm-cache.mjs --quiet        one summary line (for cron)
  *   node scripts/warm-cache.mjs --refresh      ask the edge to re-store, not to serve what it has
+ *   node scripts/warm-cache.mjs --home         only the landing page (the five-minute cron)
+ *
+ * `--home` exists because the instance, not the entry, is the thing that expires: measured at 04:12,
+ * six minutes after a full warm, `/home` still took 17.9 s — the function had been recycled. One
+ * request every five minutes holds the instance the whole site shares, at ~8.6k invocations a month
+ * instead of the ~30k a full sweep every ten minutes would cost.
  */
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -30,10 +36,11 @@ const headers = refresh
   : { "accept-encoding": "br, gzip" };
 
 /** The routes the client maps to /data/page. `/players` is query-driven and is not warmed. */
-const ROUTES = ["/home", "/leagues", "/teams", "/coaches", "/leaders", "/history", "/origins"];
+const ALL = ["/home", "/leagues", "/teams", "/coaches", "/leaders", "/history", "/origins"];
+const ROUTES = args.includes("--home") ? ["/home"] : ALL;
 
 const kb = (n) => `${Math.round(n / 1024)} KB`;
-let misses = 0;
+const tally = { hit: 0, stale: 0, miss: 0 };
 let failures = 0;
 
 for (const route of ROUTES) {
@@ -48,7 +55,7 @@ for (const route of ROUTES) {
       .map((s) => s.trim())
       .filter((s) => s.includes("Edge"))
       .map((s) => (s.includes("hit") ? "hit" : s.includes("stale") ? "stale" : "miss"))[0] ?? "?";
-    if (state !== "hit") misses += 1;
+    tally[state] = (tally[state] ?? 0) + 1;
     if (!res.ok) failures += 1;
     if (!quiet) {
       console.log(
@@ -62,6 +69,10 @@ for (const route of ROUTES) {
   }
 }
 
-const summary = `warm: ${ROUTES.length} routes, ${ROUTES.length - misses} hit, ${misses} cold, ${failures} failed`;
+/* A "stale" is the healthy steady state: the edge answers instantly while it revalidates, so the
+ * visitor never waits on a cold instance. Only a miss means this run paid for a store. */
+const summary =
+  `warm: ${ROUTES.length} routes — ${tally.hit} hit, ${tally.stale} stale, ${tally.miss} miss` +
+  (failures ? `, ${failures} failed` : "");
 console.log(quiet || failures ? summary : `\n${summary}`);
 process.exit(failures === ROUTES.length ? 1 : 0);
