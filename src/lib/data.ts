@@ -116,7 +116,10 @@ export function fallbackToWire(): void {
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
 const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches", "/leaders"]);
 /** routes that carry their identity in the path: /league/<id> */
-const PAGE_PREFIXES = new Map([["/league", "id"]]);
+const PAGE_PREFIXES = new Map([
+  ["/league", "id"],
+  ["/team", "slug"],
+]);
 
 function pageRoute(): { route: string; query: Record<string, string> } | null {
   if (typeof window === "undefined" || forceWire()) return null;
@@ -154,7 +157,8 @@ async function loadPageSlice(
     slice.route !== "/teams" &&
     slice.route !== "/coaches" &&
     slice.route !== "/leaders" &&
-    slice.route !== "/league"
+    slice.route !== "/league" &&
+    slice.route !== "/team"
   ) {
     return false;
   }
@@ -168,15 +172,39 @@ async function loadPageSlice(
     },
     leagues: (slice.route === "/league"
       ? [slice.league]
-      : (slice as Extract<PageSlice, { route: "/leagues" }>).leagues) as Dataset["leagues"],
+      : slice.route === "/team"
+        ? slice.league
+          ? [slice.league]
+          : []
+        : (slice as Extract<PageSlice, { route: "/leagues" }>).leagues) as Dataset["leagues"],
     // the teams directory draws its own rows; they are the same shape the dataset holds
     teams: (slice.route === "/teams" || slice.route === "/coaches"
       ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
       : slice.route === "/league"
         ? (slice as Extract<PageSlice, { route: "/league" }>).teams
-        : []) as unknown as Dataset["teams"],
-    players: [],
+        : slice.route === "/team"
+          ? // the club plus the opponents its schedule and series name, so `teamByName` still resolves
+            [
+              (slice as Extract<PageSlice, { route: "/team" }>).team,
+              ...(slice as Extract<PageSlice, { route: "/team" }>).opponents,
+            ]
+          : []) as unknown as Dataset["teams"],
+    players:
+      slice.route === "/team"
+        ? (slice as Extract<PageSlice, { route: "/team" }>).roster.map(
+            (r) =>
+              ({
+                id: r.slug, slug: r.slug, name: r.name,
+                firstName: r.name.split(" ")[0] ?? "",
+                lastName: r.name.split(" ").slice(1).join(" "),
+                position: r.position, positionName: r.positionName,
+                teamId: (slice as Extract<PageSlice, { route: "/team" }>).team.id,
+                photo: r.photo ?? undefined, classYear: r.classYear, seasons: [],
+              }) as unknown as Dataset["players"][number],
+          )
+        : [],
   } as Dataset;
+  if (slice.route === "/team") (data as any).history = slice.history;
   for (const l of data.leagues) leagueById.set(l.id, l);
   for (const t of data.teams) {
     t.logo = assetUrl(t.logo);
@@ -189,12 +217,22 @@ async function loadPageSlice(
       ? (slice as Extract<PageSlice, { route: "/leagues" }>).totalPlayers
       : slice.route === "/league"
         ? (slice as Extract<PageSlice, { route: "/league" }>).players
-        : 0;
+        : slice.route === "/team"
+          ? (slice as Extract<PageSlice, { route: "/team" }>).playerCount
+          : 0;
   TEAM_COUNT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).teams.length : 0;
   SEASON_COUNT = 0;
   CURRENT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).rows[0]?.season ?? "" : "";
-  SEASON_RANGE = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).span : ["", ""];
-  if (slice.route === "/league") data.meta.season = CURRENT;
+  SEASON_RANGE =
+    slice.route === "/league" || slice.route === "/team"
+      ? (slice as Extract<PageSlice, { route: "/league" }>).span
+      : ["", ""];
+  if (slice.route === "/league" || slice.route === "/team") {
+    const meta = (slice as Extract<PageSlice, { route: "/team" }>).meta;
+    data.meta.generated = meta?.generated ?? data.meta.generated;
+    data.meta.season = meta?.season ?? "";
+    if (meta?.sources?.length) data.meta.sources = meta.sources;
+  }
   setPageSlice(slice);
   return true;
 }

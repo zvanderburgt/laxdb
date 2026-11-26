@@ -1,4 +1,4 @@
-import type { League, Player } from "./types";
+import type { Team, League, Player } from "./types";
 
 /**
  * A route whose data came from `/data/page` rather than the dataset file.
@@ -38,10 +38,39 @@ export type LeagueRowSlice = {
 
 export type OriginRow = { label: string; count: number };
 
+export type TeamSeasonRow = {
+  season: string; leagueId: string; players: number;
+  leader: { slug: string; name: string; pts: number } | null;
+};
+
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
   | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
+  | {
+      route: "/team"; team: Team; league: League | null; generated: string; history: unknown;
+      meta: { generated?: string; season?: string; sources?: string[] } | null;
+      playerCount: number; span: [string, string];
+      stats: { gp: number; gpg: number; gapg: number; shotPct: number; foPct: number; savePct: number };
+      roster: {
+        slug: string; name: string; position: string; positionName: string;
+        photo: string | null; classYear: string | null;
+        gp: number; g: number; a: number; pts: number; seasons: number;
+        careerPts: number; seasonPts: number; seasonGp: number;
+        seasonG: number; seasonA: number; seasonGb: number; seasonCt: number;
+      }[];
+      seasons: TeamSeasonRow[];
+      series: { season: string; rows: { opponent: string; w: number; l: number; last: string; result: string }[] };
+      opponents: { id: string; slug: string; name: string; shortName: string }[];
+      franchise: { players: number; seasons: number; points: number };
+      rosterTotals: { players: number; seasons: number; points: number };
+      playedUnder: Record<string, { first: number; last: number }>;
+      returning: {
+        from: string; to: string; totalPoints: number; returningPoints: number; share: number;
+        kept: number; lost: { name: string; slug: string; pts: number }[];
+      } | null;
+      origins: { schools: OriginRow[]; towns: OriginRow[] };
+    }
   | {
       route: "/league"; league: League; teams: TeamRow[]; players: number; careerGoals: number;
       span: [string, string]; origins: { schools: OriginRow[]; towns: OriginRow[] };

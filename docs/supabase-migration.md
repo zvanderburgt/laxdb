@@ -18,6 +18,7 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/team/<slug>` | **24,623 B + 13,516 B** scorecard (was 1,608,503 B + `scores.json` + `games.json`) | **1.29 s / 1.30 s / 1.31 s** (was 9.57 / 9.62 / 9.81) | full page text byte-identical on five clubs — D1, MCLA and PLL — including franchise history, all-Americans, season series and the roster table |
 | `/player/<slug>` (game log) | **71 KB gzipped**, one request (was 1,608,503 B + `games.json`) | **1.51 s / 1.52 s / 1.53 s** (was 9.62 / 9.74 / 9.83) | full page text byte-identical on four players, footer included |
 | `/scores` (scorecard) | **118 KB snapshot**, one shared request for six pages | unchanged head line: 569 games across 71 dates | the file is gone from every page that read it — `/scores`, both team cards, `/game`, `/vs`, `/history` |
 | `/league/<id>` | **2.2 s at ~1.1 MB** (was 1,608,531 B / 9.73 s) — the payload is the whole competition, which is what the page ranks | **2.25 s / 2.25 s / 2.30 s** (was 9.73 / 9.73 / 9.78) | hero line, the four stats, the standings table and both origin lists, on ncaa-d1 and pll |
@@ -49,6 +50,24 @@ number. Three things had to be got right for the number to match the wire build:
 - `rows()` cached for five minutes per instance and the CDN for up to a day, so a reload could serve
   a stale board: the query cache is 60 s now, `stale-while-revalidate` is 10 minutes, and the client
   keys its refetch on the dataset's build stamp.
+
+**`/team/<slug>` is the last page that read `games.json`, and it no longer does.** The club page needs
+four different cuts of the same rows — seasons played, the leading scorer of each, the roster, and the
+season series — so they are views (`team_seasons`, `team_season_leader`, `team_roster`, `team_origins`,
+`team_current_totals`, `team_game_rows`) and the series is rebuilt server-side with `seriesFor()`'s rule.
+Six parity breaks came out of diffing the whole page text, none of which a spot check would have found:
+
+- `seasons."teamId"` is null on a player's current row (his club lives on `players`), so the seasons
+  view had to coalesce it or the two newest seasons vanished from the franchise table;
+- a season key that is a number in `team.history` and a string in Postgres produced **two rows per
+  season**, one of them blank;
+- jsonb does not keep key order — it stores objects sorted by length then value — so "Committee #2 ·
+  RPI #1 · Coaches #1" became "RPI · Coaches · Committee". The columns a reader can see are `json` now,
+  and the loader inserts with `json_populate_recordset` so the source text survives;
+- "career points" is the sum of goals and assists, not of any published total, while the roster's PTS
+  column is the published total — the two are different sums and both had to be right;
+- the returning-production "lost" list is five names, not six;
+- a birthplace with no city concatenates to ", MD", which is not a hometown.
 
 **`games.json` is a table now.** The importer's 28,819 game rows (3,043 player logs) live in
 `player_games`, and the player slice carries its own log, so the page asks one endpoint and fetches no

@@ -41,7 +41,7 @@ const TABLES = {
     ["position", "t"], ["positionName", "t"], ["hand", "t"], ["heightIn", "i"], ["weightLb", "i"],
     ["dob", "t"], ["birthplace", "j"], ["classYear", "i"], ["gradYear", "i"], ["teamId", "t"],
     ["leagueId", "t"], ["jersey", "i"], ["status", "t"], ["scouting", "j"], ["photo", "t"],
-    ["experience", "i"], ["highSchool", "t"], ["careerLine", "j"],
+    ["experience", "i"], ["highSchool", "t"], ["careerLine", "j"], ["ord", "i"],
   ],
   player_games: [
     ["playerSlug", "t"], ["ord", "i"], ["season", "t"], ["date", "t"], ["opponent", "t"],
@@ -105,7 +105,7 @@ const data = JSON.parse(readFileSync(DATA_PATH, "utf8"));
 // which of a player's rows `currentSeason()` means
 const leagues = data.leagues.map((r, ord) => project({ ...r, ord }, TABLES.leagues));
 const teams = data.teams.map((r) => project(r, TABLES.teams));
-const players = data.players.map((r) => project(r, TABLES.players));
+const players = data.players.map((r, ord) => project({ ...r, ord }, TABLES.players));
 
 const seasons = [];
 for (const p of data.players) {
@@ -306,7 +306,9 @@ async function insert(table, rows) {
   const spec = TABLES[table];
   const cols = spec.map(([c]) => `"${c}"`).join(", ");
   const select = spec.map(([c]) => `"${c}"`).join(", ");
-  const sql = `insert into public."${table}" (${cols}) select ${select} from jsonb_populate_recordset(null::public."${table}", $1::jsonb)`;
+  // `json`, not `jsonb`: jsonb normalises every object to its own key order, which re-orders fields
+  // a reader can see ("Committee · RPI · Coaches" became "RPI · Coaches · Committee")
+  const sql = `insert into public."${table}" (${cols}) select ${select} from json_populate_recordset(null::public."${table}", $1::json)`;
   for (let i = 0; i < rows.length; i += BATCH) {
     const slice = rows.slice(i, i + BATCH);
     await client.query(sql, [JSON.stringify(slice)]);

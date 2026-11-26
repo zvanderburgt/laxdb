@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { loadScores } from "../lib/schedule";
 import { pageSlice, type PageSlice } from "../lib/page";
+import type { Player } from "../lib/types";
 import { clubInk } from "../lib/palette";
 import { Link, useRoute, useTheme } from "../lib/app";
 import { useFlipRows } from "../lib/motion";
@@ -35,7 +36,8 @@ import {
 import type { Team } from "../lib/types";
 
 function ReturningCard({ team }: { team: Team }) {
-  const r = React.useMemo(() => returningProduction(team), [team.id]);
+  const slice = pageSlice("/team") as Extract<PageSlice, { route: "/team" }> | null;
+  const r = React.useMemo(() => slice?.returning ?? returningProduction(team), [team.id, slice]);
   if (!r) return null;
   const pct = Math.round(r.share * 100);
   return (
@@ -122,6 +124,16 @@ function SeriesCard({ team }: { team: Team }) {
 
   React.useEffect(() => {
     let alive = true;
+    const slice = pageSlice("/team") as Extract<PageSlice, { route: "/team" }> | null;
+    if (slice) {
+      // a database-backed load carries the series, so this page never fetches the game log — but the
+      // score beside each meeting still comes from the scorecard
+      setResult(slice.series.season ? { season: slice.series.season, rows: slice.series.rows as any } : null);
+      loadScores().then((payload) => alive && setFixtures(fixturesFor(team, payload)));
+      return () => {
+        alive = false;
+      };
+    }
     loadGames().then((all) => {
       if (alive) setResult(seriesFor(team, all));
     });
@@ -238,7 +250,29 @@ function SeriesCard({ team }: { team: Team }) {
  * results totals they add up to. Separate from **Recent seasons**, which only shows the ESPN rows.
  */
 function FranchiseHistoryCard({ team }: { team: Team }) {
+  const slice = pageSlice("/team") as Extract<PageSlice, { route: "/team" }> | null;
   const rows = useMemo(() => {
+    if (slice) {
+      const results = new Map((team.history ?? []).map((h) => [h.season, h]));
+      // `team.history` seasons are numbers, the seasons table's are text: compare them as text
+      const seasons = [...new Set([...slice.seasons.map((x) => String(x.season)), ...results.keys()].map(String))].sort(
+        (a, b) => b.localeCompare(a),
+      );
+      return seasons.map((season) => {
+        const entry = slice.seasons.find((x) => x.season === season);
+        const result = results.get(season);
+        return {
+          season,
+          league: entry ? leagueById.get(entry.leagueId)?.short ?? "" : "",
+          w: result?.w ?? null,
+          l: result?.l ?? null,
+          gf: result?.gf ?? null,
+          ga: result?.ga ?? null,
+          leader: entry?.leader ?? null,
+          players: entry?.players ?? 0,
+        };
+      });
+    }
     const bySeason = new Map<
       string,
       { leagueId: string; players: Set<string>; leader: { name: string; slug: string; pts: number } | null }
@@ -269,7 +303,7 @@ function FranchiseHistoryCard({ team }: { team: Team }) {
         players: entry?.players.size ?? 0,
       };
     });
-  }, [team.id]);
+  }, [team.id, slice]);
 
   if (!rows.length) return null;
 
@@ -604,9 +638,25 @@ export function TeamPage() {
   const league = leagueById.get(team.leagueId);
   const { theme } = useTheme();
   const club = clubInk(team.colors, theme);
-  const roster = rosterOf(team.id);
-  const origins = teamOrigins(team.id);
-  const stats = teamSeasonStats(team.id);
+  const slice = pageSlice("/team") as Extract<PageSlice, { route: "/team" }> | null;
+  const roster = slice
+    ? (slice.roster.map((r) => ({
+        id: r.slug, slug: r.slug, name: r.name,
+        firstName: r.name.split(" ")[0] ?? "",
+        lastName: r.name.split(" ").slice(1).join(" "),
+        position: r.position, positionName: r.positionName, teamId: team.id,
+        photo: r.photo ?? undefined, classYear: r.classYear,
+        // `currentSeason()` reads the last row of this array, so the slice hands over exactly one
+        seasons: [
+          {
+            season: "", gp: r.seasonGp ?? 0, pts: r.seasonPts ?? 0,
+            g: r.seasonG ?? 0, a: r.seasonA ?? 0, gb: r.seasonGb ?? 0, ct: r.seasonCt ?? 0,
+          },
+        ],
+      })) as unknown as Player[])
+    : rosterOf(team.id);
+  const origins = slice ? slice.origins : teamOrigins(team.id);
+  const stats = slice ? slice.stats : teamSeasonStats(team.id);
   const skaters = roster.filter((p) => p.position !== "G");
   const goalies = roster.filter((p) => p.position === "G");
   const leaders = [...skaters].sort((a, b) => (currentSeason(b).pts ?? 0) - (currentSeason(a).pts ?? 0)).slice(0, 3);
@@ -615,7 +665,9 @@ export function TeamPage() {
   const lastCol = box ? "PIM" : "GB";
 
   // one club under several names: totals across the lineage, not just this row
-  const franchiseTotals = (() => {
+  const franchiseTotals = slice
+    ? slice.franchise
+    : (() => {
     const ids = new Set(
       ((team.franchise?.names ?? []).map((n) => n.teamId).filter(Boolean) as string[]).concat(team.id),
     );
@@ -638,6 +690,7 @@ export function TeamPage() {
   // what each name actually played in our data, which is finer than the wiki range
   const playedUnder = (teamId?: string | null) => {
     if (!teamId) return null;
+    if (slice) return slice.playedUnder[teamId] ?? null;
     let first = 0;
     let last = 0;
     for (const p of data.players) {
@@ -715,8 +768,23 @@ export function TeamPage() {
                   </span>
                 ) : null}
                 <span><b>{roster.length}</b> players tracked</span>
-                <span><b>{roster.reduce((n, p) => n + p.seasons.length, 0)}</b> player-seasons</span>
-                <span><b>{roster.reduce((n, p) => n + careerTotals(p).pts, 0).toLocaleString()}</b> career points</span>
+                <span>
+                  <b>
+                    {slice
+                      ? slice.rosterTotals.seasons
+                      : roster.reduce((n, p) => n + p.seasons.length, 0)}
+                  </b>{" "}
+                  player-seasons
+                </span>
+                <span>
+                  <b>
+                    {(slice
+                      ? slice.rosterTotals.points
+                      : roster.reduce((n, p) => n + careerTotals(p).pts, 0)
+                    ).toLocaleString()}
+                  </b>{" "}
+                  career points
+                </span>
               </div>
             </div>
           </div>

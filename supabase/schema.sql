@@ -77,7 +77,8 @@ create table if not exists public.players (
   "photo"        text,
   "experience"   integer,
   "highSchool"   text,
-  "careerLine"   jsonb
+  "careerLine"   jsonb,
+  "ord"          integer not null default 0
 );
 
 create table if not exists public.seasons (
@@ -110,6 +111,21 @@ alter table public.teams add column if not exists "pollRanks" jsonb;
 alter table public.teams add column if not exists "franchise" jsonb;
 alter table public.players add column if not exists "careerLine" jsonb;
 alter table public.leagues add column if not exists "ord" integer not null default 0;
+alter table public.players add column if not exists "ord" integer not null default 0;
+
+-- jsonb does not keep key order: it stores objects sorted, so a page that prints
+-- "Committee #2 · RPI #1 · Coaches #1" would reorder itself the moment the data arrived from
+-- Postgres instead of data.json. These are the columns whose key order a reader can see.
+alter table public.teams   alter column "record"    type json using "record"::json;
+alter table public.teams   alter column "pollRanks" type json using "pollRanks"::json;
+alter table public.teams   alter column "colors"    type json using "colors"::json;
+alter table public.teams   alter column "staff"     type json using "staff"::json;
+alter table public.teams   alter column "history"   type json using "history"::json;
+alter table public.teams   alter column "franchise" type json using "franchise"::json;
+alter table public.leagues alter column "standings" type json using "standings"::json;
+alter table public.leagues alter column "polls"     type json using "polls"::json;
+alter table public.leagues alter column "ratings"   type json using "ratings"::json;
+alter table public.players alter column "scouting"  type json using "scouting"::json;
 
 -- added 2026-11-25 after the first load: the client's `.find()` picks the first of a player's rows
 -- for a season, so the ordinal is what makes a split season resolve to the same row in both modes
@@ -304,6 +320,84 @@ create table if not exists public.player_games (
   primary key ("playerSlug", "ord")
 );
 
+-- A club page asks four separate questions of the same rows: which seasons it played, who led each
+-- one, who is on the roster now, and where those players came from.
+create or replace view public.team_seasons as
+select coalesce(s."teamId", p."teamId") as "teamId", s."season",
+       count(distinct s."playerSlug")::int as "players",
+       (array_agg(s."leagueId" order by s."ord"))[1] as "leagueId"
+from public.seasons s
+join public.players p on p."slug" = s."playerSlug"
+where coalesce(s."teamId", p."teamId") is not null
+group by 1, 2;
+
+create or replace view public.team_season_leader as
+select distinct on ("teamId", "season")
+       "teamId", "season", "slug", "name", "pts"
+from public.leader_season
+where "teamId" is not null
+order by "teamId", "season", "pts" desc nulls last;
+
+create or replace view public.team_roster as
+select coalesce(s."teamId", p."teamId") as "teamId", p."slug", p."name", p."position",
+       p."positionName", p."photo", p."classYear",
+       coalesce(pc."gp", 0)::int as "gp", coalesce(pc."g", 0)::int as "g",
+       coalesce(pc."a", 0)::int as "a", coalesce(pc."g", 0) + coalesce(pc."a", 0) as "pts",
+       (select count(*)::int from public.seasons x where x."playerSlug" = p."slug") as "seasons",
+       -- careerTotals(p).pts is the sum of goals and assists, not of any published total
+       (select coalesce(sum(coalesce(x."g", 0)) + sum(coalesce(x."a", 0)), 0)::int
+          from public.seasons x where x."playerSlug" = p."slug") as "careerPts",
+       -- the row `currentSeason()` means: the player's last one, whose points the page ranks on
+       -- the PTS column prints the published points where the feed has them, goals plus assists
+       -- only as a fallback (the row on the page is `currentSeason(p).pts`)
+       (select coalesce(c."pts", coalesce(c."g", 0) + coalesce(c."a", 0))::int
+          from public.player_current c where c."playerSlug" = p."slug") as "seasonPts",
+       (select coalesce(c."gp", 0)::int
+          from public.player_current c where c."playerSlug" = p."slug") as "seasonGp",
+       (select coalesce(c."g", 0)::int from public.player_current c where c."playerSlug" = p."slug") as "seasonG",
+       (select coalesce(c."a", 0)::int from public.player_current c where c."playerSlug" = p."slug") as "seasonA",
+       (select coalesce(c."gb", 0)::int from public.player_current c where c."playerSlug" = p."slug") as "seasonGb",
+       (select coalesce(c."ct", 0)::int from public.player_current c where c."playerSlug" = p."slug") as "seasonCt",
+       p."ord"
+from public.seasons s
+join public.players p on p."slug" = s."playerSlug"
+left join public.player_career pc on pc."slug" = p."slug"
+where coalesce(s."teamId", p."teamId") is not null
+group by coalesce(s."teamId", p."teamId"), p."slug", p."name", p."position", p."positionName",
+         p."photo", p."classYear", pc."gp", pc."g", pc."a";
+
+create or replace view public.team_origins as
+select "teamId", 'school' as "kind", btrim("highSchool") as "label", count(*)::int as "n"
+from public.players
+where "teamId" is not null and "highSchool" is not null and btrim("highSchool") <> ''
+group by 1, 2, 3
+union all
+select "teamId", 'town',
+       btrim(concat_ws(', ', "birthplace" ->> 'city', "birthplace" ->> 'state')), count(*)::int
+from public.players
+where "teamId" is not null and "birthplace" ->> 'city' is not null
+group by 1, 2, 3;
+
+-- Every game a club's players appear in, matched to the season they played it for that club.
+create or replace view public.team_game_rows as
+select distinct s."teamId", g."playerSlug", g."season", g."date", g."opponent", g."result"
+from public.player_games g
+join public.seasons s on s."playerSlug" = g."playerSlug" and s."season"::text = g."season"
+where s."teamId" is not null and g."result" is not null;
+
+-- What the club hero prints: the season totals of the players whose current club this is, using the
+-- same `currentSeason()` rule as everything else (the last row, not the newest).
+create or replace view public.team_current_totals as
+select p."teamId",
+       max(c."gp")::int as "gp", coalesce(sum(c."g"), 0)::int as "g",
+       coalesce(sum(c."sh"), 0)::int as "sh", coalesce(sum(c."sv"), 0)::int as "sv",
+       coalesce(sum(c."ga"), 0)::int as "ga", coalesce(sum(c."foW"), 0)::int as "foW",
+       coalesce(sum(c."foA"), 0)::int as "foA"
+from public.players p
+join public.player_current c on c."playerSlug" = p."slug"
+where p."teamId" is not null
+group by 1;
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -360,7 +454,10 @@ grant select, insert, update, delete on
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
   public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
-                public.league_player_current, public.league_totals, public.league_origins, public.player_games to service_role;
+                public.league_player_current, public.league_totals, public.league_origins, public.player_games,
+                public.team_seasons, public.team_season_leader, public.team_roster, public.team_origins,
+                public.team_current_totals,
+                public.team_game_rows to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;

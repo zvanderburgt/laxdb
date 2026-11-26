@@ -260,10 +260,222 @@ async function snapshotPage(params: URLSearchParams) {
   return hit[0]?.body ?? null;
 }
 
+/**
+ * A club page: the record, the roster, one row per season with its leading scorer, where the players
+ * come from, and the season series rebuilt from the game log — all of which used to be assembled by
+ * scanning 26,234 players in the browser.
+ */
+async function teamPage(params: URLSearchParams) {
+  const slug = params.get("slug") ?? "";
+  if (!slug) return { route: "/team", error: "slug required" };
+
+  const found = await rows<any>(`teams?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`);
+  const team = found[0];
+  if (!team) return { route: "/team", error: "not found" };
+
+  const league = team.leagueId
+    ? (await rows<any>(`leagues?id=eq.${encodeURIComponent(team.leagueId)}&select=*`))[0] ?? null
+    : null;
+
+  const [seasonRows, leaders, roster, origins, fixtures, totals, metaSnap, span, historySnap] = await Promise.all([
+    rows<any>(`team_seasons?teamId=eq.${encodeURIComponent(team.id)}&select=*`),
+    rows<any>(`team_season_leader?teamId=eq.${encodeURIComponent(team.id)}&select=*`),
+    rows<any>(`team_roster?teamId=eq.${encodeURIComponent(team.id)}&select=*&order=pts.desc,ord`),
+    rows<{ kind: string; label: string; n: number }>(
+      `team_origins?teamId=eq.${encodeURIComponent(team.id)}&select=kind,label,n&order=n.desc&limit=300`,
+    ),
+    rows<any>(
+      `team_game_rows?teamId=eq.${encodeURIComponent(team.id)}&select=playerSlug,season,date,opponent,result&order=date`,
+    ),
+    rows<any>(`team_current_totals?teamId=eq.${encodeURIComponent(team.id)}&select=*`),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+    rows<{ body: any }>("snapshots?key=eq.history&select=body&limit=1"),
+  ]);
+  const played = team.record ? (team.record.w ?? 0) + (team.record.l ?? 0) + (team.record.t ?? 0) : 0;
+  const t = totals[0] ?? {};
+  const gp = t.gp || played;
+  // a published standings row is the better source for per-game figures, exactly as the page does
+  const standing = (league?.standings ?? []).find((r: any) => r.teamId === team.id);
+  const standingGames = standing ? (standing.w ?? 0) + (standing.l ?? 0) + (standing.t ?? 0) : 0;
+  const gpg = standingGames ? standing.gf / standingGames : gp ? (t.g ?? 0) / gp : 0;
+  const gapg = standingGames ? standing.ga / standingGames : 0;
+
+  /* lineage: one club under several names — totals across all of them, and which years each name
+   * actually played, which is finer than the wiki range */
+  const lineageIds = [
+    team.id,
+    ...((team.franchise?.names ?? []).map((n: any) => n.teamId).filter(Boolean) as string[]),
+  ];
+  const lineage = await rows<any>(
+    `seasons?teamId=in.(${lineageIds.map(encodeURIComponent).join(",")})` +
+      `&select=playerSlug,season,teamId,pts`,
+  );
+  const franchise = {
+    players: new Set(lineage.map((r) => r.playerSlug)).size,
+    seasons: lineage.length,
+    points: lineage.reduce((n, r) => n + (r.pts ?? 0), 0),
+  };
+  const playedUnder: Record<string, { first: number; last: number }> = {};
+  for (const r of lineage) {
+    const y = Number(r.season);
+    if (!y) continue;
+    const cur = playedUnder[r.teamId];
+    playedUnder[r.teamId] = { first: cur ? Math.min(cur.first, y) : y, last: cur ? Math.max(cur.last, y) : y };
+  }
+
+  /* returning production: the share of the previous season's points still on the roster */
+  const own = lineage.filter((r) => r.teamId === team.id);
+  const ownSeasons = [...new Set(own.map((r) => String(r.season)))].sort();
+  let returning: any = null;
+  if (ownSeasons.length >= 2) {
+    const from = ownSeasons[ownSeasons.length - 2];
+    const to = ownSeasons[ownSeasons.length - 1];
+    const later = new Set(own.filter((r) => String(r.season) === to).map((r) => r.playerSlug));
+    let total = 0;
+    let back = 0;
+    let kept = 0;
+    const lost: any[] = [];
+    const seen = new Set<string>();
+    for (const r of own) {
+      if (String(r.season) !== from || seen.has(r.playerSlug)) continue;
+      seen.add(r.playerSlug);
+      const pts = r.pts ?? 0;
+      total += pts;
+      if (later.has(r.playerSlug)) {
+        back += pts;
+        kept += 1;
+      } else if (pts > 0) {
+        const who = roster.find((x) => x.slug === r.playerSlug);
+        lost.push({ name: who?.name ?? r.playerSlug, slug: r.playerSlug, pts });
+      }
+    }
+    returning = {
+      from,
+      to,
+      totalPoints: total,
+      returningPoints: back,
+      share: total ? back / total : 0,
+      kept,
+      lost: lost.sort((a, b) => b.pts - a.pts).slice(0, 5),
+    };
+  }
+
+  const bySeason = new Map<string, any>(seasonRows.map((r) => [String(r.season), r]));
+  const leaderBy = new Map<string, any>(leaders.map((l) => [String(l.season), l]));
+  // `team.history` seasons are numbers and `team_seasons.season` comes back from PostgREST as one
+  // too, but a mixed set silently produced two rows per season
+  const seasons = [
+    ...new Set(
+      [...bySeason.keys(), ...(team.history ?? []).map((h: any) => h.season)].filter(Boolean).map(String),
+    ),
+  ]
+    .sort()
+    .reverse();
+
+  /* seriesFor(): the newest season with five or more fixtures, aggregated by opponent */
+  let seriesSeason = "";
+  let seriesFixtures: any[] = [];
+  for (const s of seasons) {
+    const seen = new Map<string, any>();
+    for (const f of fixtures) {
+      if (f.season !== s) continue;
+      seen.set(`${f.date}|${f.opponent}`, f);
+    }
+    if (seen.size >= 5) {
+      seriesSeason = s;
+      seriesFixtures = [...seen.values()].sort((a, b) => a.date.localeCompare(b.date));
+      break;
+    }
+  }
+  const series: any[] = [];
+  const byOpp = new Map<string, any>();
+  for (const f of seriesFixtures) {
+    const row = byOpp.get(f.opponent) ?? { opponent: f.opponent, w: 0, l: 0, last: f.date, result: "" };
+    if (f.result === "W") row.w += 1;
+    else if (f.result === "L") row.l += 1;
+    row.last = f.date;
+    row.result = f.result;
+    byOpp.set(f.opponent, row);
+  }
+  for (const row of byOpp.values()) series.push(row);
+  series.sort((a, b) => b.last.localeCompare(a.last));
+
+
+  const opponentNames = new Set<string>([
+    ...fixtures.map((f: any) => f.opponent),
+    ...series.map((r: any) => r.opponent),
+  ].filter(Boolean));
+  const opponents = (await rows<any>("teams?select=slug,name,shortName,id")).filter((t) =>
+    [...opponentNames].some((n) => {
+      const key = String(n).toLowerCase().replace(/[^a-z]/g, "");
+      return [t.name, t.shortName, t.slug.replace(/-/g, " ")]
+        .map((v: string) => String(v ?? "").toLowerCase().replace(/[^a-z]/g, ""))
+        .some((v: string) => v && (v.startsWith(key) || key.startsWith(v)));
+    }),
+  );
+
+  const top = (kind: string) =>
+    origins
+      // a birthplace with no city still concatenates to ", MD", which is not a hometown
+      .filter((o) => o.kind === kind && o.label && /[a-z]/i.test(o.label))
+      .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
+      .slice(0, 6)
+      .map((o) => ({ label: o.label, count: o.n }));
+
+  return {
+    route: "/team",
+    team,
+    league,
+    roster: roster.map((r) => ({
+      slug: r.slug, name: r.name, position: r.position, positionName: r.positionName,
+      photo: r.photo, classYear: r.classYear, gp: r.gp, g: r.g, a: r.a, pts: r.pts,
+      seasons: r.seasons, careerPts: r.careerPts, seasonPts: r.seasonPts, seasonGp: r.seasonGp,
+      seasonG: r.seasonG, seasonA: r.seasonA, seasonGb: r.seasonGb, seasonCt: r.seasonCt,
+    })),
+    seasons: seasons.map((s) => ({
+      season: String(s),
+      leagueId: bySeason.get(s)?.leagueId ?? "",
+      players: bySeason.get(s)?.players ?? 0,
+      leader: leaderBy.get(s)
+        ? { slug: leaderBy.get(s).slug, name: leaderBy.get(s).name, pts: leaderBy.get(s).pts ?? 0 }
+        : null,
+    })),
+    series: { season: seriesSeason, rows: series },
+    opponents,
+    // "109 players tracked · 237 player-seasons · 1,416 career points" — career totals, not this club's
+    rosterTotals: {
+      players: roster.length,
+      seasons: roster.reduce((n, r) => n + (r.seasons ?? 0), 0),
+      points: roster.reduce((n, r) => n + (r.careerPts ?? 0), 0),
+    },
+    franchise,
+    playedUnder,
+    returning,
+    origins: { schools: top("school"), towns: top("town") },
+    history: historySnap[0]?.body ?? null,
+    generated: metaSnap[0]?.body?.generated ?? "",
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: await count("players"),
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    stats: {
+      gp,
+      gpg,
+      gapg,
+      shotPct: t.sh ? ((t.g ?? 0) / t.sh) * 100 : 0,
+      foPct: t.foA ? ((t.foW ?? 0) / t.foA) * 100 : 0,
+      savePct: (t.sv ?? 0) + (t.ga ?? 0) ? ((t.sv ?? 0) / ((t.sv ?? 0) + (t.ga ?? 0))) * 100 : 0,
+    },
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/team") {
+      return new Response(JSON.stringify(await teamPage(url.searchParams)), { headers: CACHE_HEADERS });
+    }
     if (path === "/snapshot") {
       return new Response(JSON.stringify(await snapshotPage(url.searchParams)), { headers: CACHE_HEADERS });
     }
