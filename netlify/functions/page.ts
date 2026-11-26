@@ -10,7 +10,7 @@
  * aggregates over 26k players and 53k season rows, which is precisely why the browser was keeping the
  * whole file.
  */
-import { rows, count, CACHE_HEADERS } from "../lib/supabase";
+import { rows, count, CACHE_HEADERS, databaseError } from "../lib/supabase";
 
 export const config = { path: "/data/page" };
 
@@ -943,9 +943,6 @@ export default async function handler(req: Request): Promise<Response> {
       headers: { "content-type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+    return databaseError(err);
   }
 }

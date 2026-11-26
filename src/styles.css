@@ -342,6 +342,13 @@ kbd {
 .players-board .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .players-board .team-link { max-width: 200px; min-width: 0; }
 .players-board .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The table's own failure and loading states: a card with a retry, and the rows it is waiting for. */
+.players-error { padding: 22px 24px; }
+.players-error h3 { font-size: 17px; margin: 0 0 6px; letter-spacing: -0.02em; }
+.players-error p { margin: 0; max-width: 60ch; }
+.players-loading { overflow: hidden; }
+.list-error-note .link-btn { color: var(--accent); margin-left: 2px; }
+.list-error-note .link-btn:hover { text-decoration: underline; }
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -1439,6 +1446,38 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .empty-icon { font-size: 28px; color: var(--text-3); opacity: 0.6; }
 .empty h3 { font-size: 18px; margin: 8px 0 6px; letter-spacing: -0.02em; }
 .empty p { color: var(--text-2); font-size: 14px; max-width: 40ch; margin: 0 auto; }
+
+/* ------------------------------ load failure ----------------------------- */
+/* The page the visitor keeps when the database does not answer: a real card, a retry, and links out
+   — never a bare paragraph with nothing to click. */
+.load-error { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 72vh; padding-top: 32px; }
+.load-error-brand {
+  width: min(560px, 100%);
+  margin-bottom: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  text-decoration: none;
+}
+.load-error-card {
+  width: min(560px, 100%);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  padding: 26px 28px 24px;
+}
+.load-error-card h1 { font-size: 23px; letter-spacing: -0.02em; margin: 6px 0 10px; }
+.load-error-card p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; }
+.load-error-route { font-size: 12px; color: var(--text-3); }
+.load-error-route code { font-size: 12px; color: var(--text-3); }
+.load-error-card code { font-size: 12px; color: var(--text-3); }
+.load-error-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+@media (max-width: 640px) {
+  .load-error { min-height: 0; padding-top: 24px; }
+  .load-error-card { padding: 20px; }
+  .load-error-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
 
 /* -------------------------------- palette -------------------------------- */
 

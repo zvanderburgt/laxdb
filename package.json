@@ -17,6 +17,7 @@
     "db:schema": "node scripts/apply-schema.mjs",
     "db:load": "node scripts/load-supabase.mjs",
     "slice:check": "node_modules/.bin/esbuild scripts/check-slice.ts --bundle --platform=node --format=esm --outfile=scripts/.check-slice.mjs --log-level=error && node scripts/.check-slice.mjs",
+    "db:probe": "node scripts/db-failure-probe.mjs",
     "buildKeepData": "tsc -b && vite build && node scripts/gen-sitemap.mjs",
     "seed:check": "node scripts/bake-home-seed.mjs --check",
     "warm": "node scripts/warm-cache.mjs"

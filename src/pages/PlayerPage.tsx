@@ -865,7 +865,7 @@ function StatsTab({ player }: { player: Player }) {
   const rows = player.seasons
     .filter((s) => (scope === "all" ? true : s.leagueId === scope))
     .slice()
-    .sort((a, b) => b.season.localeCompare(a.season));
+    .sort((a, b) => String(b.season).localeCompare(String(a.season)));
   const totals = seasonTotals(rows);
   // per-game view: counting stats divided by games played, two decimals
   const val = (n: number, gp: number) => (perGame === "game" ? (n / Math.max(1, gp)).toFixed(2) : String(n));
@@ -1063,7 +1063,7 @@ function MixedStats({ player }: { player: Player }) {
   const rows = player.seasons
     .filter((s) => (scope === "all" ? true : s.leagueId === scope))
     .slice()
-    .sort((a, b) => b.season.localeCompare(a.season));
+    .sort((a, b) => String(b.season).localeCompare(String(a.season)));
   const totals = seasonTotals(rows);
 
   return (

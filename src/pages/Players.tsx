@@ -17,9 +17,8 @@ import {
   searchTokens,
   SEASON_RANGE,
 } from "../lib/data";
-import { Avatar, BlockList, Empty, PositionBadge, Provenance, Segmented, PlayerAvatar, Term } from "../components/ui";
+import { Avatar, BlockList, Empty, PositionBadge, Provenance, Segmented, PlayerAvatar, Skeleton, SkeletonRows, Term } from "../components/ui";
 import { fetchPlayerList, listMode, playerFromRow, seasonFromRow, type PlayerListResult } from "../lib/list";
-import { fallbackToWire } from "../lib/data";
 
 /** In list mode the row carries its club; the dataset's team map is empty there. */
 const clubOf = (p: { teamId?: string; teamName?: string }) =>
@@ -61,10 +60,16 @@ export default function Players() {
   // list mode: the database answers the page, filters and sort included (src/lib/list.ts)
   const [remote, setRemote] = useState<PlayerListResult | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // the first answer is a blank table with no count, so it needs a skeleton of its own; every later
+  // answer keeps the current rows on screen and only marks them busy
+  const [loading, setLoading] = useState(false);
+  // bumped by Try again, so the retry re-runs exactly the request that failed
+  const [attempt, setAttempt] = useState(0);
 
   React.useEffect(() => {
     if (!listMode()) return;
     const ctl = new AbortController();
+    setLoading(true);
     // one request per settled interaction, not per keystroke
     const t = setTimeout(() => {
       fetchPlayerList(
@@ -77,16 +82,23 @@ export default function Players() {
         })
         .catch((err) => {
           if (ctl.signal.aborted) return;
-          // the dataset is still on the CDN, so one redirect beats an empty table
-          fallbackToWire();
-          setLoadError(String(err));
+          // No redirect and no blank table: the failure is a state of this page, with its own retry
+          setLoadError(String(err instanceof Error ? err.message : err));
+        })
+        .finally(() => {
+          if (!ctl.signal.aborted) setLoading(false);
         });
     }, 180);
     return () => {
       clearTimeout(t);
       ctl.abort();
     };
-  }, [q, pos, league, year, state, hs, minGp, sort, dir]);
+  }, [q, pos, league, year, state, hs, minGp, sort, dir, attempt]);
+
+  /** The first answer has not landed: there is nothing to draw yet, only a skeleton. */
+  const pending = listMode() && remote === null && !loadError;
+  /** A later answer is in flight: the rows on screen are the previous answer, so keep them. */
+  const refreshing = listMode() && loading && remote !== null;
 
   // only the positions this scope actually holds: a box league offers Forward /
   // Transition / Defense / Runner, a college league keeps Attack / Midfield / …
@@ -226,11 +238,17 @@ export default function Players() {
         <div>
           <div className="eyebrow">Database</div>
           <h1>Players</h1>
-          <p className="muted">
-            {(remote?.total ?? rows.length).toLocaleString()} of{" "}
-            {(remote?.universe ?? data.players.length).toLocaleString()} players ·{" "}
-            {(remote?.range ?? SEASON_RANGE)[0]}–{(remote?.range ?? SEASON_RANGE)[1]} seasons
-            <Provenance feed="school and league statistics feeds" />
+          <p className="muted" aria-busy={pending || undefined}>
+            {pending ? (
+              <Skeleton w={300} h={12} />
+            ) : (
+              <>
+                {(remote?.total ?? rows.length).toLocaleString()} of{" "}
+                {(remote?.universe ?? data.players.length).toLocaleString()} players ·{" "}
+                {(remote?.range ?? SEASON_RANGE)[0]}–{(remote?.range ?? SEASON_RANGE)[1]} seasons
+                <Provenance feed="school and league statistics feeds" />
+              </>
+            )}
           </p>
         </div>
         <Segmented
@@ -244,9 +262,12 @@ export default function Players() {
         />
       </div>
 
-      {loadError ? (
-        <p className="muted small" data-list-error>
-          {loadError}
+      {loadError && rows.length > 0 ? (
+        <p className="muted small list-error-note" data-list-error role="status">
+          Couldn't refresh this table — showing the previous answer.{" "}
+          <button className="link-btn" onClick={() => setAttempt((n) => n + 1)}>
+            Try again
+          </button>
         </p>
       ) : null}
 
@@ -351,10 +372,31 @@ export default function Players() {
         ) : null}
       </div>
 
-      {rows.length === 0 ? (
+      {loadError && rows.length === 0 ? (
+        <div className="card players-error" data-list-error role="alert">
+          <h3>The players table didn't load</h3>
+          <p className="muted small">
+            Filtering, sorting and paging all run on the database, so the table needs that request to
+            answer. Retrying sends it again; the rest of the site still works.
+          </p>
+          <div className="load-error-actions">
+            <button className="btn btn-primary" onClick={() => setAttempt((n) => n + 1)}>
+              Try again
+            </button>
+            <a className="btn btn-ghost" href="/">
+              Back home
+            </a>
+          </div>
+        </div>
+      ) : pending ? (
+        <div className="card players-loading" aria-busy="true">
+          <span className="sr-only" role="status">Loading the player table</span>
+          <SkeletonRows rows={12} cols={6} />
+        </div>
+      ) : rows.length === 0 ? (
         <Empty title="No players match" body="Try clearing a filter or searching a different name." />
       ) : view === "table" ? (
-        <div className="players-board">
+        <div className="players-board" aria-busy={refreshing || undefined}>
         <BlockList
           motionKey={motionKey}
           rows={rows.slice(0, 150).map(({ p, s }) => {

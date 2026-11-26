@@ -24,3 +24,6 @@ netlify/functions/entity-cards.json
 public/data.wire.json
 public/index.wire.json
 public/seasons.wire.json
+
+# scratch work: probes, fixtures, screenshots (scripts/db-failure-probe.mjs caches payloads here)
+.scratch/

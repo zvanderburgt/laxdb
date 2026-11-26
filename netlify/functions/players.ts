@@ -10,7 +10,7 @@
  * count run here over the narrowed rows using `searchKey`, which is imported rather than copied.
  */
 import { searchKey } from "../../src/lib/data";
-import { rows, CACHE_HEADERS } from "../lib/supabase";
+import { rows, CACHE_HEADERS, databaseError } from "../lib/supabase";
 
 export const config = { path: "/data/players" };
 
@@ -152,9 +152,6 @@ export default async function handler(req: Request): Promise<Response> {
       { headers: CACHE_HEADERS },
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+    return databaseError(err);
   }
 }

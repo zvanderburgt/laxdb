@@ -5,7 +5,7 @@ import { loadDataset, requestPlans } from "./lib/data";
 import { loadOverrides } from "./lib/overrides";
 import { fingerprint, readEntry, readSeed, writeEntry } from "./lib/cache";
 import { installPrefetch, warmOnIdle } from "./lib/prefetch";
-import { AppSkeleton } from "./components/ui";
+import { AppSkeleton, LoadError } from "./components/ui";
 import "./styles.css";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
@@ -25,13 +25,12 @@ class Boundary extends React.Component<{ children: React.ReactNode }, { error: E
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div style={{ padding: 48, fontFamily: "system-ui", color: "#1d1d1f", maxWidth: 720 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 650 }}>This page failed to render</h1>
-        <p style={{ color: "#6e6e73", fontSize: 14 }}>{String(this.state.error.message)}</p>
-        <p>
-          <a href="/" style={{ color: "#0b6bcb" }}>Back to LAXDB</a>
-        </p>
-      </div>
+      <LoadError
+        title="This page failed to render"
+        body="The data arrived but this page could not draw it. Another route, or a reload, will work — the error is logged to the console."
+        error={this.state.error}
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 }
@@ -61,14 +60,46 @@ function paint(): void {
   );
 }
 
+/**
+ * The failure a visitor can act on.
+ *
+ * The old path replaced the document with a paragraph of raw error text and no control of any kind:
+ * whatever the cause — a 500, a hung query, a body that was not the slice — the visitor's page was
+ * gone and the only move was to edit the URL. Now the skeleton has already been on screen, the page
+ * names what failed, and Retry runs the boot again from under a fresh skeleton.
+ */
 function showLoadError(err: unknown): void {
+  console.error("[laxdb] boot failed:", err);
+  const message = err instanceof Error ? err.message : String(err);
+  const route = window.location.pathname + window.location.search;
+  const kind = /did not answer within/.test(message)
+    ? "The request timed out: the database was asked for this page's numbers and nothing came back. Trying again is worth it — the first attempt is often a cold start."
+    : /answered 5\d\d/.test(message)
+      ? "The database is answering with errors right now, which is usually a short outage. Try again in a moment."
+      : /answered 4\d\d/.test(message)
+        ? "The database rejected this page's request. A reload will not help until that is fixed; the home page asks a different question and may still work."
+        : /no data source|no slice/i.test(message)
+          ? "The database answered, but with nothing this page could draw."
+          : "The request to the database failed before it returned anything.";
+
   root.render(
-    <div style={{ padding: 48, fontFamily: "system-ui", color: "#1d1d1f" }}>
-      <h1 style={{ fontSize: 24 }}>Couldn't load the player database</h1>
-      <p style={{ color: "#6e6e73" }}>{String(err)}</p>
-    </div>
+    <React.StrictMode>
+      <LoadError body={kind} route={route} error={err} onRetry={() => retryBoot()} />
+    </React.StrictMode>
   );
 }
+
+/** Retry from the skeleton, so the second attempt also shows that it is trying. */
+function retryBoot(): void {
+  root.render(
+    <React.StrictMode>
+      <AppSkeleton />
+    </React.StrictMode>
+  );
+  boot().catch(showLoadError);
+}
+
+let prefetchInstalled = false;
 
 /**
  * Boot order, cheapest source first.
@@ -78,9 +109,16 @@ function showLoadError(err: unknown): void {
  * live copy replaces it only when the bytes actually changed. The CMS overrides run beside this,
  * never in front of the first paint; a failed revalidation leaves the stored copy on screen instead
  * of an error page.
+ *
+ * Three outcomes, and all three leave a usable screen: fresh data (paint), a stored copy that could
+ * not be revalidated (paint the copy, keep the warning in the console), or nothing at all (the boot
+ * error screen with a retry).
  */
 async function boot(): Promise<void> {
-  installPrefetch();
+  if (!prefetchInstalled) {
+    prefetchInstalled = true;
+    installPrefetch();
+  }
 
   const plans = requestPlans();
 
@@ -137,9 +175,12 @@ async function boot(): Promise<void> {
 
   await overrides;
   if (freshHash === null) {
-    if (paintedHash === null) throw failure ?? new Error("this page has no data source");
-    console.warn("[laxdb] revalidation failed; the stored copy stays on screen", failure);
-    return;
+    // a stored copy is still on screen, so this failure costs freshness, not the page
+    if (paintedHash !== null) {
+      console.warn("[laxdb] revalidation failed; the stored copy stays on screen", failure);
+      return;
+    }
+    throw failure ?? new Error("this page has no data source");
   }
   if (freshHash !== paintedHash || !overridesReady) paint();
   warmOnIdle();

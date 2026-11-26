@@ -582,6 +582,73 @@ export function Empty({ title, body }: { title: string; body?: string }) {
   );
 }
 
+/**
+ * The screen a route gets when the database does not answer.
+ *
+ * A dead page is the one failure a visitor cannot recover from: before this, a failed slice fetch
+ * replaced the whole document with a paragraph of raw error text and no way out — no nav, no retry,
+ * nothing to click. Everything here exists to make the failure a state of the page rather than the
+ * end of it: the same card the rest of the site draws, a Retry that runs the boot again behind the
+ * skeleton, and two links that leave for a route that may be answering fine.
+ *
+ * The raw message never reaches the screen — it is logged to the console and kept in `data-error`,
+ * so a visitor reads a plain sentence while a developer still has the status code.
+ */
+export function LoadError({
+  title = "This page couldn't load its data",
+  body,
+  route,
+  error,
+  onRetry,
+}: {
+  title?: string;
+  body?: string;
+  route?: string;
+  error?: unknown;
+  onRetry?: () => void;
+}) {
+  return (
+    <div
+      className="page load-error"
+      data-laxdb-boot-error
+      data-error={error ? String(error instanceof Error ? error.message : error).slice(0, 240) : undefined}
+      role="alert"
+      aria-live="assertive"
+    >
+      {/* the wordmark, because this screen is the whole document: without it the site is unrecognisable */}
+      <a className="load-error-brand" href="/" aria-label="LAXDB home">
+        LAXDB
+      </a>
+      <div className="load-error-card">
+        <div className="eyebrow">Database</div>
+        <h1>{title}</h1>
+        <p className="muted">
+          {body ??
+            "This page asks the database for its numbers as it loads. That request failed, so there is nothing to draw yet — your browser and connection are fine."}
+        </p>
+        {route ? (
+          <p className="load-error-route">
+            Request: <code>{route}</code>
+          </p>
+        ) : null}
+        <div className="load-error-actions">
+          {onRetry ? (
+            <button className="btn btn-primary" onClick={onRetry}>
+              Try again
+            </button>
+          ) : null}
+          <a className="btn btn-secondary" href="/">
+            Back home
+          </a>
+          <a className="btn btn-ghost" href="/players">
+            Browse players
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* --------------------------------- charts ---------------------------------- */
 
 export function Sparkline({

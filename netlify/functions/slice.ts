@@ -15,7 +15,7 @@
 import type { League, Player, SeasonRow, Team } from "../../src/lib/types";
 import { peerRanks, peerGroupOf } from "../../src/lib/peers";
 import { similarTo, type Similar } from "../../src/lib/similar";
-import { rows, count, CACHE_HEADERS } from "../lib/supabase";
+import { rows, count, CACHE_HEADERS, databaseError } from "../lib/supabase";
 
 // not /api/*: the admin API registers that wildcard and answers everything else "no such route"
 export const config = { path: "/data/player" };
@@ -86,18 +86,24 @@ async function bySlugs(
   return out;
 }
 
+/** Postgres stores a season as an integer; the dataset — and every page — carries it as a string. */
+const asSeason = (r: any) => ({ ...r, season: String(r.season) });
+
 async function slice(slug: string) {
   const [row] = await rows<any>(`players?slug=eq.${encodeURIComponent(slug)}&select=*`);
   if (!row) return null;
 
-  const seasonRows = await rows<any>(
-    // ordered by the dataset's own index: `currentSeason()` means the *last* row, not the newest, and
-    // without an order Postgres may hand them back differently for the same player
-    `seasons?playerSlug=eq.${encodeURIComponent(slug)}&select=*&order=ord`,
-  );
+  const seasonRows = (
+    await rows<any>(
+      // ordered by the dataset's own index: `currentSeason()` means the *last* row, not the newest, and
+      // without an order Postgres may hand them back differently for the same player
+      `seasons?playerSlug=eq.${encodeURIComponent(slug)}&select=*&order=ord`,
+    )
+  ).map(asSeason);
   const player = { ...row, seasons: seasonRows } as unknown as Player;
 
-  const latest = [...seasonRows].map((s) => s.season).sort((a, b) => b - a)[0];
+  // numeric, or "2026" and "2025" compare as text and the newest season is whichever row came first
+  const latest = [...seasonRows].map((s) => s.season).sort((a, b) => Number(b) - Number(a))[0];
 
   const [teams, leagues, history, selfCareer] = await Promise.all([
     rows<Team>("teams?select=*"),
@@ -121,13 +127,15 @@ async function slice(slug: string) {
     `player_career?leagueId=eq.${encodeURIComponent(player.leagueId)}` +
       `&position=in.(${peerCodes.map(encodeURIComponent).join(",")})&select=*&order=slug`,
   );
-  const leagueSeasonRows = await bySlugs(
-    "seasons",
-    "playerSlug",
-    "playerSlug,season,teamId,leagueId,type,gp,g,sv,ga,pts",
-    leagueCareer.map((c) => c.slug),
-    `&season=eq.${latest}&order=playerSlug,ord`,
-  );
+  const leagueSeasonRows = (
+    await bySlugs(
+      "seasons",
+      "playerSlug",
+      "playerSlug,season,teamId,leagueId,type,gp,g,sv,ga,pts",
+      leagueCareer.map((c) => c.slug),
+      `&season=eq.${latest}&order=playerSlug,ord`,
+    )
+  ).map(asSeason);
   // first row per player wins: that is what the client's `.find()` does for a split season
   const seasonBySlug = new Map<string, any>();
   for (const s of leagueSeasonRows) if (!seasonBySlug.has(s.playerSlug)) seasonBySlug.set(s.playerSlug, s);
@@ -223,9 +231,6 @@ export default async function handler(req: Request): Promise<Response> {
     // one query per slug per cache window, the pattern meta.ts already uses for the shell
     return new Response(JSON.stringify(body), { headers: CACHE_HEADERS });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+    return databaseError(err);
   }
 }

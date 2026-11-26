@@ -103,8 +103,10 @@ export let SEASON_RANGE: [string, string] = ["", ""];
  * `data.json` is the fallback for a deploy or a cached shell that predates it.
  */
 /**
- * The database answers the two routes it has been verified for (docs/supabase-migration.md, step 6).
- * `?slice=0` on any URL forces the dataset file, which is the escape hatch and the revert.
+ * `?slice=0` forces the dataset file. It is a local-development switch only: the wire files are
+ * stripped from every deploy (`scripts/strip-data-files.mjs`), so a visitor sent there gets a page
+ * with no data source at all. Nothing in the app routes a failure here any more — a failed slice is
+ * now a retryable state of the current page, not a redirect to a known-empty one.
  */
 function forceWire(): boolean {
   if (typeof window === "undefined") return false;
@@ -115,15 +117,6 @@ function sliceSlug(): string | null {
   if (typeof window === "undefined" || forceWire()) return null;
   const hit = window.location.pathname.match(/^\/player\/([^/]+)\/?$/);
   return hit ? decodeURIComponent(hit[1]) : null;
-}
-
-/** One redirect to the dataset-backed page, and only one: a failure on that page shows the error. */
-export function fallbackToWire(): void {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  if (url.searchParams.get("slice") === "0") return;
-  url.searchParams.set("slice", "0");
-  window.location.replace(url.toString());
 }
 
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
@@ -471,14 +464,51 @@ export type RequestPlan = {
   apply: (text: string) => boolean;
 };
 
+/**
+ * How long one slice request may hang before the page gives up on it.
+ *
+ * A database request that never settles is the worst failure there is: the browser keeps the
+ * skeleton up forever and the visitor reads that as a dead page. Eight seconds is past a cold
+ * function (~1-2 s) and past a slow query, and short enough that a Retry is still worth offering.
+ */
+const SLICE_TIMEOUT_MS = 8000;
+
+/**
+ * Fetch one slice, with a deadline and one retry for a failure that might actually be transient.
+ *
+ * The retry is deliberately narrow. A 4xx is the request's own fault and asking again earns the same
+ * answer, so it fails immediately. A **timeout** is not retried either: the database is not slow,
+ * it is not answering, and a second wait only doubles how long the visitor stares at a skeleton.
+ * A 5xx/429 and a dropped connection get exactly one more try.
+ */
+async function fetchSliceText(url: string): Promise<string> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), SLICE_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: ctl.signal });
+      if (res.ok) return await res.text();
+      const err = new Error(`${url} answered ${res.status}`);
+      if (res.status < 500 && res.status !== 429) throw err;
+      lastError = err;
+    } catch (err) {
+      if (ctl.signal.aborted) {
+        throw new Error(`${url} did not answer within ${SLICE_TIMEOUT_MS / 1000}s`);
+      }
+      lastError = err;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (attempt === 0) await new Promise((done) => setTimeout(done, 400));
+  }
+  throw lastError ?? new Error(`${url} failed`);
+}
+
 function plan(url: string, apply: (body: unknown) => boolean): RequestPlan {
   return {
     key: url,
-    fetch: async () => {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`${url} answered ${res.status}`);
-      return res.text();
-    },
+    fetch: () => fetchSliceText(url),
     apply: (text: string) => {
       try {
         return apply(JSON.parse(text));
@@ -490,24 +520,15 @@ function plan(url: string, apply: (body: unknown) => boolean): RequestPlan {
 }
 
 function playerPlan(base: string, slug: string): RequestPlan {
-  const inner = plan(`${base}data/player?slug=${encodeURIComponent(slug)}`, (body) => {
+  // No second chance behind this one: the wire build is gone from the deploy, so a redirect on
+  // failure lands on a page with no data source. The failure goes back to the boot error screen,
+  // which offers a retry of this same request.
+  return plan(`${base}data/player?slug=${encodeURIComponent(slug)}`, (body) => {
     const slice = body as PlayerSlice;
     if (!slice || !slice.player) return false;
     applyPlayerSlice(slice);
     return true;
   });
-  return {
-    ...inner,
-    fetch: async () => {
-      try {
-        return await inner.fetch();
-      } catch (err) {
-        // the wire build is the escape hatch, as it always was on this route
-        fallbackToWire();
-        throw err;
-      }
-    },
-  };
 }
 
 /** The slices this URL needs, best candidate first. Empty when the route has no slice at all. */

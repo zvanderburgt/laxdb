@@ -184,7 +184,13 @@ npm run preview      # serve the build on :4173
 npm run typecheck    # type check without emitting
 npm run warm         # ask the edge for every page route, so no visitor meets a cold function
 npm run seed:check   # how big the baked home slice in dist/index.html is
+npm run db:probe     # what every route shows when the database fails (500, 502, junk, hang, timeout)
 ```
+
+`db:probe` is the gate on the data layer's failure behaviour: it serves `dist/` from a fake origin
+whose `/data/*` is scripted, drives headless Chrome, and asserts each route still puts something on
+screen — a skeleton while the query is in flight, a card with a retry when it fails — instead of a
+dead page. Run it after any change to `src/main.tsx`, `src/lib/data.ts` or a route's fetching.
 
 The build is fully static — drop `dist/` on any host. It is deployed to Netlify from `main`; a manual
 deploy is `python3 scripts/deploy-netlify.py`, which warms the edge cache when it finishes.
