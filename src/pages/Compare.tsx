@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useCompare, useRoute } from "../lib/app";
+import { playerSetActive } from "../lib/data";
+import type { Player } from "../lib/types";
 import {
   ageOf,
   careerTotals,
@@ -57,7 +59,33 @@ export default function ComparePage() {
   }, []);
 
   const picks = ids.map((id) => playerById.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
-  const results = useMemo(() => (q ? searchPlayers(q, 6) : []), [q]);
+  // in database mode the index is not in the browser, so the typeahead asks the search endpoint
+  const [remote, setRemote] = useState<Player[]>([]);
+  useEffect(() => {
+    if (!playerSetActive()) return;
+    const needle = q.trim();
+    if (needle.length < 2) {
+      setRemote([]);
+      return;
+    }
+    const ctl = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`${import.meta.env.BASE_URL}data/page?path=/search&q=${encodeURIComponent(needle)}`, {
+        signal: ctl.signal,
+      })
+        .then((r) => (r.ok ? r.json() : { players: [] }))
+        .then((d) => setRemote((d.players ?? []) as Player[]))
+        .catch(() => null);
+    }, 180);
+    return () => {
+      clearTimeout(timer);
+      ctl.abort();
+    };
+  }, [q]);
+  const results = useMemo(
+    () => (q ? (playerSetActive() ? remote : searchPlayers(q, 6)) : []),
+    [q, remote],
+  );
 
   const add = (id: string) => {
     if (!has(id)) toggle(id);

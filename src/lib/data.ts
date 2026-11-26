@@ -2,7 +2,7 @@ import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, P
 import { decodeDataset, type WireDataset } from "./wire";
 import { setSlice, sliceFor, type PlayerSlice } from "./slice";
 import { enableListMode } from "./list";
-import { setPageSlice, type PageSlice } from "./page";
+import { setPageSlice, type PlayerSetSlice, type PageSlice } from "./page";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -151,6 +151,94 @@ function pageRoute(): { route: string; query: Record<string, string> } | null {
  * One route's data from the database. Returns false when the endpoint has no branch for the route,
  * and the caller falls through to the dataset file — a missing slice must never be a broken page.
  */
+/**
+ * Routes that take arbitrary players — a comparison, a saved roster, a head-to-head, one game —
+ * ask for exactly those records instead of a page slice.
+ */
+function readCompareIds(): string[] {
+  try {
+    const raw = localStorage.getItem("laxdb-compare");
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string").slice(0, 3) : [];
+  } catch {
+    return [];
+  }
+}
+
+function readRosterSlugs(): string[] {
+  try {
+    const raw = localStorage.getItem("laxdb.roster.v1");
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string").slice(0, 40) : [];
+  } catch {
+    return [];
+  }
+}
+
+function playerSetKeys(): { slugs?: string; ids?: string } | null {
+  const path = window.location.pathname.replace(/\/+$/, "");
+  if (path !== "/compare" && path !== "/my-roster" && path !== "/vs" && path !== "/game") return null;
+  const params = new URLSearchParams(window.location.search);
+  const ids = params.get("ids") ?? "";
+  const slugs = params.get("p") ?? "";
+  if (ids) return { ids };
+  if (slugs) return { slugs };
+  if (path === "/compare") {
+    const saved = readCompareIds();
+    if (saved.length) return { ids: saved.join(",") };
+  }
+  if (path === "/my-roster") {
+    const saved = readRosterSlugs();
+    if (saved.length) return { slugs: saved.join(",") };
+  }
+  return null;
+}
+
+/** The named-player set: /compare, /my-roster, /vs and /game ask for exactly these records. */
+async function loadPlayerSet(base: string, keys: { slugs?: string; ids?: string }): Promise<boolean> {
+  const qs = new URLSearchParams({ path: "/player-set", ...(keys as Record<string, string>) });
+  let slice: PlayerSetSlice;
+  try {
+    const res = await fetch(`${base}data/page?${qs}`, { cache: "no-cache" });
+    if (!res.ok) return false;
+    slice = (await res.json()) as PlayerSetSlice;
+  } catch {
+    return false;
+  }
+  if (slice.route !== "/player-set" || !slice.players.length) return false;
+
+  for (const p of slice.players) normalizePlayer(p);
+  data = {
+    meta: {
+      generated: slice.generated,
+      dataset: "Supabase",
+      season: slice.meta?.season ?? "",
+      sources: slice.meta?.sources ?? [],
+    },
+    leagues: slice.leagues,
+    teams: slice.teams,
+    players: slice.players,
+    history: null as unknown as Dataset["history"],
+  } as Dataset;
+
+  for (const t of data.teams) {
+    t.logo = assetUrl(t.logo);
+    teamById.set(t.id, t);
+    teamBySlug.set(t.slug, t);
+  }
+  for (const l of data.leagues) leagueById.set(l.id, l);
+  for (const p of data.players) {
+    playerById.set(p.id, p);
+    playerBySlug.set(p.slug, p);
+  }
+  PLAYER_COUNT = slice.playerCount;
+  TEAM_COUNT = data.teams.length;
+  SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
+  CURRENT = slice.meta?.season ?? "";
+  SEASON_RANGE = slice.span;
+  return true;
+}
+
 async function loadPageSlice(
   base: string,
   route: string,
@@ -287,6 +375,10 @@ function listSlice(): boolean {
   return /^\/players\/?$/.test(window.location.pathname);
 }
 
+/** True when this page was filled from the named-player endpoint rather than a page slice. */
+let playerSetMode = false;
+export const playerSetActive = () => playerSetMode;
+
 export async function loadDataset(): Promise<void> {
   const base = import.meta.env.BASE_URL;
 
@@ -297,6 +389,12 @@ export async function loadDataset(): Promise<void> {
   }
   const page = pageRoute();
   if (page && (await loadPageSlice(base, page.route, page.query))) return;
+
+  const set = playerSetKeys();
+  if (set && (await loadPlayerSet(base, set))) {
+    playerSetMode = true;
+    return;
+  }
 
   if (listSlice()) {
     // the table asks the database for its page; there is no dataset to load at all

@@ -595,10 +595,94 @@ async function originsPage() {
   };
 }
 
+/**
+ * A handful of named players, in full — the primitive the comparison, roster, head-to-head and game
+ * pages need. They take arbitrary players (from a URL, or the visitor's saved roster), so they cannot
+ * be one page slice; they ask for exactly the records on screen.
+ */
+async function playersByKey(params: URLSearchParams) {
+  const slugs = (params.get("slugs") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const ids = (params.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!slugs.length && !ids.length) return { route: "/player-set", players: [], teams: [], leagues: [] };
+
+  const filter = [
+    slugs.length ? `slug.in.(${slugs.map(encodeURIComponent).join(",")})` : "",
+    ids.length ? `id.in.(${ids.map(encodeURIComponent).join(",")})` : "",
+  ]
+    .filter(Boolean)
+    .join(",");
+  const base = await rows<any>(`players?or=(${filter})&select=*`);
+  if (!base.length) return { route: "/player-set", players: [], teams: [], leagues: [] };
+
+  const slugList = base.map((p) => p.slug).map(encodeURIComponent).join(",");
+  const seasons = await rows<any>(`seasons?playerSlug=in.(${slugList})&select=*&order=ord`);
+  const bySlug = new Map<string, any[]>();
+  for (const s of seasons) {
+    const arr = bySlug.get(s.playerSlug) ?? [];
+    arr.push(s);
+    bySlug.set(s.playerSlug, arr);
+  }
+
+  const teamIds = new Set<string>();
+  const leagueIds = new Set<string>();
+  for (const s of seasons) {
+    if (s.teamId) teamIds.add(s.teamId);
+    if (s.leagueId) leagueIds.add(s.leagueId);
+  }
+  for (const p of base) {
+    if (p.teamId) teamIds.add(p.teamId);
+    if (p.leagueId) leagueIds.add(p.leagueId);
+  }
+
+  const [teams, leagues, metaSnap, span] = await Promise.all([
+    teamIds.size
+      ? rows<any>(`teams?id=in.(${[...teamIds].map(encodeURIComponent).join(",")})&select=*`)
+      : Promise.resolve([]),
+    leagueIds.size
+      ? rows<any>(`leagues?id=in.(${[...leagueIds].map(encodeURIComponent).join(",")})&select=*&order=ord`)
+      : Promise.resolve([]),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+  ]);
+
+  return {
+    route: "/player-set",
+    generated: metaSnap[0]?.body?.generated ?? "",
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: await count("players"),
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    players: base.map((p) => ({ ...p, seasons: bySlug.get(p.slug) ?? [] })),
+    teams,
+    leagues,
+  };
+}
+
+/** The typeahead on the comparison page: eight names, no dataset in the browser. */
+async function searchPage(params: URLSearchParams) {
+  const q = (params.get("q") ?? "").trim();
+  if (q.length < 2) return { route: "/search", players: [] };
+  const hits = await rows<any>(
+    `player_list?name=ilike.*${encodeURIComponent(q)}*&select=slug,id,name,position,positionName,teamId,leagueId,photo,classYear&order=name&limit=8`,
+  );
+  return {
+    route: "/search",
+    players: hits.map((p) => ({
+      slug: p.slug, id: p.id, name: p.name, position: p.position, positionName: p.positionName,
+      teamId: p.teamId, leagueId: p.leagueId, photo: p.photo, classYear: p.classYear, seasons: [],
+    })),
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/search") {
+      return new Response(JSON.stringify(await searchPage(url.searchParams)), { headers: CACHE_HEADERS });
+    }
+    if (path === "/player-set") {
+      return new Response(JSON.stringify(await playersByKey(url.searchParams)), { headers: CACHE_HEADERS });
+    }
     if (path === "/origins") {
       return new Response(JSON.stringify(await originsPage()), { headers: CACHE_HEADERS });
     }

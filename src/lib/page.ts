@@ -43,6 +43,13 @@ export type TeamSeasonRow = {
   leader: { slug: string; name: string; pts: number } | null;
 };
 
+export type PlayerSetSlice = {
+  route: "/player-set";
+  generated: string; playerCount: number; span: [string, string];
+  meta: { generated?: string; season?: string; sources?: string[] } | null;
+  players: Player[]; teams: Team[]; leagues: League[];
+};
+
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
