@@ -184,10 +184,13 @@ select
   p."classYear", p."photo", p."birthplace" ->> 'state' as "state", p."highSchool",
   c."season", c."gp", c."g", c."a", c."pts", c."gb", c."sh", c."foW", c."foA", c."sv", c."ga",
   round((pc."g" + pc."a")::numeric / greatest(pc."gp", 1), 2) as "ppg",
-  p."birthplace" ->> 'city' as "city"
+  p."birthplace" ->> 'city' as "city",
+  -- the spotlight ranks on the best season inside the player's own competition
+  pk."peakPts", pk."peakSeason", coalesce(pk."gp", 0) as "peakGp"
 from public.players p
 left join public.player_current c on c."playerSlug" = p."slug"
-left join public.player_career pc on pc."slug" = p."slug";
+left join public.player_career pc on pc."slug" = p."slug"
+left join public.player_peak pk on pk."playerSlug" = p."slug" and pk."leagueId" = p."leagueId";
 
 -- The leading scorer per competition: `distinct on` in SQL so the page asks for 19 rows instead of
 -- ordering 26k to keep the first of each league.
@@ -272,7 +275,9 @@ create or replace view public.league_player_current as
 select p."leagueId" as "playerLeague", p."slug", p."name", p."position", p."positionName",
        p."photo", c."teamId", c."season",
        c."gp", c."g", c."a", c."pts", c."sh", c."gb", c."ct",
-       c."foW", c."foA", c."sv", c."ga", c."w", c."l", p."birthplace", p."highSchool"
+       c."foW", c."foA", c."sv", c."ga", c."w", c."l", p."birthplace", p."highSchool",
+       -- the club the page prints is his current one, not the one on his last season row
+       p."teamId" as "playerTeamId", p."classYear"
 from public.players p
 join public.player_current c on c."playerSlug" = p."slug";
 
@@ -445,6 +450,27 @@ select p."teamId",
 from public.players p
 where p."leagueId" = 'ncaa-d1';
 
+-- The spotlight ranks a player on his *best* season inside a competition, not on his latest one, and
+-- only where he actually played (12 games in that league).
+create or replace view public.player_peak as
+select s."playerSlug", s."leagueId",
+       max(coalesce(s."pts", coalesce(s."g", 0) + coalesce(s."a", 0)))::int as "peakPts",
+       (array_agg(s."season" order by coalesce(s."pts", coalesce(s."g", 0) + coalesce(s."a", 0)) desc))[1] as "peakSeason",
+       sum(coalesce(s."gp", 0))::int as "gp"
+from public.seasons s
+group by 1, 2;
+
+-- The home page's "players to know" strip: the six attackers with the biggest careers across field
+-- and pro field, in that order.
+create or replace view public.featured_attackers as
+select p."slug", p."id", p."name", p."position", p."positionName", p."teamId", p."leagueId", p."photo",
+       (coalesce(pc."g", 0) + coalesce(pc."a", 0))::int as "careerPts"
+from public.players p
+join public.player_career pc on pc."slug" = p."slug"
+where p."position" = 'A' and p."leagueId" in ('ncaa-d1', 'pll')
+order by "careerPts" desc
+limit 6;
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -503,7 +529,7 @@ grant select on public.player_career, public.player_current, public.player_list,
   public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
                 public.league_player_current, public.league_totals, public.league_origins, public.player_games,
                 public.team_seasons, public.team_season_leader, public.team_roster, public.team_origins, public.player_lookup,
-                public.climb_window, public.d1_climb, public.d1_origins,
+                public.climb_window, public.d1_climb, public.d1_origins, public.player_peak, public.featured_attackers,
                 public.team_current_totals,
                 public.team_game_rows to service_role;
 

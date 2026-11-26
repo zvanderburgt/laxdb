@@ -6,6 +6,9 @@ import {
   data,
   leaderboard,
   leagueById,
+  leaguesWithPlayers,
+  leaguePlayerCount,
+  featuredPlayers,
   notablePlayers,
   peakLine,
   teamById,
@@ -27,7 +30,7 @@ const STATS = [
 
 export default function Home() {
   const featuredLeagues = useMemo(() => {
-    const live = data.leagues.filter((l) => data.players.some((p) => p.leagueId === l.id));
+    const live = leaguesWithPlayers();
     const preferred = ["ncaa-d1", "pll", "nf-nll", "nf-ojcll"];
     const picked = preferred.map((id) => live.find((l) => l.id === id)).filter(Boolean) as typeof live;
     return [...picked, ...live.filter((l) => !preferred.includes(l.id))].slice(0, 4);
@@ -40,7 +43,9 @@ export default function Home() {
 
   const featured = useMemo(
     () =>
-      data.players
+      featuredPlayers().length
+        ? featuredPlayers()
+        : data.players
         .filter((p) => (p.leagueId === "ncaa-d1" || p.leagueId === "pll") && p.position === "A")
         .sort((a, b) => careerTotals(b).pts - careerTotals(a).pts)
         .slice(0, 6),
@@ -277,8 +282,7 @@ export default function Home() {
         </div>
         <div className="hero-coverage">
           Coverage:{" "}
-          {data.leagues
-            .filter((l) => data.players.some((p) => p.leagueId === l.id))
+          {leaguesWithPlayers()
             .map((l) => `${data.teams.filter((t) => t.leagueId === l.id).length} ${l.short}`)
             .join(" · ")}{" "}
           · seasons 2021–2026 · headshots for pro players
@@ -354,7 +358,7 @@ export default function Home() {
             </p>
             <div className="mini-stats">
               <div>
-                <span className="num">{data.players.filter((p) => p.leagueId === league).length}</span>
+                <span className="num">{leaguePlayerCount(league)}</span>
                 <span>players tracked</span>
               </div>
               <div>
@@ -404,7 +408,7 @@ export default function Home() {
                 </div>
                 <h3>{l.name}</h3>
                 <p className="muted">
-                  {teams.length} teams · {data.players.filter((p) => p.leagueId === l.id).length} players
+                  {teams.length} teams · {leaguePlayerCount(l.id)} players
                 </p>
                 <div className="league-swatches">
                   {teams.slice(0, 7).map((t) => (
@@ -448,7 +452,7 @@ export default function Home() {
                   const best = peakLine(p, p.leagueId) ?? currentSeason(p);
                   return (
                     <span className="num muted">
-                      {best.pts} PTS · ’{best.season.slice(2)}
+                      {best.pts} PTS · ’{String(best.season).slice(2)}
                     </span>
                   );
                 })()}

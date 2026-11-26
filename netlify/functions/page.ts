@@ -603,7 +603,19 @@ async function originsPage() {
 async function playersByKey(params: URLSearchParams) {
   const slugs = (params.get("slugs") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const ids = (params.get("ids") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (!slugs.length && !ids.length) return { route: "/player-set", players: [], teams: [], leagues: [] };
+  if (!slugs.length && !ids.length) {
+    return {
+      route: "/player-set",
+      generated: "",
+      meta: null,
+      playerCount: await count("players"),
+      seasonCount: await count("seasons"),
+      span: ["", ""],
+      players: [],
+      teams: [],
+      leagues: [],
+    };
+  }
 
   const filter = [
     slugs.length ? `slug.in.(${slugs.map(encodeURIComponent).join(",")})` : "",
@@ -746,10 +758,110 @@ async function boxPage(params: URLSearchParams) {
   };
 }
 
+/**
+ * The home page: every competition with its counts, the top six of each competition by each stat, the
+ * spotlight players and the champion list. All aggregates — the browser used to hold 26,234 players
+ * to answer them.
+ */
+async function homePage() {
+  const [leagues, totals, teamRows, metaSnap, span, history] = await Promise.all([
+    rows<any>("leagues?select=*&order=ord"),
+    rows<{ leagueId: string; players: number }>("league_totals?select=*"),
+    rows<any>("teams?select=id,leagueId,slug,name,shortName,colors,logo,conference,record&order=name"),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+    rows<{ body: any }>("snapshots?key=eq.history&select=body&limit=1"),
+  ]);
+  const playersBy = new Map(totals.map((t) => [t.leagueId, t.players]));
+  const latest = String(span[0]?.hi ?? "");
+
+  // `leaderboard()` ranks the player's *last* season row inside his current competition, so this
+  // reads `league_player_current` — the same row the page means by currentSeason()
+  const stats = ["pts", "g", "a", "gb", "ct", "svp"] as const;
+  const leaders: Record<string, any[]> = {};
+  for (const stat of stats) {
+    const order = stat === "svp" ? "sv" : stat;
+    const top = await rows<any>(
+      `league_player_current?select=playerLeague,slug,name,position,positionName,photo,teamId,playerTeamId,classYear,gp,g,a,pts,gb,ct,sv,ga` +
+        `&gp=gte.5&order=${order}.desc&limit=900`,
+    );
+    for (const r of top) {
+      if (stat === "svp" && (r.sv ?? 0) <= 20) continue;
+      const value = stat === "svp" ? ((r.sv ?? 0) + (r.ga ?? 0) > 0 ? r.sv / (r.sv + r.ga) : 0) : (r[stat] ?? 0);
+      const key = `${r.playerLeague}|${stat}`;
+      const arr = (leaders[key] ??= []);
+      if (arr.length >= 6) continue;
+      arr.push({
+        slug: r.slug, name: r.name, position: r.position, positionName: r.positionName,
+        photo: r.photo, teamId: r.playerTeamId ?? r.teamId, classYear: r.classYear,
+        gp: r.gp ?? 0, value,
+      });
+    }
+  }
+
+  // the spotlight: a face-led pick from each competition, ranked on the peak season there
+  const spotlight: any[] = [];
+  for (const [leagueId, want] of [["ncaa-d1", 2], ["pll", 2], ["nf-nll", 1], ["mcla", 1]] as [string, number][]) {
+    if (spotlight.length >= 6) break;
+    const pool = await rows<any>(
+      `player_list?leagueId=eq.${encodeURIComponent(leagueId)}&peakGp=gte.12&peakPts=gt.0` +
+        `&select=slug,id,name,position,positionName,teamId,leagueId,photo,peakPts,peakSeason` +
+        `&order=peakPts.desc&limit=12`,
+    );
+    if (!pool.length) continue;
+    const withPhoto = pool.filter((p) => p.photo);
+    for (const p of (withPhoto.length >= want ? withPhoto : pool).slice(0, want)) {
+      if (spotlight.some((s) => s.slug === p.slug)) continue;
+      // the hero prints his whole peak season, so the record and its rows travel with him
+      const [full] = await rows<any>(`players?slug=eq.${encodeURIComponent(p.slug)}&select=*&limit=1`);
+      const rowsOut = await rows<any>(
+        `seasons?playerSlug=eq.${encodeURIComponent(p.slug)}&select=*&order=ord`,
+      );
+      spotlight.push({
+        ...(full ?? p),
+        season: String(p.peakSeason ?? ""),
+        seasons: rowsOut.map((r) => ({ ...r, season: String(r.season) })),
+        peak: p.peakPts ?? 0,
+        peakSeason: String(p.peakSeason ?? ""),
+      });
+    }
+  }
+
+  // "players to know": the six biggest attacking careers across field and pro field
+  const featured: any[] = [];
+  for (const f of await rows<any>("featured_attackers?select=*")) {
+    const [full] = await rows<any>(`players?slug=eq.${encodeURIComponent(f.slug)}&select=*&limit=1`);
+    if (!full) continue;
+    const rowsOut = await rows<any>(
+      `seasons?playerSlug=eq.${encodeURIComponent(f.slug)}&select=*&order=ord`,
+    );
+    featured.push({ ...full, seasons: rowsOut.map((r) => ({ ...r, season: String(r.season) })) });
+  }
+
+  return {
+    route: "/home",
+    featured,
+    generated: metaSnap[0]?.body?.generated ?? "",
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: await count("players"),
+    seasonCount: await count("seasons"),
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    leagues: leagues.map((l) => ({ ...l, players: playersBy.get(l.id) ?? 0 })),
+    teams: teamRows,
+    leaders,
+    spotlight: spotlight.slice(0, 6),
+    history: history[0]?.body ?? null,
+    season: latest,
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/home") {
+      return new Response(JSON.stringify(await homePage()), { headers: CACHE_HEADERS });
+    }
     if (path === "/box") {
       return new Response(JSON.stringify(await boxPage(url.searchParams)), { headers: CACHE_HEADERS });
     }

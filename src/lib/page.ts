@@ -57,10 +57,28 @@ export type TeamSetSlice = {
   teams: Team[]; allTeams: Team[]; leagues: League[];
 };
 
+export type HomeLeaderRow = {
+  slug: string; name: string; position: string; positionName: string; photo: string | null;
+  teamId: string; classYear?: number | null; gp?: number; value: number;
+};
+
+export type HomeSlice = {
+  route: "/home";
+  generated: string; playerCount: number; seasonCount: number; span: [string, string]; season: string;
+  meta: { generated?: string; season?: string; sources?: string[] } | null;
+  leagues: (League & { players: number })[];
+  teams: Team[];
+  leaders: Record<string, HomeLeaderRow[]>;
+  featured: Player[];
+  spotlight: (Player & { peak?: number; peakSeason?: string })[];
+  history: unknown;
+};
+
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
   | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
+  | HomeSlice
   | {
       route: "/origins"; generated: string; playerCount: number; span: [string, string];
       meta: { generated?: string; season?: string; sources?: string[] } | null;

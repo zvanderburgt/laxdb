@@ -18,6 +18,7 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/` (home) | **368,939 B** (was 1,608,531 B) — one request, no wire file | unchanged render | whole page text identical: hero rotation, spotlight, D1 leaders, the "players to know" strip and every competition card |
 | `/my-roster` | **8,417 B** for a three-player roster (was 1,608,531 B) | unchanged render | roster text identical; the page reads the visitor's saved ids and asks for those records |
 | `/vs/<a>/<b>` | **7,797 B + 13,668 B** scorecard (was 1,608,531 B + `scores.json`) | unchanged render | identical on three pairs, including two with meetings |
 | `/game/<d>/<a>/<b>` | **7,799 B + 13,628 B + 1,983 B box** (was 1,608,531 B + `scores.json` + `games.json`) | — | data path converted; the page itself crashes in **both** modes on every URL (see below) |
@@ -533,3 +534,30 @@ SUPABASE_ANON_KEY=<anon public key>
 Done — the file holds `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY` and
 `SUPABASE_DB_URL`, and the loader runs against it. Refresh with `npm run db:load` after an import;
 `schema.sql` is re-applied idempotently with `npm run db:schema` (`--reset` drops first, dev only).
+
+
+## Done: no page reads a JSON file
+
+Every route renders from Postgres. `data.wire.json` is no longer produced by the build (the
+`compact-data.mjs` step is out of `npm run build`), and `https://laxdb.netlify.app/data.wire.json`
+returns 404. A sweep of all fifteen routes confirms no page requests `data.wire.json`,
+`scores.json`, `games.json`, `history-results.json`, `franchises.json` or `rankings*.json`.
+
+`public/data.json` stays exactly what it was before this work: the importer's output and the loader's
+input. No request path reads it.
+
+What the browser asks for now, by route:
+
+| route | requests |
+| --- | --- |
+| `/` | `/data/page?path=/home` |
+| `/players` | `/data/players` (one page of rows + facets) |
+| `/player/<slug>` | `/data/player?slug=` |
+| `/leagues`, `/teams`, `/coaches`, `/leaders`, `/history`, `/origins`, `/league/<id>`, `/team/<slug>` | `/data/page?path=…` (+ `/snapshot?key=scores` where a scorecard is drawn) |
+| `/compare`, `/my-roster` | `/data/page?path=/player-set&ids=…`, plus `/search` for the typeahead |
+| `/vs/<a>/<b>` | `/data/page?path=/team-set&slugs=…` + `/snapshot?key=scores` |
+| `/game/<d>/<a>/<b>` | those two plus `/data/page?path=/box&date=…&teams=…` |
+
+Open item, unrelated to the migration: `/game` renders nothing on every URL — the page throws
+`Cannot read properties of undefined (reading 'replace')` before it draws, in this build and in a build
+from before the migration began. Its data is ready (above). Fixing the render is the next job.

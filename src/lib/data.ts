@@ -138,6 +138,8 @@ const PAGE_PREFIXES = new Map([
 function pageRoute(): { route: string; query: Record<string, string> } | null {
   if (typeof window === "undefined" || forceWire()) return null;
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  // the home page is "/" on the site and "/home" to the endpoint
+  if (path === "/") return { route: "/home", query: {} };
   if (PAGE_ROUTES.has(path)) return { route: path, query: {} };
   const segs = path.split("/").filter(Boolean);
   if (segs.length === 2) {
@@ -241,9 +243,9 @@ function playerSetKeys(): { slugs?: string; ids?: string } | null {
     if (saved.length) return { ids: saved.join(",") };
   }
   if (path === "/my-roster") {
-    // the roster stores player ids ("p-pll-003159"), not slugs
-    const saved = readRosterIds();
-    if (saved.length) return { ids: saved.join(",") };
+    // the roster stores player ids ("p-pll-003159"), not slugs; an empty roster still resolves — the
+    // page has an empty state, and there is no reason to fetch a dataset to draw it
+    return { ids: readRosterIds().join(",") };
   }
   return null;
 }
@@ -259,7 +261,7 @@ async function loadPlayerSet(base: string, keys: { slugs?: string; ids?: string 
   } catch {
     return false;
   }
-  if (slice.route !== "/player-set" || !slice.players.length) return false;
+  if (slice.route !== "/player-set") return false;
 
   for (const p of slice.players) normalizePlayer(p);
   data = {
@@ -285,11 +287,11 @@ async function loadPlayerSet(base: string, keys: { slugs?: string; ids?: string 
     playerById.set(p.id, p);
     playerBySlug.set(p.slug, p);
   }
-  PLAYER_COUNT = slice.playerCount;
+  PLAYER_COUNT = slice.playerCount ?? 0;
   TEAM_COUNT = data.teams.length;
   SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
   CURRENT = slice.meta?.season ?? "";
-  SEASON_RANGE = slice.span;
+  SEASON_RANGE = slice.span ?? ["", ""];
   return true;
 }
 
@@ -316,7 +318,8 @@ async function loadPageSlice(
     slice.route !== "/league" &&
     slice.route !== "/team" &&
     slice.route !== "/history" &&
-    slice.route !== "/origins"
+    slice.route !== "/origins" &&
+    slice.route !== "/home"
   ) {
     return false;
   }
@@ -334,6 +337,8 @@ async function loadPageSlice(
         ? slice.league
           ? [slice.league]
           : []
+        : slice.route === "/home"
+          ? (slice as Extract<PageSlice, { route: "/home" }>).leagues
         : slice.route === "/history" || slice.route === "/origins"
           ? []
           : (slice as Extract<PageSlice, { route: "/leagues" }>).leagues) as Dataset["leagues"],
@@ -342,6 +347,8 @@ async function loadPageSlice(
       ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
       : slice.route === "/league"
         ? (slice as Extract<PageSlice, { route: "/league" }>).teams
+        : slice.route === "/home"
+          ? (slice as Extract<PageSlice, { route: "/home" }>).teams
         : slice.route === "/origins"
           ? (slice as Extract<PageSlice, { route: "/origins" }>).teams
         : slice.route === "/history"
@@ -354,7 +361,9 @@ async function loadPageSlice(
             ]
           : []) as unknown as Dataset["teams"],
     players:
-      slice.route === "/team"
+      slice.route === "/home"
+        ? ((slice as Extract<PageSlice, { route: "/home" }>).spotlight as unknown as Dataset["players"])
+        : slice.route === "/team"
         ? (slice as Extract<PageSlice, { route: "/team" }>).roster.map(
             (r) =>
               ({
@@ -369,6 +378,17 @@ async function loadPageSlice(
         : [],
   } as Dataset;
   if (slice.route === "/team") (data as any).history = slice.history;
+  if (slice.route === "/home") {
+    const home = slice as Extract<PageSlice, { route: "/home" }>;
+    homeLeaders = home.leaders;
+    sliceSpotlight = home.spotlight as unknown as Player[];
+    sliceFeatured = (home.featured as unknown as Player[]) ?? [];
+    for (const p of home.spotlight as unknown as Player[]) normalizePlayer(p);
+    (data as any).history = home.history;
+    data.meta.generated = home.generated || data.meta.generated;
+    data.meta.season = home.season || data.meta.season;
+    if (home.meta?.sources?.length) data.meta.sources = home.meta.sources;
+  }
   if (slice.route === "/origins") {
     const o = slice as Extract<PageSlice, { route: "/origins" }>;
     data.meta.generated = o.generated || data.meta.generated;
@@ -406,12 +426,23 @@ async function loadPageSlice(
             ? (slice as Extract<PageSlice, { route: "/history" }>).playerCount
             : slice.route === "/origins"
               ? (slice as Extract<PageSlice, { route: "/origins" }>).playerCount
-              : 0;
+              : slice.route === "/home"
+                ? (slice as Extract<PageSlice, { route: "/home" }>).playerCount
+                : 0;
   TEAM_COUNT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).teams.length : 0;
-  SEASON_COUNT = 0;
+  if (slice.route === "/home") {
+    const home = slice as Extract<PageSlice, { route: "/home" }>;
+    TEAM_COUNT = home.teams.length;
+    SEASON_COUNT = home.seasonCount;
+  }
+  SEASON_COUNT = slice.route === "/home" ? (slice as Extract<PageSlice, { route: "/home" }>).seasonCount : SEASON_COUNT;
   CURRENT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).rows[0]?.season ?? "" : "";
   SEASON_RANGE =
-    slice.route === "/league" || slice.route === "/team" || slice.route === "/history" || slice.route === "/origins"
+    slice.route === "/league" ||
+    slice.route === "/team" ||
+    slice.route === "/history" ||
+    slice.route === "/origins" ||
+    slice.route === "/home"
       ? (slice as Extract<PageSlice, { route: "/league" }>).span
       : ["", ""];
   if (slice.route === "/league" || slice.route === "/team") {
@@ -759,7 +790,29 @@ export function rosterOf(teamId: string) {
     .sort((a, b) => (careerTotals(b).pts || 0) - (careerTotals(a).pts || 0));
 }
 
+let sliceFeatured: Player[] | null = null;
+let sliceSpotlight: Player[] | null = null;
+type HomeLeader = {
+  slug: string; name: string; position: string; positionName: string; photo: string | null;
+  teamId: string; classYear?: number | null; gp?: number; value: number;
+};
+let homeLeaders: Record<string, HomeLeader[]> | null = null;
+
 export function leaderboard(leagueId: string, stat: "pts" | "g" | "a" | "gb" | "ct" | "svp", limit = 10) {
+  // the home page's slice carries the top six of every competition already ranked
+  const supplied = homeLeaders?.[`${leagueId}|${stat}`];
+  if (supplied) {
+    return supplied.slice(0, limit).map((r) => ({
+      player: {
+        id: r.slug, slug: r.slug, name: r.name, firstName: r.name.split(" ")[0] ?? "",
+        lastName: r.name.split(" ").slice(1).join(" "), position: r.position,
+        positionName: r.positionName, teamId: r.teamId, photo: r.photo ?? undefined,
+        classYear: r.classYear ?? null, seasons: [],
+      } as unknown as Player,
+      value: r.value,
+      season: { gp: r.gp ?? 0, pts: r.value } as unknown as SeasonRow,
+    }));
+  }
   return data.players
     .filter((p) => p.leagueId === leagueId)
     .map((p) => {
@@ -905,6 +958,11 @@ export function notablePlayers(
 
   const picks: Player[] = [];
   const seen = new Set<string>();
+  if (sliceSpotlight?.length) {
+    const picked = sliceSpotlight.slice(0, n);
+    notableCache.set(key, picked);
+    return picked;
+  }
   const take = (pool: Player[], want: number) => {
     const withPhoto = pool.filter((p) => p.photo);
     const chosen = (withPhoto.length >= want ? withPhoto : pool).slice(0, want);
@@ -1038,7 +1096,19 @@ export function leagueTeams(leagueId: string) {
 }
 
 export function leaguePlayerCount(leagueId: string) {
+  const supplied = (leagueById.get(leagueId) as { players?: number } | undefined)?.players;
+  if (typeof supplied === "number") return supplied;
   return data.players.filter((p) => p.leagueId === leagueId).length;
+}
+
+/** Competitions that actually hold players, in the dataset's order. */
+/** The home page's "players to know" strip, when the slice carries it. */
+export function featuredPlayers(): Player[] {
+  return sliceFeatured ?? [];
+}
+
+export function leaguesWithPlayers(): League[] {
+  return data.leagues.filter((l) => leaguePlayerCount(l.id) > 0);
 }
 
 export function topLeaguesByLevel() {
