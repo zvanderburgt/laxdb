@@ -42,11 +42,6 @@ export default function Game() {
     if (teamSetActive()) {
       // the box score comes from /data/page?path=/box; the 3.5 MB log stays on the server
       setLogs({});
-    } else {
-      fetch(`${import.meta.env.BASE_URL}games.json`)
-        .then((r) => r.json())
-        .then((p: Record<string, GameRow[]>) => alive && setLogs(p))
-        .catch(() => alive && setLogs({}));
     }
     return () => {
       alive = false;

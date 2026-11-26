@@ -37,10 +37,9 @@ export function loadScores(): Promise<ScorePayload> {
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((d) => {
+        // the scorecard is a snapshot row now; there is no file behind this call any more
         if (d && (Array.isArray(d.d1) || Array.isArray(d.pll))) return d as ScorePayload;
-        return fetch(`${base}scores.json`)
-          .then((r) => (r.ok ? r.json() : { d1: [], pll: [] }))
-          .catch(() => ({ d1: [], pll: [] }));
+        return { d1: [], pll: [] } as ScorePayload;
       });
   }
   return scoresPromise;

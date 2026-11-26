@@ -1,5 +1,4 @@
 import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
-import { decodeDataset, type WireDataset } from "./wire";
 import { setSlice, sliceFor, type PlayerSlice } from "./slice";
 import { enableListMode } from "./list";
 import { setPageSlice, type PlayerSetSlice, type TeamSetSlice, type PageSlice } from "./page";
@@ -497,16 +496,12 @@ export async function loadDataset(): Promise<void> {
     SEASON_RANGE = ["", ""];
     return;
   }
-  let res = await fetch(`${base}data.wire.json`, { cache: "no-cache" });
-  let payload: Dataset | WireDataset;
-  if (res.ok) {
-    payload = decodeDataset((await res.json()) as WireDataset);
-  } else {
-    res = await fetch(`${base}data.json`, { cache: "no-cache" });
-    if (!res.ok) throw new Error(`dataset fetch failed: ${res.status}`);
-    payload = (await res.json()) as Dataset;
-  }
-  data = payload as Dataset;
+  // Nothing reads a dataset file any more: every route asks the API for the slice it draws, and the
+  // two files are no longer deployed. Reaching here means a route was added without a slice.
+  throw new Error(
+    "This page has no data source: it is not one of the routes the API serves, and the dataset file " +
+      "is no longer deployed.",
+  );
 
   for (const p of data.players) {
     normalizePlayer(p);
@@ -774,12 +769,9 @@ let gamesPromise: Promise<Record<string, GameRow[]>> | null = null;
 
 /** Game logs ship separately (~1.3 MB) so the main payload stays lean. */
 export function loadGames(): Promise<Record<string, GameRow[]>> {
-  if (!gamesPromise) {
-    gamesPromise = fetch(`${import.meta.env.BASE_URL}games.json`)
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({}));
-  }
-  return gamesPromise;
+  // the game log lives in the database (player_games) and arrives with the player slice; there is no
+  // file to fetch, so a caller that reaches this gets nothing and says so
+  return Promise.resolve({});
 }
 
 export function rosterOf(teamId: string) {
