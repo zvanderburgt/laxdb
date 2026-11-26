@@ -1,16 +1,28 @@
 # The dataset payload
 
-`public/data.json` (23.80 MB) is the source of truth, written by the importer. The app never fetches
-it: `scripts/compact-data.mjs` re-encodes it into `public/data.wire.json` on every build, and
-`src/lib/wire.ts` decodes that back into the same `Dataset` shape the pages already use.
+`public/data.json` (23.80 MB) is what the importer writes. **No page fetches it any more** — the site
+reads Postgres, and `scripts/load-supabase.mjs` is the only thing that reads `data.json`.
 
 ```
-data.json          23.80 MB   source of truth, written by fetch-real-data.py
-  ↓ compact-data.mjs (run by npm run build)
-data.wire.json     13.45 MB   what the browser fetches (~1.65 MB gzip, 43% fewer bytes)
-  ↓ wire.ts decodeDataset()
-Dataset            the objects every page already expects
+fetch-*.py                     writes the files below
+  ↓
+public/data.json        23.80 MB   players, teams, leagues, seasons, history
+public/games.json        3.5 MB    per-player game logs   → player_games, player_adj
+public/scores.json       118 KB    the scorecard          → snapshots(key='scores')
+public/history-results.json, franchises.json, rankings*.json → snapshots
+  ↓ node scripts/load-supabase.mjs   (npm run db:load)
+Postgres                          the only thing a request reads
 ```
+
+**A pull does not update the site.** The fetchers write files; the database changes only when the
+loader runs. After an import:
+
+```
+node scripts/load-supabase.mjs        # or: npm run db:load
+```
+
+It truncates and reloads every table in one transaction (~17 s) and verifies row counts, the points
+total and the orphan join before committing. The build no longer produces `data.wire.json`.
 
 ## Why one file and not two
 
