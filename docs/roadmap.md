@@ -21,9 +21,10 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
   the fingerprint differs.
 - The browser was being told not to cache: `/data/*` sent `cache: no-cache` and Netlify answered
   `cache-control: no-cache`, so every revisit re-ran the function. Now 60 s browser / 300 s edge.
-- `scripts/warm-cache.mjs` + the `laxdb edge warm` cron keep the instance warm — `/home` every five
-  minutes (measured: six minutes after a full sweep it was cold again, 17.9 s), all seven routes after
-  a deploy, which warms with `--refresh`.
+- `scripts/warm-cache.mjs` + the `laxdb edge warm` cron keep the instance warm — `/home`, `/history`
+  and `/leaders` every five minutes, all seven after a deploy. Measured: six minutes after a full sweep
+  `/home` was cold again (17.9 s), and cold per route is 27–30 s for `/home` and `/history`, 4.5 s for
+  `/leaders`.
 - Idle prefetch of `/leagues` + `/teams` was deployed, measured (a cold `/leaders` went 1.83 → 3.13 s
   while those slices stole the link), fixed to run after the route's own payload and only on 4G, and
   re-measured. `docs/supabase-migration.md` carries the table and the methods.

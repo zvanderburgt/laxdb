@@ -318,10 +318,12 @@ payload differs. `/leaders` went from 1.83 s to 0.21 s on a repeat visit.
 
 **The instance is kept warm.** `scripts/warm-cache.mjs` asks for the page routes; `deploy-netlify.py`
 runs it with `--refresh` over all seven after a publish, and the Hermes cron `laxdb edge warm` asks for
-`/home` alone every five minutes. The five minutes came from a measurement, not a guess: six minutes
-after a full sweep `/home` was cold again and took **17.9 s**, because the function instance is recycled
-sooner than the entry expires. One request per five minutes holds the `page.mjs` instance every
-`/data/page` route shares, at ~8.6k invocations a month — a full sweep every ten minutes was ~30k.
+`/home`, `/history` and `/leaders` — heaviest first — every five minutes. Both numbers came from
+measurement: six minutes after a full sweep `/home` was cold again and took **17.9 s**, so the instance
+is recycled sooner than the entry expires; and a deploy's own warm run timed what a cold instance costs
+per route — `/home` 27.5–30.3 s, `/history` 29.0 s, `/leaders` 4.5 s, everything else under 1.5 s.
+Three routes every five minutes is ~26k invocations a month; the first request absorbs the instance and
+the other two ride it.
 
 **What did not work and was reverted the same hour:** warming `/leagues` and `/teams` on idle from the
 first paint. On a 1.6 Mbps link those two slices competed with the route the visitor was waiting for,
