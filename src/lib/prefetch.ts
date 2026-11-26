@@ -50,17 +50,29 @@ function fromEvent(event: Event): void {
   if (anchor instanceof HTMLAnchorElement) warmPath(localPath(anchor));
 }
 
+/** Hover and focus only: a user-driven prefetch, live from the first paint. */
 export function installPrefetch(): void {
   document.addEventListener("pointerover", fromEvent, { passive: true });
   document.addEventListener("focusin", fromEvent, { passive: true });
+}
 
+/**
+ * The background warm, called once this page's own data has landed.
+ *
+ * Deliberately late and deliberately narrow: on a 1.6 Mbps link the two directory slices compete
+ * with the route the visitor is actually waiting for, and a cold `/leaders` measured 3.1 s with the
+ * warm running against it. Only 4G-class connections get it.
+ */
+export function warmOnIdle(): void {
+  const conn = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } })
+    .connection;
+  if (conn?.saveData || (conn?.effectiveType && conn.effectiveType !== "4g")) return;
   const idle = () => {
-    if (constrained()) return;
     warmPath("/leagues");
     warmPath("/teams");
   };
   const ric = (window as unknown as { requestIdleCallback?: (fn: () => void, opts?: { timeout: number }) => number })
     .requestIdleCallback;
-  if (ric) ric(idle, { timeout: 4000 });
-  else setTimeout(idle, 2500);
+  if (ric) ric(idle, { timeout: 3000 });
+  else setTimeout(idle, 2000);
 }

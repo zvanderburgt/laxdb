@@ -4,7 +4,7 @@ import App from "./App";
 import { loadDataset, requestPlans } from "./lib/data";
 import { loadOverrides } from "./lib/overrides";
 import { fingerprint, readEntry, readSeed, writeEntry } from "./lib/cache";
-import { installPrefetch } from "./lib/prefetch";
+import { installPrefetch, warmOnIdle } from "./lib/prefetch";
 import { AppSkeleton } from "./components/ui";
 import "./styles.css";
 
@@ -95,6 +95,7 @@ async function boot(): Promise<void> {
     await loadDataset();
     await overrides;
     paint();
+    warmOnIdle();
     return;
   }
 
@@ -141,6 +142,7 @@ async function boot(): Promise<void> {
     return;
   }
   if (freshHash !== paintedHash || !overridesReady) paint();
+  warmOnIdle();
 }
 
 boot().catch(showLoadError);

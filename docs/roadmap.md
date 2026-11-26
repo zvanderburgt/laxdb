@@ -11,6 +11,22 @@ Last payload pass: **2026-11-21** — the dataset is two files now (`docs/datase
 
 ## Shipped
 
+**2026-11-26 — cold loads: the shell seed, the device cache, and a warm edge**
+- A cold `/` took **19.83 s** to content (1.59 s warm) because the first useful pixel waited on a
+  function instance that answered in 20 s cold and 0.3 s warm. Three caches later: **1.31 / 1.53 s**
+  on a first visit, **0.67 s** on a repeat, and `/` renders its whole page with `*/data/*` blocked
+  outright — the seed rides in `index.html`.
+- `/leaders` repeat visit: 1.83 s → **0.21 s** from IndexedDB. Every route now keeps its last payload
+  on the device (`src/lib/cache.ts`), paints it before its own fetch settles, and re-renders only when
+  the fingerprint differs.
+- The browser was being told not to cache: `/data/*` sent `cache: no-cache` and Netlify answered
+  `cache-control: no-cache`, so every revisit re-ran the function. Now 60 s browser / 300 s edge.
+- `scripts/warm-cache.mjs` + the `laxdb edge warm` cron (10 min) keep the edge inside its
+  stale-while-revalidate window; the deploy script warms with `--refresh` after a publish.
+- Idle prefetch of `/leagues` + `/teams` was deployed, measured (a cold `/leaders` went 1.83 → 3.13 s
+  while those slices stole the link), fixed to run after the route's own payload and only on 4G, and
+  re-measured. `docs/supabase-migration.md` carries the table and the methods.
+
 **2026-11-21 — franchise history, coach directory, card sweep**
 - **Franchise history** on the team page: every season we hold, with the league, the published record
   and goals where a results feed exists, that season's leading scorer (linked), and a footer that

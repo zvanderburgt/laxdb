@@ -179,13 +179,15 @@ keyed by entity id rather than editing `data.json`, so a re-import can never cos
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm run build        # tsc + vite build → dist/
+npm run build        # tsc + vite build → dist/ (bakes the home slice into the shell)
 npm run preview      # serve the build on :4173
 npm run typecheck    # type check without emitting
+npm run warm         # ask the edge for every page route, so no visitor meets a cold function
+npm run seed:check   # how big the baked home slice in dist/index.html is
 ```
 
 The build is fully static — drop `dist/` on any host. It is deployed to Netlify from `main`; a manual
-deploy is `python3 scripts/deploy-netlify.py`.
+deploy is `python3 scripts/deploy-netlify.py`, which warms the edge cache when it finishes.
 
 Rebuilding the dataset:
 

@@ -277,6 +277,59 @@ page. The redirect is guarded so a failure on the `?slice=0` page shows the erro
 **Revert:** `?slice=0` per URL today, and deleting the two `if (sliceSlug())` / `if (listSlice())`
 branches in `src/lib/data.ts` returns every visitor to the file.
 
+## Caching: the shell seed, the device, and the edge
+
+Measured 2026-11-26, live, 1.6 Mbps / 150 ms RTT, browser cache disabled and the device store
+cleared — a genuinely first visit:
+
+| route | before, cold instance | before, warm | after, first visit | after, repeat visit |
+| --- | --- | --- | --- | --- |
+| `/` | **19.83 s** | 1.59 s | **1.31 / 1.53 s** | **0.67 s** |
+| `/leaders` | 1.83 s | 1.81 s | 1.94 / 2.62 s | **0.21 s** |
+
+Two methods, stated because they differ: the before numbers and the repeat-visit numbers are the page's
+own `performance.now()` at the moment `body.innerText` passed 500 characters; the after first-visit
+numbers are an external clock around the navigation, so they include 100–300 ms of browser overhead the
+in-page figure does not. The 19.8 s is not method-sensitive. Parities were checked the same way:
+`/` 4,312, `/leaders` 2,339, `/teams` 34,201 characters of text, identical before and after.
+
+**The landing page no longer needs the function at all.** With `*/data/*` blocked at the network layer
+on the live site and the device store cleared, `/` still rendered its whole page (4,312 characters) in
+1.29 s — a cold instance cannot reach a visitor who lands on `/`.
+
+Four things changed, and each one removes a different wait.
+
+**The browser was told not to cache.** Every `/data/*` read sent `cache: "no-cache"`, and Netlify
+answers a function response with `cache-control: no-cache` unless the function sets its own. A
+revisit, a back button and a nav click each re-ran the function. `CACHE_HEADERS` now also carries
+`cache-control: public, max-age=60, stale-while-revalidate=600` for the browser; the edge keeps its
+300 s / 600 s policy.
+
+**The landing page ships its own data.** `scripts/bake-home-seed.mjs` bundles `netlify/functions/page.ts`
+at build time, calls the handler for `/home`, and writes the JSON into `dist/index.html` between seed
+markers — so `/` paints with no data request at all, and revalidates in the background. The shell is
+465 KB raw / 63 KB brotli with the seed, and `meta.ts` strips the block before serving an entity page
+(a player page answers in 3.7 KB, unchanged).
+
+**Every other route paints from the device.** `src/lib/cache.ts` keeps the last payload per endpoint
+URL in IndexedDB with a timestamp and an FNV-1a fingerprint of the bytes; `src/main.tsx` boots seed →
+device → network, so a revisit paints before its own fetch settles and only re-renders when the
+payload differs. `/leaders` went from 1.83 s to 0.21 s on a repeat visit.
+
+**The edge is kept warm.** `scripts/warm-cache.mjs` asks for the seven page routes; `deploy-netlify.py`
+runs it with `--refresh` after a publish, and the Hermes cron `laxdb edge warm` runs it every ten
+minutes — inside the 300 s + 600 s window, so an entry can always be answered without a cold instance.
+
+**What did not work and was reverted the same hour:** warming `/leagues` and `/teams` on idle from the
+first paint. On a 1.6 Mbps link those two slices competed with the route the visitor was waiting for,
+and a cold `/leaders` measured 3.13 s against 1.83 s before the work started. It now runs after the
+route's own payload has landed, and only on a 4G-class connection (`saveData` opts out); `/leaders`
+came back to 1.94–2.62 s, which is the old number within noise.
+
+**The 20 s itself is server-side.** `homePage()` makes ~38 mostly sequential PostgREST calls; warm it
+answers in 0.3 s, cold it does not. Hiding it behind a seed and a warm edge is this pass; making it
+cheap is a separate change.
+
 ## Step 5 — the store is done, auth is left
 
 **The store moved.** `cms_store` is a key/value table, not rows, and that is deliberate: `doc.ts`
