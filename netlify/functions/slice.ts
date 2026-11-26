@@ -13,7 +13,7 @@
  * pool to keep warm, and the same key the loader already uses.
  */
 import type { League, Player, SeasonRow, Team } from "../../src/lib/types";
-import { peerRanks } from "../../src/lib/peers";
+import { peerRanks, peerGroupOf } from "../../src/lib/peers";
 import { similarTo, type Similar } from "../../src/lib/similar";
 import { rows, count, CACHE_HEADERS } from "../lib/supabase";
 
@@ -55,6 +55,37 @@ function mini(r: any): Player {
 
 /* ----------------------------------- data ---------------------------------- */
 
+/**
+ * A `slug=in.(…)` filter lives in the URL, and PostgREST answers a long one with 414 instead of rows.
+ * Ask for the slugs in batches so no single request carries a league's worth of names.
+ */
+const SLUG_BATCH = 200;
+
+async function bySlugs(
+  table: string,
+  column: string,
+  select: string,
+  slugs: string[],
+  extra = "",
+): Promise<any[]> {
+  const batches: string[][] = [];
+  for (let i = 0; i < slugs.length; i += SLUG_BATCH) batches.push(slugs.slice(i, i + SLUG_BATCH));
+
+  const out: any[] = [];
+  // a few batches in flight at once: MCLA's attackmen are seven of them, and in series that is the
+  // slowest thing on the page
+  const WAVE = 4;
+  for (let i = 0; i < batches.length; i += WAVE) {
+    const wave = batches.slice(i, i + WAVE).map((batch) =>
+      rows<any>(
+        `${table}?${column}=in.(${batch.map(encodeURIComponent).join(",")})&select=${select}${extra}`,
+      ),
+    );
+    for (const part of await Promise.all(wave)) out.push(...part);
+  }
+  return out;
+}
+
 async function slice(slug: string) {
   const [row] = await rows<any>(`players?slug=eq.${encodeURIComponent(slug)}&select=*`);
   if (!row) return null;
@@ -76,17 +107,27 @@ async function slice(slug: string) {
   ]);
 
   /* peers — one league, one position group, the season being shown. The season rows are what
-   * `peerRanks` scores, so they come from `seasons`; identity comes from the career view. */
+   * `peerRanks` scores, so they come from `seasons`; identity comes from the career view.
+   *
+   * Two things this must not do: spell every slug of the league into one `in.()` list (Division I is
+   * 6,949 players — a 95 KB URL, and the Data API answers 414, which is what broke every large
+   * competition's player page), and narrow the season rows to this league (a peer is scored on the
+   * *first* row he has for that season, which can be a summer box season the browser also sees).
+   *
+   * So: ask the career view for the position group only — the pool `peerRanks` filters to anyway — and
+   * fetch those players' season rows in batches. */
+  const peerCodes = peerGroupOf(player.position);
   const leagueCareer = await rows<any>(
-    `player_career?leagueId=eq.${encodeURIComponent(player.leagueId)}&select=*&order=slug`,
+    `player_career?leagueId=eq.${encodeURIComponent(player.leagueId)}` +
+      `&position=in.(${peerCodes.map(encodeURIComponent).join(",")})&select=*&order=slug`,
   );
-  const peerSlugs = leagueCareer.map((c) => c.slug);
-  const leagueSeasonRows = peerSlugs.length
-    ? await rows<any>(
-        `seasons?season=eq.${latest}&playerSlug=in.(${peerSlugs.map(encodeURIComponent).join(",")})` +
-          `&select=playerSlug,season,teamId,leagueId,type,gp,g,sv,ga,pts&order=playerSlug,ord`,
-      )
-    : [];
+  const leagueSeasonRows = await bySlugs(
+    "seasons",
+    "playerSlug",
+    "playerSlug,season,teamId,leagueId,type,gp,g,sv,ga,pts",
+    leagueCareer.map((c) => c.slug),
+    `&season=eq.${latest}&order=playerSlug,ord`,
+  );
   // first row per player wins: that is what the client's `.find()` does for a split season
   const seasonBySlug = new Map<string, any>();
   for (const s of leagueSeasonRows) if (!seasonBySlug.has(s.playerSlug)) seasonBySlug.set(s.playerSlug, s);
@@ -122,7 +163,7 @@ async function slice(slug: string) {
     for (const r of roster) if (r.playerSlug !== slug) mateSlugs.add(r.playerSlug);
   }
   const mateCareer = mateSlugs.size
-    ? await rows<any>(`player_career?slug=in.(${[...mateSlugs].map(encodeURIComponent).join(",")})&select=*`)
+    ? await bySlugs("player_career", "slug", "*", [...mateSlugs])
     : [];
   // every mate, not a capped sample: the page prints the count in its heading
   const mates = mateCareer

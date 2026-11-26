@@ -109,6 +109,29 @@ def deploy_via_cli(site_id, draft):
     return url
 
 
+LIVE = "https://laxdb.netlify.app"
+
+
+def warm(url):
+    """Ask for each page route once, so the first real visitor meets a warm edge entry.
+
+    Not a substitute for the deploy having worked: a failed warm is a slow first visitor, never a
+    failed deploy, so this prints and returns. `--refresh` because the edge may still be holding
+    the previous build's slice for one TTL after a publish.
+    """
+    script = os.path.join(ROOT, "scripts", "warm-cache.mjs")
+    if not os.path.exists(script):
+        return
+    print(f"warming the edge cache ({url})…")
+    try:
+        subprocess.run(
+            [os.environ.get("NODE_BIN", "node"), script, "--base", url, "--refresh"],
+            cwd=ROOT, timeout=180,
+        )
+    except (subprocess.SubprocessError, OSError) as err:
+        print(f"  ! warm failed: {err}")
+
+
 def smoke(url):
     """The API is the one part of a deploy that fails silently: check it answered."""
     probe = (url or "").rstrip("/") + "/api/session"
@@ -166,6 +189,7 @@ def main():
     if url:
         if not smoke(url) and not draft:
             sys.exit("admin API missing from a production deploy — /api/* is not routed")
+        warm(url if draft else LIVE)
         return
 
     payload = zip_dist()
@@ -191,6 +215,7 @@ def main():
             json.dump({"siteId": site_id}, open(os.path.join(ROOT, ".netlify", "state.json"), "w"))
             if not smoke(url) and not draft:
                 sys.exit("admin API missing from a production deploy — /api/* is not routed")
+            warm(url if draft else LIVE)
             return
         if state == "error":
             sys.exit(f"deploy error: {d}")

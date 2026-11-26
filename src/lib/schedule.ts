@@ -33,7 +33,7 @@ let scoresPromise: Promise<ScorePayload> | null = null;
 export function loadScores(): Promise<ScorePayload> {
   if (!scoresPromise) {
     const base = import.meta.env.BASE_URL;
-    scoresPromise = fetch(`${base}data/page?path=/snapshot&key=scores`, { cache: "no-cache" })
+    scoresPromise = fetch(`${base}data/page?path=/snapshot&key=scores`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null)
       .then((d) => {

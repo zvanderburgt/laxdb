@@ -22,6 +22,10 @@ const GROUPS: Record<string, string[]> = {
   G: ["G"],
 };
 
+/** The position group a player is ranked inside. Exported so a caller building the pool in SQL
+ * filters by exactly the codes `peerRanks` would have used — one definition, two places that read it. */
+export const peerGroupOf = (position: string): string[] => GROUPS[position] ?? ["M", "SSDM"];
+
 export function peerRanks(player: Player, players: Player[] = data.players): PeerRank[] {
   const season = player.seasons.reduce<string | null>(
     (best, s) => (!best || s.season > best ? s.season : best),
@@ -32,7 +36,7 @@ export function peerRanks(player: Player, players: Player[] = data.players): Pee
   const row = player.seasons.find((s) => s.season === season);
   if (!row) return [];
 
-  const group = GROUPS[player.position] ?? ["M", "SSDM"];
+  const group = peerGroupOf(player.position);
   const isGoal = player.position === "G";
 
   const peers = players.filter(
@@ -55,7 +59,12 @@ export function peerRanks(player: Player, players: Player[] = data.players): Pee
       : 0
     : (row.pts || 0) / Math.max(1, row.gp || 0);
 
-  const sorted = [...values.entries()].sort((a, b) => b[1] - a[1]);
+  // ties break on the player id, never on array order: a league with 776 zero-point midfielders was
+  // ranking the same player 1,318th or 1,471st depending on which order the pool arrived in, and the
+  // page reads that number as fact
+  const sorted = [...values.entries()].sort(
+    (a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0),
+  );
   const rank = sorted.findIndex(([id]) => id === player.id) + 1;
 
   const out: PeerRank[] = [];
@@ -75,7 +84,7 @@ export function peerRanks(player: Player, players: Player[] = data.players): Pee
         return s && (s.gp || 0) >= 5 ? { id: p.id, v: (s.g || 0) / Math.max(1, s.gp || 0) } : null;
       })
       .filter((x): x is { id: string; v: number } => Boolean(x))
-      .sort((a, b) => b.v - a.v);
+      .sort((a, b) => b.v - a.v || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     const gRank = gVals.findIndex((x) => x.id === player.id) + 1;
     if (gRank > 0) {
       out.push({

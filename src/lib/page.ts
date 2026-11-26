@@ -77,6 +77,11 @@ export type HomeSlice = {
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
+  | {
+      route: "/scores"; generated: string; playerCount: number; span: [string, string];
+      meta: { generated?: string; season?: string; sources?: string[] } | null;
+      leagues: League[]; teams: TeamRow[];
+    }
   | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
   | HomeSlice
   | {

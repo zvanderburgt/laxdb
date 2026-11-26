@@ -48,7 +48,8 @@ const esc = (s: string) =>
 async function shell(): Promise<string> {
   const res = await fetch(`${SITE}/index.html`, { headers: { "cache-control": "no-cache" } });
   if (!res.ok) throw new Error(`shell fetch failed: ${res.status}`);
-  return res.text();
+  // the built shell carries the home page's baked slice; an entity page has no use for 63 KB of it
+  return (await res.text()).replace(/<!--seed:start-->[\s\S]*?<!--seed:end-->/, "");
 }
 
 type Meta = {

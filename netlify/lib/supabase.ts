@@ -104,9 +104,17 @@ export async function count(path: string): Promise<number> {
   return Number((res.headers.get("content-range") ?? "0-0/0").split("/")[1] ?? 0);
 }
 
-/** The response preamble every read route shares: one query per URL per cache window. */
+/**
+ * The response preamble every read route shares: one query per URL per cache window.
+ *
+ * Two policies, deliberately: the edge holds a slice for five minutes (and serves it stale for ten
+ * while it revalidates), while the *browser* may reuse it for one minute. Without the second header
+ * Netlify answers function responses with `cache-control: no-cache`, so a back button, a nav click
+ * and a revisit each re-run the function — which is what made a cold load take twenty seconds.
+ */
 export const CACHE_HEADERS = {
   "content-type": "application/json",
+  "cache-control": "public, max-age=60, stale-while-revalidate=600",
   // a reload of the dataset should show up in minutes, not the next day
   "netlify-cdn-cache-control": "public, max-age=300, stale-while-revalidate=600",
 };

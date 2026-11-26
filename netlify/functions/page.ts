@@ -88,6 +88,29 @@ async function teamsPage() {
 }
 
 /**
+ * The scores page fetches its own scorecard snapshot and links each game to a club, so all it needs
+ * from here is the club directory — no players, no season rows. Without this branch it had no data
+ * source at all and the nav's Scores link opened an error.
+ */
+async function scoresPage() {
+  const [teams, metaSnap, span] = await Promise.all([
+    rows<TeamRow>("teams?select=id,slug,name,shortName,conference,leagueId,logo,city&order=name"),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+  ]);
+  const meta = metaSnap[0]?.body ?? null;
+  return {
+    route: "/scores",
+    generated: meta?.generated ?? "",
+    meta,
+    playerCount: await count("players"),
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    leagues: [],
+    teams,
+  };
+}
+
+/**
  * The coaches directory is a projection of the staff rows already inside each team record: no player
  * data at all, which is why it needs its own branch rather than the full dataset.
  */
@@ -897,6 +920,9 @@ export default async function handler(req: Request): Promise<Response> {
     }
     if (path === "/teams") {
       return new Response(JSON.stringify(await teamsPage()), { headers: CACHE_HEADERS });
+    }
+    if (path === "/scores") {
+      return new Response(JSON.stringify(await scoresPage()), { headers: CACHE_HEADERS });
     }
     if (path === "/leagues") {
       return new Response(JSON.stringify(await leaguesPage()), { headers: CACHE_HEADERS });

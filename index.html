@@ -27,6 +27,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- The landing page's slice, baked at build time by scripts/bake-home-seed.mjs. Meta.ts removes
+         this block before an entity page is served, so a player page does not carry it. -->
+    <!--seed:start--><!--seed:end-->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

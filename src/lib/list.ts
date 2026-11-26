@@ -40,7 +40,7 @@ export async function fetchPlayerList(
 ): Promise<PlayerListResult> {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v && v !== "all") qs.set(k, v);
-  const res = await fetch(`/data/players?${qs}`, { signal, cache: "no-cache" });
+  const res = await fetch(`/data/players?${qs}`, { signal });
   if (!res.ok) throw new Error(`player list failed: ${res.status}`);
   return (await res.json()) as PlayerListResult;
 }

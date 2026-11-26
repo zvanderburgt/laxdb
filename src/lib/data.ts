@@ -127,16 +127,15 @@ export function fallbackToWire(): void {
 }
 
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
-const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches", "/leaders", "/history", "/origins"]);
+const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches", "/leaders", "/history", "/origins", "/scores"]);
 /** routes that carry their identity in the path: /league/<id> */
 const PAGE_PREFIXES = new Map([
   ["/league", "id"],
   ["/team", "slug"],
 ]);
 
-function pageRoute(): { route: string; query: Record<string, string> } | null {
-  if (typeof window === "undefined" || forceWire()) return null;
-  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+function pageRouteFor(rawPath: string): { route: string; query: Record<string, string> } | null {
+  const path = rawPath.replace(/\/+$/, "") || "/";
   // the home page is "/" on the site and "/home" to the endpoint
   if (path === "/") return { route: "/home", query: {} };
   if (PAGE_ROUTES.has(path)) return { route: path, query: {} };
@@ -146,6 +145,22 @@ function pageRoute(): { route: string; query: Record<string, string> } | null {
     if (param) return { route: `/${segs[0]}`, query: { [param]: decodeURIComponent(segs[1]) } };
   }
   return null;
+}
+
+function pageRoute(): { route: string; query: Record<string, string> } | null {
+  if (typeof window === "undefined" || forceWire()) return null;
+  return pageRouteFor(window.location.pathname);
+}
+
+/**
+ * The endpoint URL for an in-site path, when that path has a page slice — the prefetch map. It is
+ * the same construction `requestPlans()` uses, so a warmed entry is found by the loader afterwards.
+ */
+export function sliceUrlForPath(pathname: string): string | null {
+  if (typeof window === "undefined" || forceWire()) return null;
+  const hit = pageRouteFor(pathname);
+  if (!hit) return null;
+  return `${import.meta.env.BASE_URL}data/page?${new URLSearchParams({ path: hit.route, ...hit.query })}`;
 }
 
 /**
@@ -190,17 +205,10 @@ function teamSetSlugs(): string[] | null {
   return slugs.filter(Boolean).map((s) => decodeURIComponent(s!));
 }
 
-async function loadTeamSet(base: string, slugs: string[]): Promise<boolean> {
-  const qs = new URLSearchParams({ path: "/team-set", slugs: slugs.join(",") });
-  let slice: TeamSetSlice;
-  try {
-    const res = await fetch(`${base}data/page?${qs}`, { cache: "no-cache" });
-    if (!res.ok) return false;
-    slice = (await res.json()) as TeamSetSlice;
-  } catch {
-    return false;
-  }
+/** Apply a team-set body to page state; false when the body is not a team set. */
+export function applyTeamSet(slice: TeamSetSlice): boolean {
   if (slice.route !== "/team-set" || !slice.teams.length) return false;
+  teamSetMode = true;
 
   data = {
     meta: {
@@ -238,8 +246,9 @@ function playerSetKeys(): { slugs?: string; ids?: string } | null {
   if (ids) return { ids };
   if (slugs) return { slugs };
   if (path === "/compare") {
-    const saved = readCompareIds();
-    if (saved.length) return { ids: saved.join(",") };
+    // an empty comparison still resolves: the page has an empty state, and it used to fall back to the
+    // dataset file this build no longer deploys
+    return { ids: readCompareIds().join(",") };
   }
   if (path === "/my-roster") {
     // the roster stores player ids ("p-pll-003159"), not slugs; an empty roster still resolves — the
@@ -250,17 +259,10 @@ function playerSetKeys(): { slugs?: string; ids?: string } | null {
 }
 
 /** The named-player set: /compare, /my-roster, /vs and /game ask for exactly these records. */
-async function loadPlayerSet(base: string, keys: { slugs?: string; ids?: string }): Promise<boolean> {
-  const qs = new URLSearchParams({ path: "/player-set", ...(keys as Record<string, string>) });
-  let slice: PlayerSetSlice;
-  try {
-    const res = await fetch(`${base}data/page?${qs}`, { cache: "no-cache" });
-    if (!res.ok) return false;
-    slice = (await res.json()) as PlayerSetSlice;
-  } catch {
-    return false;
-  }
+/** Apply a named-player set to page state; false when the body is not one. */
+export function applyPlayerSet(slice: PlayerSetSlice): boolean {
   if (slice.route !== "/player-set") return false;
+  playerSetMode = true;
 
   for (const p of slice.players) normalizePlayer(p);
   data = {
@@ -294,24 +296,12 @@ async function loadPlayerSet(base: string, keys: { slugs?: string; ids?: string 
   return true;
 }
 
-async function loadPageSlice(
-  base: string,
-  route: string,
-  query: Record<string, string> = {},
-): Promise<boolean> {
-  let slice: PageSlice;
-  const qs = new URLSearchParams({ path: route, ...query });
-  try {
-    const res = await fetch(`${base}data/page?${qs}`, { cache: "no-cache" });
-    if (!res.ok) return false;
-    slice = (await res.json()) as PageSlice;
-  } catch {
-    return false;
-  }
-
+/** Apply one page slice to page state; false when the body is not a page slice. */
+export function applyPageSlice(slice: PageSlice): boolean {
   if (
     slice.route !== "/leagues" &&
     slice.route !== "/teams" &&
+    slice.route !== "/scores" &&
     slice.route !== "/coaches" &&
     slice.route !== "/leaders" &&
     slice.route !== "/league" &&
@@ -338,11 +328,11 @@ async function loadPageSlice(
           : []
         : slice.route === "/home"
           ? (slice as Extract<PageSlice, { route: "/home" }>).leagues
-        : slice.route === "/history" || slice.route === "/origins"
+        : slice.route === "/history" || slice.route === "/origins" || slice.route === "/scores"
           ? []
           : (slice as Extract<PageSlice, { route: "/leagues" }>).leagues) as Dataset["leagues"],
     // the teams directory draws its own rows; they are the same shape the dataset holds
-    teams: (slice.route === "/teams" || slice.route === "/coaches"
+    teams: (slice.route === "/teams" || slice.route === "/coaches" || slice.route === "/scores"
       ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
       : slice.route === "/league"
         ? (slice as Extract<PageSlice, { route: "/league" }>).teams
@@ -421,6 +411,8 @@ async function loadPageSlice(
         ? (slice as Extract<PageSlice, { route: "/league" }>).players
         : slice.route === "/team"
           ? (slice as Extract<PageSlice, { route: "/team" }>).playerCount
+          : slice.route === "/scores"
+            ? (slice as Extract<PageSlice, { route: "/scores" }>).playerCount
           : slice.route === "/history"
             ? (slice as Extract<PageSlice, { route: "/history" }>).playerCount
             : slice.route === "/origins"
@@ -441,10 +433,11 @@ async function loadPageSlice(
     slice.route === "/team" ||
     slice.route === "/history" ||
     slice.route === "/origins" ||
+    slice.route === "/scores" ||
     slice.route === "/home"
       ? (slice as Extract<PageSlice, { route: "/league" }>).span
       : ["", ""];
-  if (slice.route === "/league" || slice.route === "/team") {
+  if (slice.route === "/league" || slice.route === "/team" || slice.route === "/scores") {
     const meta = (slice as Extract<PageSlice, { route: "/team" }>).meta;
     data.meta.generated = meta?.generated ?? data.meta.generated;
     data.meta.season = meta?.season ?? "";
@@ -463,27 +456,102 @@ function listSlice(): boolean {
 let playerSetMode = false;
 export const playerSetActive = () => playerSetMode;
 
-export async function loadDataset(): Promise<void> {
+/**
+ * What this page is asking for, in the order the routes are tried.
+ *
+ * A plan names the endpoint URL it reads — which is also its cache key — how to fetch it, and how to
+ * paint from the body. Keeping fetch and paint apart is what lets a stored copy paint the page and
+ * the same code path paint it again from the network, so the cache cannot drift from the loader. Two
+ * plans exist only for `/vs` and `/game`: they read the team-set endpoint and fall back to the
+ * named-player endpoint when it has nothing to say.
+ */
+export type RequestPlan = {
+  key: string;
+  fetch: () => Promise<string>;
+  apply: (text: string) => boolean;
+};
+
+function plan(url: string, apply: (body: unknown) => boolean): RequestPlan {
+  return {
+    key: url,
+    fetch: async () => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`${url} answered ${res.status}`);
+      return res.text();
+    },
+    apply: (text: string) => {
+      try {
+        return apply(JSON.parse(text));
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
+function playerPlan(base: string, slug: string): RequestPlan {
+  const inner = plan(`${base}data/player?slug=${encodeURIComponent(slug)}`, (body) => {
+    const slice = body as PlayerSlice;
+    if (!slice || !slice.player) return false;
+    applyPlayerSlice(slice);
+    return true;
+  });
+  return {
+    ...inner,
+    fetch: async () => {
+      try {
+        return await inner.fetch();
+      } catch (err) {
+        // the wire build is the escape hatch, as it always was on this route
+        fallbackToWire();
+        throw err;
+      }
+    },
+  };
+}
+
+/** The slices this URL needs, best candidate first. Empty when the route has no slice at all. */
+export function requestPlans(): RequestPlan[] {
+  if (typeof window === "undefined") return [];
   const base = import.meta.env.BASE_URL;
-
   const slug = sliceSlug();
-  if (slug) {
-    await loadSlice(slug);
-    return;
-  }
+  if (slug) return [playerPlan(base, slug)];
+
+  const plans: RequestPlan[] = [];
   const page = pageRoute();
-  if (page && (await loadPageSlice(base, page.route, page.query))) return;
-
-  const pair = teamSetSlugs();
-  if (pair && (await loadTeamSet(base, pair))) {
-    teamSetMode = true;
-    return;
+  if (page) {
+    const qs = new URLSearchParams({ path: page.route, ...page.query });
+    plans.push(plan(`${base}data/page?${qs}`, (body) => applyPageSlice(body as PageSlice)));
   }
-
+  if (forceWire()) return plans;
+  const pair = teamSetSlugs();
+  if (pair) {
+    const qs = new URLSearchParams({ path: "/team-set", slugs: pair.join(",") });
+    plans.push(plan(`${base}data/page?${qs}`, (body) => applyTeamSet(body as TeamSetSlice)));
+  }
   const set = playerSetKeys();
-  if (set && (await loadPlayerSet(base, set))) {
-    playerSetMode = true;
-    return;
+  if (set) {
+    const qs = new URLSearchParams({ path: "/player-set", ...(set as Record<string, string>) });
+    plans.push(plan(`${base}data/page?${qs}`, (body) => applyPlayerSet(body as PlayerSetSlice)));
+  }
+  return plans;
+}
+
+export async function loadDataset(): Promise<void> {
+  const plans = requestPlans();
+  if (plans.length) {
+    let lastError: unknown = null;
+    for (const candidate of plans) {
+      try {
+        const text = await candidate.fetch();
+        if (candidate.apply(text)) return;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    // every plan answered nothing useful: an error on the /player route is a real error, and the
+    // others fall through to the "no data source" message below
+    if (lastError) throw lastError;
   }
 
   if (listSlice()) {
@@ -529,19 +597,8 @@ export async function loadDataset(): Promise<void> {
  * the three blocks (peers, similarity, teammates) already computed server-side. `data.players` is
  * only ever these players, so nothing here may fall back to scanning it — see src/lib/slice.ts.
  */
-async function loadSlice(slug: string): Promise<void> {
-  const base = import.meta.env.BASE_URL;
-  let slice: PlayerSlice;
-  try {
-    const res = await fetch(`${base}data/player?slug=${encodeURIComponent(slug)}`, { cache: "no-cache" });
-    if (!res.ok) throw new Error(`slice fetch failed: ${res.status}`);
-    slice = (await res.json()) as PlayerSlice;
-  } catch (err) {
-    // the dataset is still on the CDN: one redirect and the page is the old page, not an error
-    fallbackToWire();
-    throw err;
-  }
-
+/** Apply one player slice to page state. */
+export function applyPlayerSlice(slice: PlayerSlice): void {
   const players = [slice.player, ...slice.mates, ...slice.similar.map((s) => s.player)];
   for (const p of players) normalizePlayer(p);
   const seen = new Set<string>();
