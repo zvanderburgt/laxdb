@@ -25,6 +25,27 @@ export type ScoreRow = { date: string; home: string; away: string; hs: number; a
 
 export type ScorePayload = { d1?: ScoreRow[]; pll?: ScoreRow[] };
 
+/**
+ * The scorecard lives in the database now. Six pages read it, so the fetch is shared and memoised;
+ * the file remains the fallback for a build that has not migrated yet, and for `?slice=0`.
+ */
+let scoresPromise: Promise<ScorePayload> | null = null;
+export function loadScores(): Promise<ScorePayload> {
+  if (!scoresPromise) {
+    const base = import.meta.env.BASE_URL;
+    scoresPromise = fetch(`${base}data/page?path=/snapshot&key=scores`, { cache: "no-cache" })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d) => {
+        if (d && (Array.isArray(d.d1) || Array.isArray(d.pll))) return d as ScorePayload;
+        return fetch(`${base}scores.json`)
+          .then((r) => (r.ok ? r.json() : { d1: [], pll: [] }))
+          .catch(() => ({ d1: [], pll: [] }));
+      });
+  }
+  return scoresPromise;
+}
+
 export const normName = (s: string) => (s ?? "").toLowerCase().replace(/[^a-z]/g, "");
 
 const sameTeam = (feedName: string, team: Team) => {

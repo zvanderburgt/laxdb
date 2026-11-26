@@ -245,10 +245,28 @@ async function leaguePage(params: URLSearchParams) {
   };
 }
 
+/**
+ * The importer's auxiliary files — the scorecard, the record books, rankings, the franchise shells —
+ * as one endpoint. Six pages used to fetch scores.json themselves; now they ask here.
+ */
+const SNAPSHOT_KEYS = new Set(["scores", "history-results", "rankings", "rankings-history", "franchises", "meta", "history"]);
+
+async function snapshotPage(params: URLSearchParams) {
+  const key = params.get("key") ?? "";
+  if (!SNAPSHOT_KEYS.has(key)) return { error: "unknown snapshot" };
+  const hit = await rows<{ body: unknown }>(
+    `snapshots?key=eq.${encodeURIComponent(key)}&select=body&limit=1`,
+  );
+  return hit[0]?.body ?? null;
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/snapshot") {
+      return new Response(JSON.stringify(await snapshotPage(url.searchParams)), { headers: CACHE_HEADERS });
+    }
     if (path === "/league") {
       return new Response(JSON.stringify(await leaguePage(url.searchParams)), { headers: CACHE_HEADERS });
     }

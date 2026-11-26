@@ -215,6 +215,28 @@ if (existsSync(gamesPath)) {
   console.log(`opponent-adjusted: ${adjRows.length} player-seasons from ${Object.keys(logs).length} game logs`);
 }
 
+/* --------------------------- auxiliary datasets --------------------------- */
+/**
+ * The importer writes five more files beside data.json: the scorecard, the record books, two rankings
+ * snapshots and the franchise shells. They are small, they never change between builds, and six pages
+ * fetch scores.json alone — so they travel as snapshot rows and the pages stop asking the CDN for a
+ * file.
+ */
+const AUX = [
+  ["scores", "public/scores.json"],
+  ["history-results", "public/history-results.json"],
+  ["rankings", "public/rankings.json"],
+  ["rankings-history", "public/rankings-history.json"],
+  ["franchises", "public/franchises.json"],
+];
+const auxSnapshots = [];
+for (const [key, file] of AUX) {
+  const filePath = process.env.LAXDB_AUX_DIR ? `${process.env.LAXDB_AUX_DIR}/${file.split("/").pop()}` : file;
+  if (!existsSync(filePath)) continue;
+  auxSnapshots.push({ key, body: JSON.parse(readFileSync(filePath, "utf8")) });
+}
+console.log(`auxiliary snapshots: ${auxSnapshots.map((a) => a.key).join(", ") || "none"}`);
+
 const expected = {
   leagues: leagues.length,
   teams: teams.length,
@@ -279,6 +301,13 @@ try {
     `insert into public.snapshots ("key", "body") values ('history', $1::jsonb), ('meta', $2::jsonb)`,
     [JSON.stringify(snapshots[0].body), JSON.stringify(snapshots[1].body)],
   );
+  for (const snap of auxSnapshots) {
+    await client.query(
+      `insert into public.snapshots ("key", "body") values ($1, $2::jsonb)
+       on conflict ("key") do update set "body" = excluded."body"`,
+      [snap.key, JSON.stringify(snap.body)],
+    );
+  }
   await client.query("commit");
 } catch (err) {
   await client.query("rollback");

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { loadScores } from "../lib/schedule";
 import { Link, navigate, useRoute } from "../lib/app";
 import { data, teamBySlug } from "../lib/data";
 import { Card, Empty, SkeletonCard, TeamLogo } from "../components/ui";
@@ -22,8 +23,7 @@ export default function Versus() {
 
   useEffect(() => {
     let alive = true;
-    fetch(`${import.meta.env.BASE_URL}scores.json`)
-      .then((r) => r.json())
+    loadScores()
       .then((p: { d1?: Game[] }) => alive && setGames(p.d1 ?? []))
       .catch(() => alive && setGames([]));
     return () => {

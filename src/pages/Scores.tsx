@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { loadScores } from "../lib/schedule";
 import { Link } from "../lib/app";
 import { teamByName } from "../lib/data";
 import { Card, Provenance, Segmented , Skeleton, SkeletonRows } from "../components/ui";
@@ -21,10 +22,7 @@ export default function Scores() {
 
   useEffect(() => {
     let alive = true;
-    fetch(`${import.meta.env.BASE_URL}scores.json`)
-      .then((r) => r.json())
-      .then((d: Payload) => alive && setPayload(d))
-      .catch(() => alive && setPayload({ d1: [], pll: [] }));
+    loadScores().then((d) => alive && setPayload(d as Payload));
     return () => {
       alive = false;
     };

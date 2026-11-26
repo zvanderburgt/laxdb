@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
+import { loadScores } from "../lib/schedule";
 import { pageSlice, type PageSlice } from "../lib/page";
 import { clubInk } from "../lib/palette";
 import { Link, useRoute, useTheme } from "../lib/app";
@@ -125,10 +126,7 @@ function SeriesCard({ team }: { team: Team }) {
       if (alive) setResult(seriesFor(team, all));
     });
     // the scorecard for each meeting, from the same feed the schedule reads
-    fetch(`${import.meta.env.BASE_URL}scores.json`)
-      .then((r) => r.json())
-      .then((payload: ScorePayload) => alive && setFixtures(fixturesFor(team, payload)))
-      .catch(() => undefined);
+    loadScores().then((payload) => alive && setFixtures(fixturesFor(team, payload)));
     return () => {
       alive = false;
     };
@@ -397,10 +395,7 @@ function ScheduleCard({ team }: { team: Team }) {
 
   React.useEffect(() => {
     let alive = true;
-    fetch(`${import.meta.env.BASE_URL}scores.json`)
-      .then((r) => r.json())
-      .then((payload: ScorePayload) => alive && setFixtures(fixturesFor(team, payload)))
-      .catch(() => alive && setFixtures([]));
+    loadScores().then((payload) => alive && setFixtures(fixturesFor(team, payload)));
     return () => {
       alive = false;
     };

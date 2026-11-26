@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { loadScores } from "../lib/schedule";
 import { Link } from "../lib/app";
 import { data, teamById, teamByName, playerByName } from "../lib/data";
 import { careerWindow, d1Club, recordClimbers } from "../lib/climbers";
@@ -393,8 +394,7 @@ export default function History() {
   const [finals, setFinals] = useState<Record<string, { winner: string; won: number; lost: number; loser: string }>>({});
   useEffect(() => {
     let alive = true;
-    fetch(`${import.meta.env.BASE_URL}scores.json`)
-      .then((r) => r.json())
+    loadScores()
       .then((payload: { d1?: { date: string; home: string; away: string; hs: number; as: number }[] }) => {
         if (!alive || !payload.d1) return;
         const byDate = new Map<string, { date: string; home: string; away: string; hs: number; as: number }>();

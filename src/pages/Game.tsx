@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { loadScores } from "../lib/schedule";
 import { Link, useRoute } from "../lib/app";
 import { data, fmtDate, teamBySlug } from "../lib/data";
 import { Card, Empty, PlayerAvatar, Skeleton, SkeletonRows, Term, TeamLogo } from "../components/ui";
@@ -33,8 +34,7 @@ export default function Game() {
 
   useEffect(() => {
     let alive = true;
-    fetch(`${import.meta.env.BASE_URL}scores.json`)
-      .then((r) => r.json())
+    loadScores()
       // both scorecards we hold: NCAA D1 and the PLL. A PLL game page was showing
       // "no score on file" because only d1 was read.
       .then((p: { d1?: Score[]; pll?: Score[] }) => alive && setScores([...(p.d1 ?? []), ...(p.pll ?? [])]))
