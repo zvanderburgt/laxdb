@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useFlipRows } from "../lib/motion";
 import { Link } from "../lib/app";
 import { data, teamById } from "../lib/data";
+import { pageSlice, type PageSlice } from "../lib/page";
 import { region, regionCode } from "../lib/geo";
 import { BlockList, Card, Empty, Segmented, Term, TeamLogo } from "../components/ui";
 
@@ -18,8 +19,23 @@ type Row = {
 export default function Origins() {
   const [metric, setMetric] = useState<"players" | "rate">("players");
 
+  // a database-backed load carries the birthplace, school and programme, not 26,234 player records
+  const slice = pageSlice("/origins") as Extract<PageSlice, { route: "/origins" }> | null;
+  const people = useMemo(() => {
+    if (slice) {
+      return slice.origins.map((o) => ({
+        teamId: o.teamId,
+        highSchool: o.school,
+        birthplace: { state: o.state },
+      }));
+    }
+    return data.players
+      .filter((p) => p.leagueId === "ncaa-d1")
+      .map((p) => ({ teamId: p.teamId, highSchool: p.highSchool, birthplace: p.birthplace }));
+  }, [slice]);
+
   const rows = useMemo<Row[]>(() => {
-    const d1 = data.players.filter((p) => p.leagueId === "ncaa-d1");
+    const d1 = people;
     const total = d1.length || 1;
     const byState = new Map<string, { players: number; programs: Map<string, number> }>();
 
@@ -73,7 +89,7 @@ export default function Origins() {
   useFlipRows(body, [metric], { max: 30 });
   const byRate = [...rows].sort((a, b) => b.per100k - a.per100k);
   const schools = (() => {
-    const d1 = data.players.filter((p) => p.leagueId === "ncaa-d1" && p.highSchool);
+    const d1 = people.filter((p) => p.highSchool);
     const map = new Map<string, { name: string; players: number; programs: Map<string, number>; states: Map<string, number> }>();
     for (const p of d1) {
       const name = (p.highSchool ?? "").trim();

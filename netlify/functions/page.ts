@@ -575,10 +575,33 @@ async function historyPage() {
   };
 }
 
+/** The origins page: one competition's players reduced to birthplace, school and programme. */
+async function originsPage() {
+  const [origins, teams, span, metaSnap] = await Promise.all([
+    rows<any>(`d1_origins?select=teamId,state,school&order=seq`),
+    // the programme each player reached, so the page can name and link it
+    rows<any>(`teams?leagueId=eq.ncaa-d1&select=id,slug,name,shortName,colors,logo&order=name`),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+  ]);
+  return {
+    route: "/origins",
+    generated: metaSnap[0]?.body?.generated ?? "",
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: await count("players"),
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    teams,
+    origins,
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/origins") {
+      return new Response(JSON.stringify(await originsPage()), { headers: CACHE_HEADERS });
+    }
     if (path === "/history") {
       return new Response(JSON.stringify(await historyPage()), { headers: CACHE_HEADERS });
     }

@@ -48,6 +48,12 @@ export type PageSlice =
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
   | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
   | {
+      route: "/origins"; generated: string; playerCount: number; span: [string, string];
+      meta: { generated?: string; season?: string; sources?: string[] } | null;
+      teams: { id: string; slug: string; name: string; shortName: string; colors: unknown; logo: string | null }[];
+      origins: { teamId: string; state: string; school: string }[];
+    }
+  | {
       route: "/history"; history: unknown;
       teams: { id: string; slug: string; name: string; shortName: string; colors: unknown; logo: string | null }[];
       span: [string, string]; generated: string; playerCount: number;

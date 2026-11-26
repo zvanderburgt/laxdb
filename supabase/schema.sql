@@ -435,6 +435,16 @@ join public.seasons s on s."playerSlug" = p."slug"
 where s."leagueId" = 'ncaa-d1'
 group by p."slug", p."name", p."position", p."positionName", p."photo", p."teamId";
 
+-- The origins page is an aggregate of one competition's players: the state they were born in, the
+-- school they came from, and the programme they reached. 6,900 rows, not 26,234 players.
+create or replace view public.d1_origins as
+select p."teamId",
+       coalesce(p."birthplace" ->> 'state', '') as "state",
+       coalesce(p."highSchool", '') as "school",
+       p."ord" as "seq"
+from public.players p
+where p."leagueId" = 'ncaa-d1';
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -493,7 +503,7 @@ grant select on public.player_career, public.player_current, public.player_list,
   public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
                 public.league_player_current, public.league_totals, public.league_origins, public.player_games,
                 public.team_seasons, public.team_season_leader, public.team_roster, public.team_origins, public.player_lookup,
-                public.climb_window, public.d1_climb,
+                public.climb_window, public.d1_climb, public.d1_origins,
                 public.team_current_totals,
                 public.team_game_rows to service_role;
 

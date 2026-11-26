@@ -82,6 +82,15 @@ export function playerByName(name: string): Player | undefined {
 
 export const leagueById = new Map<string, League>();
 
+/** The origins page asks for birthplace, school and programme — not the whole player record. */
+let originsRows: { teamId: string; state: string; school: string }[] | null = null;
+export function setOriginsRows(rows: { teamId: string; state: string; school: string }[]) {
+  originsRows = rows;
+}
+export function originsOfPlayers(): { teamId: string; state: string; school: string }[] | null {
+  return originsRows;
+}
+
 export let PLAYER_COUNT = 0;
 export let TEAM_COUNT = 0;
 export let SEASON_COUNT = 0;
@@ -119,7 +128,7 @@ export function fallbackToWire(): void {
 }
 
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
-const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches", "/leaders", "/history"]);
+const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches", "/leaders", "/history", "/origins"]);
 /** routes that carry their identity in the path: /league/<id> */
 const PAGE_PREFIXES = new Map([
   ["/league", "id"],
@@ -164,7 +173,8 @@ async function loadPageSlice(
     slice.route !== "/leaders" &&
     slice.route !== "/league" &&
     slice.route !== "/team" &&
-    slice.route !== "/history"
+    slice.route !== "/history" &&
+    slice.route !== "/origins"
   ) {
     return false;
   }
@@ -182,7 +192,7 @@ async function loadPageSlice(
         ? slice.league
           ? [slice.league]
           : []
-        : slice.route === "/history"
+        : slice.route === "/history" || slice.route === "/origins"
           ? []
           : (slice as Extract<PageSlice, { route: "/leagues" }>).leagues) as Dataset["leagues"],
     // the teams directory draws its own rows; they are the same shape the dataset holds
@@ -190,6 +200,8 @@ async function loadPageSlice(
       ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
       : slice.route === "/league"
         ? (slice as Extract<PageSlice, { route: "/league" }>).teams
+        : slice.route === "/origins"
+          ? (slice as Extract<PageSlice, { route: "/origins" }>).teams
         : slice.route === "/history"
           ? (slice as Extract<PageSlice, { route: "/history" }>).teams
         : slice.route === "/team"
@@ -215,6 +227,13 @@ async function loadPageSlice(
         : [],
   } as Dataset;
   if (slice.route === "/team") (data as any).history = slice.history;
+  if (slice.route === "/origins") {
+    const o = slice as Extract<PageSlice, { route: "/origins" }>;
+    data.meta.generated = o.generated || data.meta.generated;
+    data.meta.season = o.meta?.season ?? "";
+    if (o.meta?.sources?.length) data.meta.sources = o.meta.sources;
+    setOriginsRows(o.origins);
+  }
   if (slice.route === "/history") {
     (data as any).history = slice.history;
     // names the record books print, resolved against the players table
@@ -243,12 +262,14 @@ async function loadPageSlice(
           ? (slice as Extract<PageSlice, { route: "/team" }>).playerCount
           : slice.route === "/history"
             ? (slice as Extract<PageSlice, { route: "/history" }>).playerCount
-            : 0;
+            : slice.route === "/origins"
+              ? (slice as Extract<PageSlice, { route: "/origins" }>).playerCount
+              : 0;
   TEAM_COUNT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).teams.length : 0;
   SEASON_COUNT = 0;
   CURRENT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).rows[0]?.season ?? "" : "";
   SEASON_RANGE =
-    slice.route === "/league" || slice.route === "/team" || slice.route === "/history"
+    slice.route === "/league" || slice.route === "/team" || slice.route === "/history" || slice.route === "/origins"
       ? (slice as Extract<PageSlice, { route: "/league" }>).span
       : ["", ""];
   if (slice.route === "/league" || slice.route === "/team") {
