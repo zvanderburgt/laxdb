@@ -1,6 +1,6 @@
 import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, Position } from "./types";
 import { decodeDataset, type WireDataset } from "./wire";
-import { setSlice, type PlayerSlice } from "./slice";
+import { setSlice, sliceFor, type PlayerSlice } from "./slice";
 import { enableListMode } from "./list";
 import { setPageSlice, type PageSlice } from "./page";
 import { useEffect, useState } from "react";
@@ -308,12 +308,20 @@ async function loadSlice(slug: string): Promise<void> {
 
   setSlice(slice);
 
-  PLAYER_COUNT = data.players.length;
+  // the footer quotes the whole dataset, not this one player: the slice carries the true totals so a
+  // database-backed page never prints "247 players" where the wire prints 26,234
+  PLAYER_COUNT = slice.playerCount ?? data.players.length;
   TEAM_COUNT = data.teams.length;
   SEASON_COUNT = data.players.reduce((n, p) => n + p.seasons.length, 0);
-  CURRENT = data.meta.season;
+  CURRENT = slice.meta?.season ?? data.meta.season;
+  if (slice.meta?.sources?.length) data.meta.sources = slice.meta.sources;
+  const span = slice.span;
   const years = slice.player.seasons.map((s) => Number(s.season)).filter(Boolean);
-  SEASON_RANGE = years.length ? [String(Math.min(...years)), String(Math.max(...years))] : ["", ""];
+  SEASON_RANGE = span && span[0]
+    ? span
+    : years.length
+      ? [String(Math.min(...years)), String(Math.max(...years))]
+      : ["", ""];
 }
 
 /** The writer and the CMS store asset paths relative to the deploy root ("players/pll/x.webp").
@@ -946,9 +954,17 @@ export function teamSeasonStats(teamId: string) {
 
 /** Game rows for one player, fetched on first use. `null` while loading. */
 export function usePlayerGames(playerId: string): GameRow[] | null {
-  const [games, setGames] = useState<GameRow[] | null>(null);
+  // the slice already carries this player's log, so a database-backed load never fetches games.json
+  const slice = sliceFor(sliceSlug() ?? "") as { games?: GameRow[] } | null;
+  const [games, setGames] = useState<GameRow[] | null>(slice?.games ?? null);
   useEffect(() => {
     let alive = true;
+    if (slice?.games) {
+      setGames(slice.games);
+      return () => {
+        alive = false;
+      };
+    }
     setGames(null);
     loadGames().then((all) => {
       if (alive) setGames(all[playerId] ?? []);
@@ -956,7 +972,7 @@ export function usePlayerGames(playerId: string): GameRow[] | null {
     return () => {
       alive = false;
     };
-  }, [playerId]);
+  }, [playerId, slice]);
   return games;
 }
 

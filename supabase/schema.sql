@@ -284,6 +284,26 @@ from public.players
 where "birthplace" ->> 'city' is not null
 group by 1, 2, 3;
 
+-- Each player's own game log, which the importer writes to games.json. One row per game so the
+-- player page can ask for one player and the team page can ask for a roster's season at once.
+create table if not exists public.player_games (
+  "playerSlug" text not null,
+  "ord"        integer not null,
+  "season"     text not null,
+  "date"       text not null,
+  "opponent"   text,
+  "result"     text,
+  "g"          integer,
+  "a"          integer,
+  "gb"         integer,
+  "ct"         integer,
+  "sv"         integer,
+  "ga"         integer,
+  "foW"        integer,
+  "foA"        integer,
+  primary key ("playerSlug", "ord")
+);
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -340,7 +360,7 @@ grant select, insert, update, delete on
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
   public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
-                public.league_player_current, public.league_totals, public.league_origins to service_role;
+                public.league_player_current, public.league_totals, public.league_origins, public.player_games to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;

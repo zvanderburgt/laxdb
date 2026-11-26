@@ -43,6 +43,11 @@ const TABLES = {
     ["leagueId", "t"], ["jersey", "i"], ["status", "t"], ["scouting", "j"], ["photo", "t"],
     ["experience", "i"], ["highSchool", "t"], ["careerLine", "j"],
   ],
+  player_games: [
+    ["playerSlug", "t"], ["ord", "i"], ["season", "t"], ["date", "t"], ["opponent", "t"],
+    ["result", "t"], ["g", "i"], ["a", "i"], ["gb", "i"], ["ct", "i"], ["sv", "i"], ["ga", "i"],
+    ["foW", "i"], ["foA", "i"],
+  ],
   player_adj: [
     ["playerSlug", "t"], ["season", "t"], ["games", "i"], ["raw", "n"], ["adjusted", "n"],
     ["avgOppElo", "n"], ["ranked", "i"],
@@ -146,6 +151,7 @@ const snapshots = [
  * importer writes beside the dataset — the page then never fetches games.json.
  */
 let adjRows = [];
+let gameRows = [];
 const gamesPath = process.env.LAXDB_GAMES ?? "public/games.json";
 if (existsSync(gamesPath)) {
   const logs = JSON.parse(readFileSync(gamesPath, "utf8"));
@@ -212,7 +218,27 @@ if (existsSync(gamesPath)) {
       });
     }
   }
-  console.log(`opponent-adjusted: ${adjRows.length} player-seasons from ${Object.keys(logs).length} game logs`);
+  // one row per game, in the order the feed lists them: the player page prints them newest first and
+  // the team page reads a whole roster's season
+  for (const [playerId, games] of Object.entries(logs)) {
+    const slug = slugById.get(playerId);
+    if (!slug || !Array.isArray(games)) continue;
+    games.forEach((g, ord) => {
+      const date = String(g?.date ?? "");
+      if (!date) return;
+      gameRows.push({
+        playerSlug: slug, ord, season: date.slice(0, 4), date,
+        opponent: g?.opponent ?? null, result: g?.result ?? null,
+        g: g?.g ?? null, a: g?.a ?? null, gb: g?.gb ?? null, ct: g?.ct ?? null,
+        sv: g?.sv ?? null, ga: g?.ga ?? null, foW: g?.foW ?? null, foA: g?.foA ?? null,
+      });
+    });
+  }
+
+  console.log(
+    `opponent-adjusted: ${adjRows.length} player-seasons from ${Object.keys(logs).length} game logs · ` +
+      `${gameRows.length} games`,
+  );
 }
 
 /* --------------------------- auxiliary datasets --------------------------- */
@@ -242,7 +268,7 @@ const expected = {
   teams: teams.length,
   players: players.length,
   seasons: seasons.length,
-  snapshots: snapshots.length,
+  snapshots: snapshots.length + auxSnapshots.length,
 };
 console.log(
   `mapped ${expected.players} players · ${expected.seasons} season rows · ${expected.teams} teams · ` +
@@ -290,13 +316,14 @@ async function insert(table, rows) {
 try {
   await client.query("begin");
   await client.query(
-    'truncate public.player_adj, public.seasons, public.players, public.teams, public.leagues, public.snapshots',
+    'truncate public.player_games, public.player_adj, public.seasons, public.players, public.teams, public.leagues, public.snapshots',
   );
   await insert("leagues", leagues);
   await insert("teams", teams);
   await insert("players", players);
   await insert("seasons", seasons);
   await insert("player_adj", adjRows);
+  await insert("player_games", gameRows);
   await client.query(
     `insert into public.snapshots ("key", "body") values ('history', $1::jsonb), ('meta', $2::jsonb)`,
     [JSON.stringify(snapshots[0].body), JSON.stringify(snapshots[1].body)],

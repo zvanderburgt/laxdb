@@ -15,7 +15,7 @@
 import type { League, Player, SeasonRow, Team } from "../../src/lib/types";
 import { peerRanks } from "../../src/lib/peers";
 import { similarTo, type Similar } from "../../src/lib/similar";
-import { rows, CACHE_HEADERS } from "../lib/supabase";
+import { rows, count, CACHE_HEADERS } from "../lib/supabase";
 
 // not /api/*: the admin API registers that wildcard and answers everything else "no such route"
 export const config = { path: "/data/player" };
@@ -60,7 +60,9 @@ async function slice(slug: string) {
   if (!row) return null;
 
   const seasonRows = await rows<any>(
-    `seasons?playerSlug=eq.${encodeURIComponent(slug)}&select=*`,
+    // ordered by the dataset's own index: `currentSeason()` means the *last* row, not the newest, and
+    // without an order Postgres may hand them back differently for the same player
+    `seasons?playerSlug=eq.${encodeURIComponent(slug)}&select=*&order=ord`,
   );
   const player = { ...row, seasons: seasonRows } as unknown as Player;
 
@@ -122,16 +124,26 @@ async function slice(slug: string) {
   const mateCareer = mateSlugs.size
     ? await rows<any>(`player_career?slug=in.(${[...mateSlugs].map(encodeURIComponent).join(",")})&select=*`)
     : [];
+  // every mate, not a capped sample: the page prints the count in its heading
   const mates = mateCareer
     .map(mini)
-    .sort((a, b) => (b.seasons[0]?.pts ?? 0) - (a.seasons[0]?.pts ?? 0))
-    .slice(0, 60);
+    .sort((a, b) => (b.seasons[0]?.pts ?? 0) - (a.seasons[0]?.pts ?? 0));
 
   const similar: Similar[] = similarTo(self, 6, groupPool);
   const peers = peerRanks(player, peerPool);
 
+  // the footer and the head quote the dataset's own stamp and totals, not the moment of this request
+  const [metaSnap, span] = await Promise.all([
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+  ]);
+  const totalPlayers = await count("players");
+
   return {
-    generated: new Date().toISOString(),
+    generated: metaSnap[0]?.body?.generated ?? new Date().toISOString(),
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: totalPlayers,
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
     player,
     peers,
     similar,
@@ -139,6 +151,10 @@ async function slice(slug: string) {
     teams,
     leagues,
     history: history[0]?.body ?? null,
+    // the player's own game log, which used to be a 3.5 MB file fetched by every page
+    games: await rows<any>(
+      `player_games?playerSlug=eq.${encodeURIComponent(player.slug)}&select=date,opponent,result,g,a,gb,ct,sv,ga,foW,foA&order=ord`,
+    ),
     counts: {
       peerPool: peerPool.length,
       groupPool: groupPool.length,

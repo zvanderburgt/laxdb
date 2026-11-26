@@ -18,6 +18,7 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/player/<slug>` (game log) | **71 KB gzipped**, one request (was 1,608,503 B + `games.json`) | **1.51 s / 1.52 s / 1.53 s** (was 9.62 / 9.74 / 9.83) | full page text byte-identical on four players, footer included |
 | `/scores` (scorecard) | **118 KB snapshot**, one shared request for six pages | unchanged head line: 569 games across 71 dates | the file is gone from every page that read it — `/scores`, both team cards, `/game`, `/vs`, `/history` |
 | `/league/<id>` | **2.2 s at ~1.1 MB** (was 1,608,531 B / 9.73 s) — the payload is the whole competition, which is what the page ranks | **2.25 s / 2.25 s / 2.30 s** (was 9.73 / 9.73 / 9.78) | hero line, the four stats, the standings table and both origin lists, on ncaa-d1 and pll |
 | `/leaders` | **97,946 B** season / **210,400 B** career (was 1,608,531) | **1.64 s / 1.66 s / 1.67 s** (was 9.70 / 9.77 / 9.95) | head line, the default board, the career board, a season switch, the Pts-per-game category and the Attack filter, all compared row for row |
@@ -48,6 +49,18 @@ number. Three things had to be got right for the number to match the wire build:
 - `rows()` cached for five minutes per instance and the CDN for up to a day, so a reload could serve
   a stale board: the query cache is 60 s now, `stale-while-revalidate` is 10 minutes, and the client
   keys its refetch on the dataset's build stamp.
+
+**`games.json` is a table now.** The importer's 28,819 game rows (3,043 player logs) live in
+`player_games`, and the player slice carries its own log, so the page asks one endpoint and fetches no
+file. Three parity breaks surfaced while checking the page text rather than a section of it:
+
+- the teammate list was capped at 60 in the slice while the page prints the count in its heading
+  ("Teammates · 240"), so the cap had to go;
+- the footer reads `data.players.length`, and a slice only ever holds one player's circle — 247 where
+  the dataset has 26,234 — so it reads `PLAYER_COUNT`, which the slice now supplies along with the real
+  source list and build stamp;
+- `seasons` came back from PostgREST without an `order by`, so `currentSeason()` (the *last* row, not
+  the newest) picked a different season for one player in four; the query now orders by `ord`.
 
 **Three separate correctness findings on `/leaders`**, each caught by diffing rows rather than trusting
 the shape:

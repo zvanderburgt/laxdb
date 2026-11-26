@@ -10,6 +10,7 @@ import {
   teamById,
   teamOf,
   positionLabel,
+  PLAYER_COUNT,
 } from "../lib/data";
 import { PlayerAvatar } from "./ui";
 
@@ -371,7 +372,7 @@ export function Footer() {
             <span>MCLA</span>
             <span>Premier Lacrosse League</span>
             <span>16 Canadian box leagues</span>
-            <span>{data.players.length.toLocaleString()} players</span>
+            <span>{PLAYER_COUNT.toLocaleString()} players</span>
           </div>
           <div>
             <h4>Sources</h4>
@@ -379,7 +380,7 @@ export function Footer() {
               <span key={s}>{s}</span>
             ))}
             <span className="footer-stamp">
-              Updated {fmtDate(data.meta.generated)} · {data.players.length.toLocaleString()} players
+              Updated {fmtDate(data.meta.generated)} · {PLAYER_COUNT.toLocaleString()} players
             </span>
           </div>
         </div>

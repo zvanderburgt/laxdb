@@ -1,4 +1,5 @@
 import type { League, Player, Team } from "./types";
+import type { GameRow } from "./types";
 import type { PeerRank } from "./peers";
 import type { Similar } from "./similar";
 
@@ -18,6 +19,10 @@ export type PlayerSlice = {
   teams: Team[];
   leagues: League[];
   history: unknown;
+  games: GameRow[];
+  playerCount?: number;
+  span?: [string, string];
+  meta?: { generated?: string; season?: string; sources?: string[] } | null;
   counts: { peerPool: number; groupPool: number; mates: number };
 };
 
