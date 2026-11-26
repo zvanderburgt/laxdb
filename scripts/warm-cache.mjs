@@ -15,7 +15,8 @@
  *   node scripts/warm-cache.mjs --base https://deploy-preview-1--laxdb.netlify.app
  *   node scripts/warm-cache.mjs --quiet        one summary line (for cron)
  *   node scripts/warm-cache.mjs --refresh      ask the edge to re-store, not to serve what it has
- *   node scripts/warm-cache.mjs --home         only the landing page (the five-minute cron)
+ *   node scripts/warm-cache.mjs --home         only the landing page
+ *   node scripts/warm-cache.mjs --routes=/home,/history,/leaders   the five-minute cron
  *
  * `--home` exists because the instance, not the entry, is the thing that expires: measured at 04:12,
  * six minutes after a full warm, `/home` still took 17.9 s — the function had been recycled. One
@@ -24,6 +25,8 @@
  */
 const args = process.argv.slice(2);
 const flag = (name) => {
+  const inline = args.find((a) => a.startsWith(`${name}=`));
+  if (inline) return inline.slice(name.length + 1);
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] ?? null : null;
 };
@@ -37,7 +40,8 @@ const headers = refresh
 
 /** The routes the client maps to /data/page. `/players` is query-driven and is not warmed. */
 const ALL = ["/home", "/leagues", "/teams", "/coaches", "/leaders", "/history", "/origins"];
-const ROUTES = args.includes("--home") ? ["/home"] : ALL;
+const picked = (flag("--routes") ?? "").split(",").map((r) => r.trim()).filter(Boolean);
+const ROUTES = args.includes("--home") ? ["/home"] : picked.length ? picked : ALL;
 
 const kb = (n) => `${Math.round(n / 1024)} KB`;
 const tally = { hit: 0, stale: 0, miss: 0 };
