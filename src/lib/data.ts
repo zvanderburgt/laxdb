@@ -115,21 +115,34 @@ export function fallbackToWire(): void {
 
 /** Routes the database answers through /data/page (docs/supabase-migration.md, "route coverage"). */
 const PAGE_ROUTES = new Set(["/leagues", "/teams", "/coaches", "/leaders"]);
+/** routes that carry their identity in the path: /league/<id> */
+const PAGE_PREFIXES = new Map([["/league", "id"]]);
 
-function pageRoute(): string | null {
+function pageRoute(): { route: string; query: Record<string, string> } | null {
   if (typeof window === "undefined" || forceWire()) return null;
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
-  return PAGE_ROUTES.has(path) ? path : null;
+  if (PAGE_ROUTES.has(path)) return { route: path, query: {} };
+  const segs = path.split("/").filter(Boolean);
+  if (segs.length === 2) {
+    const param = PAGE_PREFIXES.get(`/${segs[0]}`);
+    if (param) return { route: `/${segs[0]}`, query: { [param]: decodeURIComponent(segs[1]) } };
+  }
+  return null;
 }
 
 /**
  * One route's data from the database. Returns false when the endpoint has no branch for the route,
  * and the caller falls through to the dataset file — a missing slice must never be a broken page.
  */
-async function loadPageSlice(base: string, route: string): Promise<boolean> {
+async function loadPageSlice(
+  base: string,
+  route: string,
+  query: Record<string, string> = {},
+): Promise<boolean> {
   let slice: PageSlice;
+  const qs = new URLSearchParams({ path: route, ...query });
   try {
-    const res = await fetch(`${base}data/page?path=${encodeURIComponent(route)}`, { cache: "no-cache" });
+    const res = await fetch(`${base}data/page?${qs}`, { cache: "no-cache" });
     if (!res.ok) return false;
     slice = (await res.json()) as PageSlice;
   } catch {
@@ -140,7 +153,8 @@ async function loadPageSlice(base: string, route: string): Promise<boolean> {
     slice.route !== "/leagues" &&
     slice.route !== "/teams" &&
     slice.route !== "/coaches" &&
-    slice.route !== "/leaders"
+    slice.route !== "/leaders" &&
+    slice.route !== "/league"
   ) {
     return false;
   }
@@ -152,11 +166,15 @@ async function loadPageSlice(base: string, route: string): Promise<boolean> {
       season: "",
       sources: [],
     },
-    leagues: slice.leagues as Dataset["leagues"],
+    leagues: (slice.route === "/league"
+      ? [slice.league]
+      : (slice as Extract<PageSlice, { route: "/leagues" }>).leagues) as Dataset["leagues"],
     // the teams directory draws its own rows; they are the same shape the dataset holds
     teams: (slice.route === "/teams" || slice.route === "/coaches"
       ? (slice as Extract<PageSlice, { route: "/teams" }>).teams
-      : []) as unknown as Dataset["teams"],
+      : slice.route === "/league"
+        ? (slice as Extract<PageSlice, { route: "/league" }>).teams
+        : []) as unknown as Dataset["teams"],
     players: [],
   } as Dataset;
   for (const l of data.leagues) leagueById.set(l.id, l);
@@ -166,11 +184,17 @@ async function loadPageSlice(base: string, route: string): Promise<boolean> {
     teamBySlug.set(t.slug, t);
   }
 
-  PLAYER_COUNT = slice.route === "/leagues" ? (slice as Extract<PageSlice, { route: "/leagues" }>).totalPlayers : 0;
-  TEAM_COUNT = 0;
+  PLAYER_COUNT =
+    slice.route === "/leagues"
+      ? (slice as Extract<PageSlice, { route: "/leagues" }>).totalPlayers
+      : slice.route === "/league"
+        ? (slice as Extract<PageSlice, { route: "/league" }>).players
+        : 0;
+  TEAM_COUNT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).teams.length : 0;
   SEASON_COUNT = 0;
-  CURRENT = "";
-  SEASON_RANGE = ["", ""];
+  CURRENT = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).rows[0]?.season ?? "" : "";
+  SEASON_RANGE = slice.route === "/league" ? (slice as Extract<PageSlice, { route: "/league" }>).span : ["", ""];
+  if (slice.route === "/league") data.meta.season = CURRENT;
   setPageSlice(slice);
   return true;
 }
@@ -189,7 +213,7 @@ export async function loadDataset(): Promise<void> {
     return;
   }
   const page = pageRoute();
-  if (page && (await loadPageSlice(base, page))) return;
+  if (page && (await loadPageSlice(base, page.route, page.query))) return;
 
   if (listSlice()) {
     // the table asks the database for its page; there is no dataset to load at all

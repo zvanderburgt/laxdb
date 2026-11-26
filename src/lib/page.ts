@@ -29,10 +29,24 @@ export type LeaderRow = {
   adj?: number | null;
 };
 
+export type LeagueRowSlice = {
+  slug: string; name: string; position: string; positionName: string; teamId: string;
+  photo: string | null; season: string;
+  gp: number; g: number; a: number; pts: number; sh: number; gb: number; ct: number;
+  foW: number; foA: number; sv: number; ga: number; w: number; l: number;
+};
+
+export type OriginRow = { label: string; count: number };
+
 export type PageSlice =
   | { route: "/leagues"; totalPlayers: number; leagues: League[]; cards: LeagueCardRow[] }
   | { route: "/teams"; leagues: League[]; teams: TeamRow[] }
   | { route: "/coaches"; leagues: League[]; teams: (TeamRow & { staff: unknown[] | null })[] }
+  | {
+      route: "/league"; league: League; teams: TeamRow[]; players: number; careerGoals: number;
+      span: [string, string]; origins: { schools: OriginRow[]; towns: OriginRow[] };
+      rows: LeagueRowSlice[];
+    }
   | {
       route: "/leaders"; generated: string; league: string; scope: "season" | "career"; season: string;
       seasons: string[]; leagues: League[]; leaguePpg: number; rows: LeaderRow[];

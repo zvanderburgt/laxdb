@@ -250,6 +250,40 @@ create table if not exists public.player_adj (
   primary key ("playerSlug", "season")
 );
 
+-- A league page is one competition's current season: every player whose league this is, with the
+-- season row the page means by `currentSeason()` (the last one, not the newest — see seasons."ord").
+create or replace view public.league_player_current as
+select p."leagueId" as "playerLeague", p."slug", p."name", p."position", p."positionName",
+       p."photo", c."teamId", c."season",
+       c."gp", c."g", c."a", c."pts", c."sh", c."gb", c."ct",
+       c."foW", c."foA", c."sv", c."ga", c."w", c."l", p."birthplace", p."highSchool"
+from public.players p
+join public.player_current c on c."playerSlug" = p."slug";
+
+-- Two numbers the hero prints: how many players and what their careers add up to.
+create or replace view public.league_totals as
+select p."leagueId",
+       count(*)::int as "players",
+       coalesce(sum(pc."g"), 0)::int as "careerGoals"
+from public.players p
+left join public.player_career pc on pc."slug" = p."slug"
+group by 1;
+
+-- "Where they come from": the counts behind the two lists, aggregated in SQL rather than by shipping
+-- 3,000 birthplaces to the browser.
+create or replace view public.league_origins as
+select "leagueId", 'school' as "kind", btrim("highSchool") as "label", count(*)::int as "n"
+from public.players
+where "highSchool" is not null and btrim("highSchool") <> ''
+group by 1, 2, 3
+union all
+select "leagueId", 'town',
+       btrim(concat_ws(', ', "birthplace" ->> 'city', "birthplace" ->> 'state')),
+       count(*)::int
+from public.players
+where "birthplace" ->> 'city' is not null
+group by 1, 2, 3;
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -305,7 +339,8 @@ grant select, insert, update, delete on
   to service_role;
 grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
-  public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj to service_role;
+  public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
+                public.league_player_current, public.league_totals, public.league_origins to service_role;
 
 -- The CMS talks to the store through the function, never directly from the browser.
 grant select on public.players, public.teams, public.leagues to authenticated;

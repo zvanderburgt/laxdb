@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { miniPlayer, pageSlice, type PageSlice } from "../lib/page";
+import type { Player } from "../lib/types";
 import { useFlipRows } from "../lib/motion";
 import { Link, useRoute } from "../lib/app";
 import {
@@ -553,10 +554,36 @@ function StandingsCard({ league }: { league: League }) {
   );
 }
 
+type LeagueSlice = Extract<PageSlice, { route: "/league" }>;
+
 export function LeaguePage() {
   const route = useRoute();
   const id = route.path.split("/")[2] ?? "";
   const league = leagueById.get(id);
+  // a database-backed load carries this competition's players, clubs and origin counts
+  const slice = pageSlice("/league") as LeagueSlice | null;
+  const poolOf = (): { p: Player; s: any }[] => {
+    if (slice) {
+      return slice.rows.map((r) => ({
+        p: {
+          id: r.slug, slug: r.slug, name: r.name,
+          firstName: r.name.split(" ")[0] ?? "",
+          lastName: r.name.split(" ").slice(1).join(" "),
+          position: r.position, positionName: r.positionName,
+          teamId: r.teamId, photo: r.photo ?? undefined, seasons: [],
+        } as unknown as Player,
+        s: {
+          season: r.season, gp: r.gp, g: r.g, a: r.a, pts: r.pts, sh: r.sh, gb: r.gb, ct: r.ct,
+          foW: r.foW, foA: r.foA, sv: r.sv, ga: r.ga, w: r.w, l: r.l,
+          svp: r.sv + r.ga > 0 ? r.sv / (r.sv + r.ga) : 0,
+        },
+      }));
+    }
+    return data.players
+      .filter((p) => p.leagueId === id)
+      .map((p) => ({ p, s: currentSeason(p) }));
+  };
+  const teamFor = (tid: string) => (slice ? teamById.get(tid) : teamById.get(tid));
   const [stat, setStat] = useState<(typeof STATS)[number]["value"]>("pts");
   const [pos, setPos] = useState<string>("all");
   const [sortKey, setSortKey] = useState<"val" | "gp" | "g" | "a" | "pts" | "ppg">("val");
@@ -572,9 +599,9 @@ export function LeaguePage() {
   // the previous league page falls back to "all" instead of emptying the table.
   const posOptions = useMemo<string[]>(() => {
     const seen = new Set<string>();
-    for (const p of data.players) if (p.leagueId === league?.id && p.position) seen.add(p.position);
+    for (const r of poolOf()) if (r.p.position) seen.add(r.p.position);
     return positionOrder.filter((c) => seen.has(c));
-  }, [league?.id]);
+  }, [league?.id, slice]);
   const activePos = pos === "all" || posOptions.includes(pos) ? pos : "all";
 
   if (!league) {
@@ -586,10 +613,9 @@ export function LeaguePage() {
     );
   }
 
-  const pool = data.players.filter((p) => p.leagueId === league.id && (activePos === "all" ? true : p.position === activePos));
+  const pool = poolOf().filter((r) => (activePos === "all" ? true : r.p.position === activePos));
   const rows = pool
-    .map((p) => {
-      const s = currentSeason(p);
+    .map(({ p, s }) => {
       const val =
         stat === "svp"
           ? s.sv + s.ga > 0
@@ -642,11 +668,11 @@ export function LeaguePage() {
     }
   };
 
-  const teams = leagueTeams(league.id);
-  const origins = leagueOrigins(league.id);
-  const totalGoals = data.players
-    .filter((p) => p.leagueId === league.id)
-    .reduce((n, p) => n + careerTotals(p).g, 0);
+  const teams = slice ? (slice.teams as unknown as typeof leagueTeams extends never ? never : any[]) : leagueTeams(league.id);
+  const origins = slice ? slice.origins : leagueOrigins(league.id);
+  const totalGoals = slice
+    ? slice.careerGoals
+    : data.players.filter((p) => p.leagueId === league.id).reduce((n, p) => n + careerTotals(p).g, 0);
 
   return (
     <div className="profile">
@@ -868,8 +894,9 @@ export function LeaguePage() {
             </Card>
             <Card>
               <div className="eyebrow">Goalie leaders · save %</div>
-              {data.players
-                .filter((p) => p.leagueId === league.id && p.position === "G")
+              {poolOf()
+                .map((r) => r.p)
+                .filter((p) => p.position === "G")
                 .sort((a, b) => {
                   const sv = (x: typeof a) => {
                     const s = currentSeason(x);

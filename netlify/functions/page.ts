@@ -191,10 +191,67 @@ async function leadersPage(params: URLSearchParams) {
   };
 }
 
+/**
+ * A competition's page: its record, its clubs, and one row per player carrying the season the page
+ * calls current. The origin lists are two group-bys, not 3,000 birthplaces.
+ */
+async function leaguePage(params: URLSearchParams) {
+  const id = params.get("id") ?? "";
+  if (!id) return { route: "/league", error: "id required" };
+
+  const [leagues, teams, totals, originRows, span] = await Promise.all([
+    rows<any>(`leagues?id=eq.${encodeURIComponent(id)}&select=*`),
+    rows<any>(
+      `teams?leagueId=eq.${encodeURIComponent(id)}&select=id,slug,name,shortName,logo,colors,record,conference&order=name`,
+    ),
+    rows<{ players: number; careerGoals: number }>(
+      `league_totals?leagueId=eq.${encodeURIComponent(id)}&select=*`,
+    ),
+    rows<{ kind: string; label: string; n: number }>(
+      `league_origins?leagueId=eq.${encodeURIComponent(id)}&select=kind,label,n&order=n.desc&limit=400`,
+    ),
+    // the hero prints the span the dataset covers, not just the league's newest season
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+  ]);
+  const league = leagues[0];
+  if (!league) return { route: "/league", error: "not found" };
+
+  const rowsOut = await rows<any>(
+    `league_player_current?playerLeague=eq.${encodeURIComponent(id)}&select=*&order=pts.desc`,
+  );
+
+  const top = (kind: string) =>
+    originRows
+      .filter((o) => o.kind === kind && o.label)
+      .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
+      .slice(0, 6)
+      .map((o) => ({ label: o.label, count: o.n }));
+
+  return {
+    route: "/league",
+    league,
+    teams,
+    players: totals[0]?.players ?? rowsOut.length,
+    careerGoals: totals[0]?.careerGoals ?? 0,
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    origins: { schools: top("school"), towns: top("town") },
+    rows: rowsOut.map((r) => ({
+      slug: r.slug, name: r.name, position: r.position, positionName: r.positionName,
+      teamId: r.teamId, photo: r.photo, season: r.season,
+      gp: r.gp ?? 0, g: r.g ?? 0, a: r.a ?? 0, pts: r.pts ?? 0, sh: r.sh ?? 0, gb: r.gb ?? 0,
+      ct: r.ct ?? 0, foW: r.foW ?? 0, foA: r.foA ?? 0, sv: r.sv ?? 0, ga: r.ga ?? 0,
+      w: r.w ?? 0, l: r.l ?? 0,
+    })),
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/league") {
+      return new Response(JSON.stringify(await leaguePage(url.searchParams)), { headers: CACHE_HEADERS });
+    }
     if (path === "/leaders") {
       return new Response(JSON.stringify(await leadersPage(url.searchParams)), { headers: CACHE_HEADERS });
     }
