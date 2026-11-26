@@ -2,7 +2,7 @@ import type { CareerTotals, Dataset, GameRow, Player, SeasonRow, Team, League, P
 import { decodeDataset, type WireDataset } from "./wire";
 import { setSlice, sliceFor, type PlayerSlice } from "./slice";
 import { enableListMode } from "./list";
-import { setPageSlice, type PlayerSetSlice, type PageSlice } from "./page";
+import { setPageSlice, type PlayerSetSlice, type TeamSetSlice, type PageSlice } from "./page";
 import { useEffect, useState } from "react";
 
 /** Populated by loadDataset() before the app renders (see main.tsx). */
@@ -165,7 +165,7 @@ function readCompareIds(): string[] {
   }
 }
 
-function readRosterSlugs(): string[] {
+function readRosterIds(): string[] {
   try {
     const raw = localStorage.getItem("laxdb.roster.v1");
     const parsed = raw ? JSON.parse(raw) : [];
@@ -173,6 +173,59 @@ function readRosterSlugs(): string[] {
   } catch {
     return [];
   }
+}
+
+/** True when this page was filled from the team-set endpoint. */
+let teamSetMode = false;
+export const teamSetActive = () => teamSetMode;
+
+/** /vs and /game name two clubs in the path. */
+function teamSetSlugs(): string[] | null {
+  const path = window.location.pathname.replace(/\/+$/, "");
+  const hit = path.match(/^\/(vs|game)\/([^/]+)\/([^/]+)(?:\/([^/]+))?/);
+  if (!hit) return null;
+  // /vs/<a>/<b> but /game/<date>/<home>/<away>
+  const slugs = hit[1] === "game" ? [hit[3], hit[4]] : [hit[2], hit[3]];
+  return slugs.filter(Boolean).map((s) => decodeURIComponent(s!));
+}
+
+async function loadTeamSet(base: string, slugs: string[]): Promise<boolean> {
+  const qs = new URLSearchParams({ path: "/team-set", slugs: slugs.join(",") });
+  let slice: TeamSetSlice;
+  try {
+    const res = await fetch(`${base}data/page?${qs}`, { cache: "no-cache" });
+    if (!res.ok) return false;
+    slice = (await res.json()) as TeamSetSlice;
+  } catch {
+    return false;
+  }
+  if (slice.route !== "/team-set" || !slice.teams.length) return false;
+
+  data = {
+    meta: {
+      generated: slice.generated,
+      dataset: "Supabase",
+      season: slice.meta?.season ?? "",
+      sources: slice.meta?.sources ?? [],
+    },
+    leagues: slice.leagues,
+    // the two clubs in full, then the competition's list the pickers read
+    teams: [...slice.teams, ...slice.allTeams] as Dataset["teams"],
+    players: [],
+    history: null as unknown as Dataset["history"],
+  } as Dataset;
+
+  for (const t of data.teams) {
+    t.logo = assetUrl(t.logo);
+    teamById.set(t.id, t);
+    teamBySlug.set(t.slug, t);
+  }
+  for (const l of data.leagues) leagueById.set(l.id, l);
+  PLAYER_COUNT = slice.playerCount;
+  TEAM_COUNT = slice.allTeams.length;
+  SEASON_RANGE = slice.span;
+  CURRENT = slice.meta?.season ?? "";
+  return true;
 }
 
 function playerSetKeys(): { slugs?: string; ids?: string } | null {
@@ -188,8 +241,9 @@ function playerSetKeys(): { slugs?: string; ids?: string } | null {
     if (saved.length) return { ids: saved.join(",") };
   }
   if (path === "/my-roster") {
-    const saved = readRosterSlugs();
-    if (saved.length) return { slugs: saved.join(",") };
+    // the roster stores player ids ("p-pll-003159"), not slugs
+    const saved = readRosterIds();
+    if (saved.length) return { ids: saved.join(",") };
   }
   return null;
 }
@@ -389,6 +443,12 @@ export async function loadDataset(): Promise<void> {
   }
   const page = pageRoute();
   if (page && (await loadPageSlice(base, page.route, page.query))) return;
+
+  const pair = teamSetSlugs();
+  if (pair && (await loadTeamSet(base, pair))) {
+    teamSetMode = true;
+    return;
+  }
 
   const set = playerSetKeys();
   if (set && (await loadPlayerSet(base, set))) {

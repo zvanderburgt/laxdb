@@ -18,6 +18,9 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/my-roster` | **8,417 B** for a three-player roster (was 1,608,531 B) | unchanged render | roster text identical; the page reads the visitor's saved ids and asks for those records |
+| `/vs/<a>/<b>` | **7,797 B + 13,668 B** scorecard (was 1,608,531 B + `scores.json`) | unchanged render | identical on three pairs, including two with meetings |
+| `/game/<d>/<a>/<b>` | **7,799 B + 13,628 B + 1,983 B box** (was 1,608,531 B + `scores.json` + `games.json`) | — | data path converted; the page itself crashes in **both** modes on every URL (see below) |
 | `/compare` | **7,567 B** (was 1,608,531 B) — only the players on screen | unchanged render | two deep-linked players identical, and the typeahead answers from `/data/page?path=/search` instead of a 26k-name index |
 | `/origins` | **59,531 B gzipped** (was 1,608,531 B) | **1.52 s / 1.52 s / 1.52 s** (was 9.60 / 9.65 / 9.70) | whole page text identical: state table, per-100k column, school list and the header totals |
 | `/history` | **178,420 B** (was 1,608,531 B) | **1.33 s / 1.35 s** warm (3.58 s cold) against 9.63–9.68 s | whole page text identical: record books, champions, programs, Tewaaraton, All-Americans, the climbers card and the footer |
@@ -53,6 +56,13 @@ number. Three things had to be got right for the number to match the wire build:
 - `rows()` cached for five minutes per instance and the CDN for up to a day, so a reload could serve
   a stale board: the query cache is 60 s now, `stale-while-revalidate` is 10 minutes, and the client
   keys its refetch on the dataset's build stamp.
+
+**A pre-existing crash on `/game`.** Every game URL renders "Cannot read properties of undefined
+(reading 'replace')" from the same save of the site in *both* modes, so it is not a migration
+regression — the page's render throws before it can draw, and did so before this work. The data side
+is now ready: `/data/page?path=/team-set` gives the two clubs, `/snapshot?key=scores` the score, and
+`/data/page?path=/box&date=…&teams=…` the 40 lines that used to be found by scanning 26,234 logs.
+Fixing the render is a separate, small job.
 
 **`/team/<slug>` is the last page that read `games.json`, and it no longer does.** The club page needs
 four different cuts of the same rows — seasons played, the leading scorer of each, the roster, and the

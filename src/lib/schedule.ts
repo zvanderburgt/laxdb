@@ -51,7 +51,8 @@ export const normName = (s: string) => (s ?? "").toLowerCase().replace(/[^a-z]/g
 const sameTeam = (feedName: string, team: Team) => {
   const a = normName(feedName);
   if (!a) return false;
-  return [team.name, team.shortName, team.slug.replace(/-/g, " ")]
+  // a franchise shell in the wire carries no slug; the scorecard still has to match on its names
+  return [team.name, team.shortName, (team.slug ?? "").replace(/-/g, " ")]
     .map(normName)
     .some((b) => b && (a.startsWith(b) || b.startsWith(a)));
 };

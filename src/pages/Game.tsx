@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { loadScores } from "../lib/schedule";
 import { Link, useRoute } from "../lib/app";
-import { data, fmtDate, teamBySlug } from "../lib/data";
+import { data, fmtDate, teamBySlug, teamSetActive } from "../lib/data";
 import { Card, Empty, PlayerAvatar, Skeleton, SkeletonRows, Term, TeamLogo } from "../components/ui";
 import type { GameRow } from "../lib/types";
 
@@ -14,7 +14,7 @@ import type { GameRow } from "../lib/types";
 
 type Score = { date: string; home: string; away: string; hs: number; as: number; venue?: string };
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
+const norm = (s?: string) => (s ?? "").toLowerCase().replace(/[^a-z]/g, "");
 const similar = (a: string, b: string) => {
   const x = norm(a);
   const y = norm(b);
@@ -39,10 +39,15 @@ export default function Game() {
       // "no score on file" because only d1 was read.
       .then((p: { d1?: Score[]; pll?: Score[] }) => alive && setScores([...(p.d1 ?? []), ...(p.pll ?? [])]))
       .catch(() => alive && setScores([]));
-    fetch(`${import.meta.env.BASE_URL}games.json`)
-      .then((r) => r.json())
-      .then((p: Record<string, GameRow[]>) => alive && setLogs(p))
-      .catch(() => alive && setLogs({}));
+    if (teamSetActive()) {
+      // the box score comes from /data/page?path=/box; the 3.5 MB log stays on the server
+      setLogs({});
+    } else {
+      fetch(`${import.meta.env.BASE_URL}games.json`)
+        .then((r) => r.json())
+        .then((p: Record<string, GameRow[]>) => alive && setLogs(p))
+        .catch(() => alive && setLogs({}));
+    }
     return () => {
       alive = false;
     };
@@ -59,7 +64,28 @@ export default function Game() {
     [scores, date, home, away],
   );
 
+  // a database-backed load asks for the box score of this fixture instead of scanning every log
+  const [box, setBox] = useState<any[] | null>(null);
+  useEffect(() => {
+    if (!home || !away || !teamSetActive()) return;
+    const ctl = new AbortController();
+    const qs = new URLSearchParams({ path: "/box", date, teams: `${home.id},${away.id}` });
+    fetch(`${import.meta.env.BASE_URL}data/page?${qs}`, { signal: ctl.signal })
+      .then((r) => (r.ok ? r.json() : { lines: [] }))
+      .then((d) => setBox(d.lines ?? []))
+      .catch(() => null);
+    return () => ctl.abort();
+  }, [date, home?.id, away?.id]);
+
   const lines = useMemo(() => {
+    if (box) {
+      const side = (teamId: string) =>
+        box
+          .filter((l) => l.teamId === teamId)
+          .map((l) => ({ id: l.id, slug: l.slug, name: l.name, position: l.position, photo: l.photo, row: l.row }))
+          .sort((a, b) => (b.row.g || 0) + (b.row.a || 0) - ((a.row.g || 0) + (a.row.a || 0)));
+      return { home: home ? side(home.id) : [], away: away ? side(away.id) : [] };
+    }
     if (!logs || !home || !away) return { home: [], away: [] };
     const season = date.slice(0, 4);
     const forSide = (side: "home" | "away") => {
@@ -78,7 +104,7 @@ export default function Game() {
     };
     void season;
     return { home: forSide("home"), away: forSide("away") };
-  }, [logs, date, home, away]);
+  }, [logs, date, home, away, box]);
 
   if (!home || !away) {
     return (

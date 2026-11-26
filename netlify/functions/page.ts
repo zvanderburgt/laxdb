@@ -673,10 +673,89 @@ async function searchPage(params: URLSearchParams) {
   };
 }
 
+/**
+ * Two clubs in full, plus the competition's club list the pickers need — the shape /vs and /game ask
+ * for, which cannot be one page slice because the clubs come from the URL.
+ */
+async function teamSet(params: URLSearchParams) {
+  const slugs = (params.get("slugs") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!slugs.length) return { route: "/team-set", teams: [], leagues: [] };
+
+  const [teams, d1, metaSnap, span] = await Promise.all([
+    rows<any>(`teams?slug=in.(${slugs.map(encodeURIComponent).join(",")})&select=*`),
+    rows<any>(`teams?leagueId=eq.ncaa-d1&select=id,slug,name,shortName,leagueId,colors,logo&order=name`),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+  ]);
+  const leagueIds = [...new Set(teams.map((t) => t.leagueId).filter(Boolean))];
+  const leagues = leagueIds.length
+    ? await rows<any>(`leagues?id=in.(${leagueIds.map(encodeURIComponent).join(",")})&select=*&order=ord`)
+    : [];
+
+  return {
+    route: "/team-set",
+    generated: metaSnap[0]?.body?.generated ?? "",
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: await count("players"),
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    teams,
+    allTeams: d1,
+    leagues,
+  };
+}
+
+/**
+ * The box score of one fixture: every player whose current club is one of the two sides and who has a
+ * game row on that date. The page used to find these by scanning 26,234 players' logs.
+ */
+async function boxPage(params: URLSearchParams) {
+  const date = params.get("date") ?? "";
+  const teamIds = (params.get("teams") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (!date || teamIds.length < 2) return { route: "/box", lines: [] };
+
+  const rowsOut = await rows<any>(
+    `player_games?date=eq.${encodeURIComponent(date)}` +
+      `&select=playerSlug,date,opponent,result,g,a,gb,ct,sv,ga,foW,foA` +
+      `&playerSlug=in.(${(
+        await rows<{ slug: string }>(
+          `players?teamId=in.(${teamIds.map(encodeURIComponent).join(",")})&select=slug`,
+        )
+      )
+        .map((p) => encodeURIComponent(p.slug))
+        .join(",")})`,
+  );
+  if (!rowsOut.length) return { route: "/box", lines: [] };
+
+  const slugs = [...new Set(rowsOut.map((r) => r.playerSlug))];
+  const who = new Map<string, any>(
+    (await rows<any>(`players?slug=in.(${slugs.map(encodeURIComponent).join(",")})&select=id,slug,name,position,photo,teamId`)).map(
+      (p) => [p.slug, p],
+    ),
+  );
+
+  return {
+    route: "/box",
+    lines: rowsOut
+      .map((r) => {
+        const p = who.get(r.playerSlug);
+        if (!p) return null;
+        const { playerSlug, ...row } = r;
+        return { teamId: p.teamId, id: p.id, slug: p.slug, name: p.name, position: p.position, photo: p.photo, row };
+      })
+      .filter(Boolean),
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/box") {
+      return new Response(JSON.stringify(await boxPage(url.searchParams)), { headers: CACHE_HEADERS });
+    }
+    if (path === "/team-set") {
+      return new Response(JSON.stringify(await teamSet(url.searchParams)), { headers: CACHE_HEADERS });
+    }
     if (path === "/search") {
       return new Response(JSON.stringify(await searchPage(url.searchParams)), { headers: CACHE_HEADERS });
     }
