@@ -18,6 +18,7 @@ is never a broken page.
 | --- | --- | --- | --- |
 | `/leagues` | **2,062 B** (was 1,608,589) | **1.14 s / 1.14 s / 1.15 s** (was 9.66 / 9.67 / 9.74) | head line and all 19 cards identical |
 | `/teams` | **18,020 B** (was 1,608,531) | **1.31 s / 1.32 s / 1.33 s** (was 12.01 / 12.54 / 12.78) | head line, all 475 cards, and a card click into the still-dataset-backed `/team/<slug>` |
+| `/history` | **178,420 B** (was 1,608,531 B) | **1.33 s / 1.35 s** warm (3.58 s cold) against 9.63–9.68 s | whole page text identical: record books, champions, programs, Tewaaraton, All-Americans, the climbers card and the footer |
 | `/team/<slug>` | **24,623 B + 13,516 B** scorecard (was 1,608,503 B + `scores.json` + `games.json`) | **1.29 s / 1.30 s / 1.31 s** (was 9.57 / 9.62 / 9.81) | full page text byte-identical on five clubs — D1, MCLA and PLL — including franchise history, all-Americans, season series and the roster table |
 | `/player/<slug>` (game log) | **71 KB gzipped**, one request (was 1,608,503 B + `games.json`) | **1.51 s / 1.52 s / 1.53 s** (was 9.62 / 9.74 / 9.83) | full page text byte-identical on four players, footer included |
 | `/scores` (scorecard) | **118 KB snapshot**, one shared request for six pages | unchanged head line: 569 games across 71 dates | the file is gone from every page that read it — `/scores`, both team cards, `/game`, `/vs`, `/history` |

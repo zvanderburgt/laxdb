@@ -469,10 +469,119 @@ async function teamPage(params: URLSearchParams) {
   };
 }
 
+/**
+ * The history page is one snapshot plus name resolution: record books, All-America lists and award
+ * winners print names ("CJ Kirst", "C.J. Kirst"), not ids, and the page links each one.
+ */
+async function historyPage() {
+  const [snap, teams, span, metaSnap] = await Promise.all([
+    rows<{ body: any }>("snapshots?key=eq.history&select=body&limit=1"),
+    // a colour comes with each club: the record books tint their club chips from it
+    rows<any>("teams?select=id,slug,name,shortName,colors,logo"),
+    rows<{ lo: number; hi: number }>("season_span?select=*"),
+    rows<{ body: any }>("snapshots?key=eq.meta&select=body&limit=1"),
+  ]);
+  const history = snap[0]?.body ?? null;
+
+  // every name the page can link, resolved with the rule `playerByName()` uses
+  const names = new Set<string>();
+  const take = (v: unknown) => {
+    if (typeof v === "string" && v.trim()) names.add(v.trim());
+  };
+  for (const r of history?.records?.sections ?? []) for (const row of r.rows ?? []) take(row.Player);
+  for (const b of history?.allAmericans ?? []) {
+    for (const team of b.teams ?? []) for (const p of team.players ?? []) take(p.name ?? p.Player);
+    take(b.Player);
+  }
+  for (const c of history?.champions ?? []) for (const p of c.players ?? []) take(p.player ?? p.name);
+  for (const t of history?.tewaaraton ?? []) take(t.player ?? t.name);
+
+  const key = (v: string) => v.toLowerCase().replace(/[^a-z]/g, "");
+  const keys = [...new Set([...names].map(key))].filter(Boolean);
+  const found: any[] = [];
+  for (let i = 0; i < keys.length; i += 120) {
+    const chunk = keys.slice(i, i + 120).map(encodeURIComponent);
+    if (!chunk.length) continue;
+    found.push(
+      ...(await rows<any>(`player_lookup?key=in.(${chunk.join(",")})&select=key,slug,name,rank`)),
+    );
+  }
+  // the same tie-break as `playerByName()`: a portrait and a longer career win
+  const ranked = new Map<string, any>();
+  for (const r of found) {
+    const cur = ranked.get(r.key);
+    if (!cur || (r.rank ?? 0) > (cur.rank ?? 0)) ranked.set(r.key, r);
+  }
+
+  /* "Climbing the record book": an active D1 player within three best-seasons of the lowest figure
+   * printed on the board, and only where his career starts inside the seasons we hold. */
+  const numOf = (v: unknown) => Number(String(v ?? "").replace(/[^0-9]/g, "")) || 0;
+  const boards = [
+    { key: "career-points", stat: "pts", column: "Points" },
+    { key: "career-goals", stat: "g", column: "Goals" },
+    { key: "career-assists", stat: "a", column: "Assists" },
+  ] as const;
+  const windowRow = (await rows<{ first: number; last: number }>("climb_window?select=*"))[0];
+  const sections: any[] = history?.records?.sections ?? [];
+  let climbers: any[] = [];
+  if (sections.length && windowRow) {
+    const pool = await rows<any>("d1_climb?select=*");
+    const candidates = new Map<string, any>();
+    for (const b of boards) {
+      const section = sections.find((s) => s.key === b.key);
+      if (!section || (section.rows?.length ?? 0) < 2) continue;
+      const values = section.rows.map((r: any) => numOf(r[b.column])).filter((n: number) => n > 0);
+      if (values.length < 2) continue;
+      const cutoff = Math.min(...values);
+      const leader = Math.max(...values);
+      const leaderName = section.rows.find((r: any) => numOf(r[b.column]) === leader)?.Player ?? "";
+      for (const p of pool) {
+        if ((p.seasons ?? 0) < 2 || !p.active) continue;
+        if (Number(p.firstSeason) <= Number(windowRow.first)) continue;
+        const career = b.stat === "pts" ? p.careerPts : b.stat === "g" ? p.careerG : p.careerA;
+        const best = b.stat === "pts" ? p.bestPts : b.stat === "g" ? p.bestG : p.bestA;
+        if (career < cutoff * 0.5 || career >= cutoff || !best) continue;
+        const seasonsNeeded = Math.ceil((cutoff + 1 - career) / best);
+        if (seasonsNeeded > 3) continue;
+        const cur = candidates.get(p.slug);
+        if (
+          !cur ||
+          seasonsNeeded < cur.seasonsNeeded ||
+          (seasonsNeeded === cur.seasonsNeeded && career > cur.career)
+        ) {
+          candidates.set(p.slug, {
+            slug: p.slug, name: p.name, position: p.position, positionName: p.positionName,
+            photo: p.photo, teamId: p.lastTeam, stat: b.stat, career, cutoff, leader, leaderName,
+            bestSeason: best, seasons: p.seasons, seasonsNeeded,
+          });
+        }
+      }
+    }
+    climbers = [...candidates.values()]
+      .sort((a, b) => a.seasonsNeeded - b.seasonsNeeded || b.career - a.career)
+      .slice(0, 6);
+  }
+
+  return {
+    route: "/history",
+    climbers,
+    history,
+    teams,
+    span: span[0] ? [String(span[0].lo), String(span[0].hi)] : ["", ""],
+    generated: metaSnap[0]?.body?.generated ?? "",
+    meta: metaSnap[0]?.body ?? null,
+    playerCount: await count("players"),
+    players: [...ranked.values()].map((r) => ({ key: r.key, slug: r.slug, name: r.name })),
+  };
+}
+
 export default async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.searchParams.get("path") ?? "";
   try {
+    if (path === "/history") {
+      return new Response(JSON.stringify(await historyPage()), { headers: CACHE_HEADERS });
+    }
     if (path === "/team") {
       return new Response(JSON.stringify(await teamPage(url.searchParams)), { headers: CACHE_HEADERS });
     }

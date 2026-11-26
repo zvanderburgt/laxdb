@@ -398,6 +398,43 @@ join public.player_current c on c."playerSlug" = p."slug"
 where p."teamId" is not null
 group by 1;
 
+-- Record books, All-America lists and award winners carry printed names, not ids, so the history page
+-- has to resolve a few hundred names against 26,234 players. The key and the rank are the same ones
+-- `playerByName()` uses: letters only, and a portrait plus career length breaking ties.
+create or replace view public.player_lookup as
+select
+  regexp_replace(lower(p."name"), '[^a-z]', '', 'g') as "key",
+  p."slug", p."name",
+  (case when p."photo" is null then 0 else 1000 end)
+    + (select count(*)::int from public.seasons x where x."playerSlug" = p."slug") as "rank"
+from public.players p;
+
+-- "Active players climbing the record book": only Division I seasons count, only a career that
+-- starts inside our window is complete enough to project, and the board's lowest printed figure is
+-- the bar. The arithmetic is in the endpoint; this is the per-player aggregate it needs.
+create or replace view public.climb_window as
+select
+  min("season")::int as "first", max("season")::int as "last"
+from public.seasons where "leagueId" = 'ncaa-d1';
+
+create or replace view public.d1_climb as
+select p."slug", p."name", p."position", p."positionName", p."photo", p."teamId",
+       count(*)::int as "seasons",
+       min(s."season")::int as "firstSeason",
+       (array_agg(coalesce(s."teamId", p."teamId") order by s."season" desc))[1] as "lastTeam",
+       sum(coalesce(s."pts", coalesce(s."g", 0) + coalesce(s."a", 0)))::int as "careerPts",
+       coalesce(sum(s."g"), 0)::int as "careerG",
+       coalesce(sum(s."a"), 0)::int as "careerA",
+       max(coalesce(s."pts", coalesce(s."g", 0) + coalesce(s."a", 0)))::int as "bestPts",
+       coalesce(max(s."g"), 0)::int as "bestG",
+       coalesce(max(s."a"), 0)::int as "bestA",
+       bool_or(s."season" = (select max("season") from public.seasons where "leagueId" = 'ncaa-d1')
+               and coalesce(s."gp", 0) > 0) as "active"
+from public.players p
+join public.seasons s on s."playerSlug" = p."slug"
+where s."leagueId" = 'ncaa-d1'
+group by p."slug", p."name", p."position", p."positionName", p."photo", p."teamId";
+
 /* --------------------------------- indexes -------------------------------- */
 
 create index if not exists players_id_idx        on public.players ("id");
@@ -455,7 +492,8 @@ grant usage, select on all sequences in schema public to service_role;
 grant select on public.player_career, public.player_current, public.player_list, public.season_span,
   public.league_top_scorer, public.team_totals, public.league_seasons, public.career_by_league, public.leader_season, public.leader_career, public.player_adj,
                 public.league_player_current, public.league_totals, public.league_origins, public.player_games,
-                public.team_seasons, public.team_season_leader, public.team_roster, public.team_origins,
+                public.team_seasons, public.team_season_leader, public.team_roster, public.team_origins, public.player_lookup,
+                public.climb_window, public.d1_climb,
                 public.team_current_totals,
                 public.team_game_rows to service_role;
 

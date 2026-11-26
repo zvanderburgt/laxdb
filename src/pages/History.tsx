@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { loadScores } from "../lib/schedule";
 import { Link } from "../lib/app";
-import { data, teamById, teamByName, playerByName } from "../lib/data";
+import { data, teamById, teamByName, playerByName, SEASON_RANGE } from "../lib/data";
 import { careerWindow, d1Club, recordClimbers } from "../lib/climbers";
+import { pageSlice, type PageSlice } from "../lib/page";
+import type { Player } from "../lib/types";
 import { BlockList, Card, Empty, Segmented, TermFor, TeamLogo } from "../components/ui";
 
 const METRICS = [
@@ -180,9 +182,31 @@ const STAT_LABEL: Record<string, string> = {
  * seasons we hold, so the card states the window instead of implying a full career.
  */
 function Climbers() {
-  const climbs = React.useMemo(() => recordClimbers(6), []);
-  const window = React.useMemo(() => careerWindow(), []);
+  const slice = pageSlice("/history") as Extract<PageSlice, { route: "/history" }> | null;
+  const climbs = React.useMemo(() => {
+    if (!slice) return recordClimbers(6);
+    // the endpoint already did this arithmetic over the whole table
+    return slice.climbers.map((c) => ({
+      player: { id: c.slug, slug: c.slug, name: c.name, position: c.position,
+        positionName: c.positionName, photo: c.photo ?? undefined, seasons: [] } as unknown as Player,
+      stat: (c.stat === "pts" ? "points" : c.stat === "g" ? "goals" : "assists") as "points" | "goals" | "assists",
+      career: c.career, cutoff: c.cutoff, leader: c.leader, leaderName: c.leaderName,
+      bestSeason: c.bestSeason, seasons: c.seasons, seasonsNeeded: c.seasonsNeeded,
+      club: teamById.get(c.teamId)?.shortName ?? "",
+    }));
+  }, [slice]);
+  // the seasons we hold, quoted in the footnote: the slice carries the span, the wire derives it
+  const window = React.useMemo(
+    () =>
+      slice && Number(SEASON_RANGE[0])
+        ? { first: Number(SEASON_RANGE[0]), last: Number(SEASON_RANGE[1]) }
+        : careerWindow(),
+    [slice],
+  );
   if (!climbs.length) return null;
+
+  const clubOf = (c: (typeof climbs)[number]) =>
+    (c as { club?: string }).club ?? d1Club(c.player);
 
   const cells = (c: (typeof climbs)[number]) => [
     { label: "Board", value: STAT_LABEL[c.stat] },
@@ -213,7 +237,7 @@ function Climbers() {
               {c.player.name}
             </Link>
           ),
-          meta: d1Club(c.player),
+          meta: clubOf(c),
           cells: cells(c),
         }))}
       />
@@ -237,7 +261,7 @@ function Climbers() {
                     {c.player.name}
                   </Link>
                 </td>
-                <td className="muted small">{d1Club(c.player)}</td>
+                <td className="muted small">{clubOf(c)}</td>
                 <td className="muted small">{STAT_LABEL[c.stat]}</td>
                 <td className="r num strong">{c.career.toLocaleString()}</td>
                 <td className="r num muted">{c.cutoff.toLocaleString()}</td>
