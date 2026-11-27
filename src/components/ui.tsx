@@ -131,7 +131,7 @@ export function Segmented<T extends string>({
         <span
           className="seg-ink"
           aria-hidden="true"
-          style={{ transform: `translateX(${ink.x}px)`, width: `${ink.width}px` }}
+          style={{ transform: `translate(${ink.x}px, ${ink.y}px)`, width: `${ink.width}px`, height: `${ink.height}px` }}
         />
       ) : null}
       {options.map((o) => (

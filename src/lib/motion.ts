@@ -82,8 +82,8 @@ export function useTrackedRect(
   container: React.RefObject<HTMLElement | null>,
   selector: string,
   deps: React.DependencyList,
-): { x: number; width: number } | null {
-  const [rect, setRect] = React.useState<{ x: number; width: number } | null>(null);
+): { x: number; y: number; width: number; height: number } | null {
+  const [rect, setRect] = React.useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   React.useLayoutEffect(() => {
     const root = container.current;
@@ -94,7 +94,9 @@ export function useTrackedRect(
         setRect(null);
         return;
       }
-      setRect({ x: el.offsetLeft, width: el.offsetWidth });
+      // y/height matter as soon as the track wraps: the pill must sit on the
+      // selected row, not span every row the control happens to occupy
+      setRect({ x: el.offsetLeft, y: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
     };
     measure();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
