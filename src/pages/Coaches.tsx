@@ -183,7 +183,7 @@ export default function Coaches() {
         {list.length > 400 ? <div className="table-note">Showing the first 400 — narrow the search.</div> : null}
 
         <div className="table-scroll hide-sm">
-          <table className="data-table">
+          <table className="data-table coaches-table">
             <thead>
               <tr>
                 <th>Coach</th>

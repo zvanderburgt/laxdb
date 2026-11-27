@@ -2035,9 +2035,9 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 
 /* ------------------------------- history page ----------------------------- */
 .history-second { margin-top: 16px; }
-/* the career table needs ~660px and the 1fr column at 1024 is 351, so it scrolled
-   306px sideways with no visible scrollbar. Stack the section before it gets that tight. */
-@media (max-width: 1160px) { .history-second { grid-template-columns: 1fr; } }
+/* the career table needs ~660px and this section's narrow column is at most 420, so the
+   card scrolled 249–306px sideways at every width above 1160 as well. One column. */
+.history-second { grid-template-columns: 1fr; }
 .record-metrics { padding: 0 20px 12px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .record-metrics::-webkit-scrollbar { display: none; }
 .record-metrics .segmented { flex: none; }
@@ -2544,6 +2544,11 @@ a.vs-team:hover { color: var(--accent); }
 .roster-row:hover { background: var(--hover); }
 .roster-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .roster-who .cell-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* at 1024 the roster card is 613 wide and the name column lost 20px to a long name
+   ("Matthew Neboshynsk…"); the stat block can give that back without wrapping */
+@media (max-width: 1160px) {
+  .roster-row { grid-template-columns: minmax(0, 1fr) 40px 52px minmax(200px, 0.95fr); }
+}
 .roster-pos { display: flex; justify-content: center; }
 .roster-class { text-align: center; font-size: 12px; }
 .roster-stats {
@@ -2939,6 +2944,23 @@ a.vs-team:hover { color: var(--accent); }
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* the coaches directory is four columns of long titles in a table whose cells are
+   nowrap: 1834px wide, scrolling 704px inside a 1130px card at 1440. Fixed layout,
+   a wrapping role column, and ellipsis on the identity cells keep it in the card. */
+.coaches-table { table-layout: fixed; }
+.coaches-table th:nth-child(1) { width: 23%; }
+.coaches-table th:nth-child(2) { width: 39%; }
+.coaches-table th:nth-child(3) { width: 24%; }
+.coaches-table th:nth-child(4) { width: 14%; }
+.coaches-table td { overflow: hidden; text-overflow: ellipsis; }
+.coaches-table td:nth-child(2) { white-space: normal; }
+@media (max-width: 1000px) {
+  .coaches-table th:nth-child(4), .coaches-table td:nth-child(4) { display: none; }
+  .coaches-table th:nth-child(1) { width: 27%; }
+  .coaches-table th:nth-child(2) { width: 43%; }
+  .coaches-table th:nth-child(3) { width: 30%; }
 }
 
 /* the league leaderboard is nine columns in a card that tops out near 710px, so it bled
