@@ -2304,8 +2304,9 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
   .profile-main { padding: 0; }
 }
 
-/* the tab strip needs the same centred column as the content it sits above */
-.profile-bar { max-width: var(--maxw); margin: 0 auto; }
+/* the tab strip needs the same centred column as the content it sits above, and the
+   same 16px the body puts below it — measured flush against the hero border (0px) */
+.profile-bar { max-width: var(--maxw); margin: 16px auto 0; }
 
 /* the 180px min-width on filter fields pushed 2px past a 360px viewport */
 @media (max-width: 700px) {
