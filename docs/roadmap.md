@@ -161,6 +161,22 @@ NLL, MCLA or the box leagues), and the dataset is split into an index plus a sea
    `/sitemap.xml`, and decide whether Cloudflare sits in front for per-IP rate limits on the feeds
    (`docs/crawling.md`).
 
+## Next — from the front-end audit (2026-11-27)
+
+`docs/frontend-audit.md` scored the front end 10/20 with two P0s that are own passes, not polish:
+
+1. **Game pages crash on every cold load** (FE-01). `Game.tsx:186` spreads
+   `data.players.find(...)!` into `PlayerAvatar`; a box-score row whose player is not in the loaded
+   set makes `Avatar` call `.replace()` on `undefined`. Six of six fresh profiles render the error
+   boundary. Fix the lookup and make `Avatar` tolerant, with a test that renders a game whose box row
+   is outside the player slice.
+2. **Navigation is dead between 1061px and 1160px** (FE-02). The trigger appears at ≤1160, the sheet
+   is hidden from 1061 up. One media query to change, measured at both edges in
+   `.scratch/fe-audit/ladder.json`.
+
+Behind those: the 8 s slice deadline with no retry (FE-03), dark-mode primary buttons at 3.65:1
+(FE-04), and a team-page card that never leaves its skeleton (FE-05).
+
 ## Next — small, no new feed
 
 1. ~~**All-time team encyclopedia**~~ — shipped as **Franchise history** on the team page (per-season
