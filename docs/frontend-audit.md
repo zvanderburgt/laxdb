@@ -8,6 +8,12 @@ Measured 2026-11-27 against the live deploy (`https://laxdb.netlify.app`, bundle
 
 The plan this executes is `docs/frontend-audit-plan.md`.
 
+> **Fix pass, same day.** The findings below are the audit as measured. A follow-up pass fixed the
+> two P0s and most of the P1/P2 list; the scorecard moved **10/20 → 16/20**. What changed, what is
+> still open, and the two defects that only appeared while fixing are in
+> [Status after the fix pass](#status-after-the-fix-pass) at the end. The findings themselves are
+> left as written, with the measurements that justified them.
+
 ## Scorecard
 
 | # | Dimension | Score | Key finding |
@@ -307,3 +313,92 @@ node .scratch/fe-audit/game-trace.mjs                      # FE-01 stack trace
 
 Each finding's evidence file is named in its entry; `results.jsonl`, `keyboard.json`, `router.json`,
 `ladder.json`, `perf.json` and `shots/` are the raw output of the runs above.
+
+## Status after the fix pass
+
+Same day, same harness, one deploy later (`assets/index-DZMq5Dl_.js` → then `index-*.js` after the
+last build). Every number below is from the live site after the deploy, not from a local build.
+
+### Scorecard now
+
+| # | Dimension | Was | Now | What closed |
+|---|-----------|-----|-----|-------------|
+| 1 | Accessibility | 2 | **3** | Nav reachable in the 1061–1160 band, dark fills at 4.70:1, sheet takes and returns focus, CMS panels are dialogs with focus and Escape, route changes focus `<main>` |
+| 2 | Performance | 2 | **3** | A timeout retries once, the team card settles, the list is paged (9,085 → 3,275 nodes), skeleton matches a page of rows (CLS 0.13 → 0.054 at 1440) |
+| 3 | Theming | 3 | **4** | Filled surfaces use a token (`--accent-fill`), so dark mode keeps AA without a per-component colour |
+| 4 | Responsive | 2 | **3** | 320px reflow and 200% zoom show zero horizontal overflow; the sheet fits at 320; real-device touch still unverified |
+| 5 | Implementation integrity | 1 | **3** | The crash, the not-found contract, the page title, game URLs in the sitemap and Back's scroll position are fixed |
+| **Total** | | **10/20** | **16/20** | Good — address the weak dimensions |
+
+### Closed
+
+- **FE-01 game crash** — `Game.tsx` now builds the avatar from the row (`name`/`photo`) with the
+  lookup as a fallback, and `Avatar` tolerates a missing name. Measured after deploy: 46 box rows,
+  46 avatars, no error boundary, on a fresh profile.
+- **FE-02 navigation band** — the sheet guard moved to `min-width: 1161px`. Measured: sheet opens
+  with 46px links at both 1061 and 1160, and focus lands inside it.
+- **FE-03 deadline** — `fetchSliceText` retries a timeout once (`8s + 8s`), 4xx still fails at once.
+  `db:probe`'s hang case still ends in the retry card (all cases passed).
+- **FE-04 dark contrast** — `--accent-fill` (`#0071e3`, hover `#006bd6`) for filled buttons and the
+  logo mark; white on it is **4.70:1**, measured on the deployed page.
+- **FE-05 team skeleton** — `SeriesCard` distinguishes "not looked yet" from "nothing there" and
+  unmounts the skeleton. Measured: 0 `aria-busy`, 0 skeletons, heading rendered.
+- **FE-06 menu focus** — opening focuses the first sheet link, Tab wraps inside, Escape closes and
+  returns focus to the trigger (measured: `activeElement` back on `.menubtn`).
+- **FE-07 CMS panels** — sign-in and field editor are `role="dialog" aria-modal="true"` with a label,
+  focus moves to their first control, Escape leaves the surface.
+- **FE-08 list size** — 50 rows a page with a pager ("Showing 1–50 of 150"); 3,275 DOM nodes at 1440
+  (was 9,085) and 697 at 360; the skeleton now carries 50 rows, taking CLS from 0.13 to 0.054.
+- **FE-09 stale links** — a client-only route with no slice paints its own page instead of the boot
+  error. Measured: `/vs/duke-blue-devils` renders "Pick two programs" with the title
+  `Head to head · LAXDB`; `/game/2026-01-01/a/b` renders the game page's not-found state.
+- **FE-10 route change** — focus moves to `<main>` (`tabindex="-1"`, no ring) and the title names the
+  player. Measured on a click from `/players`: `activeElement === MAIN`, title
+  `Lucas Littlejohn · LAXDB`.
+- **FE-11 pill contrast** — `.league-pill.t2` ink `#6a4cf0` → `#6446e6` (4.49 → 4.93 on its tint).
+  The light-theme sweep now reports no contrast findings.
+- **FE-12 reduced motion** — the global kill keeps `animation-duration: 0.001ms` but no longer zeroes
+  transitions. Measured under emulated `prefers-reduced-motion: reduce`: entry animation 0s,
+  transition 0.06s.
+- **FE-13 duplicates** — the repeated `.card-toolbar` and `.profile-hero-inner` rules are gone and the
+  two conflicting `.record-table` rules at 640 collapsed to the one that was winning (23 → 22 blocks).
+- **FE-15 sitemap** — game pages are generated from `public/scores.json` with the schedule's own name
+  matching: **1,041** `/game/<date>/<home>/<away>` URLs (27,778 total, was 26,737).
+- **FE-16 scroll restoration** — positions are remembered per path and restored once the document is
+  tall enough. Measured: 900 → 900 on Back (was 338).
+
+### Found while fixing, and fixed
+
+- **FE-17 every player click was a dead end.** A click from `/players` is a push, not a document
+  load, so `/player/<slug>` was never requested and `playerBySlug` did not hold the player — the
+  profile rendered "Player not found" while the same URL worked when opened directly. Reproduced on
+  production, then fixed: `loadPlayerBySlug()` fetches the slice on navigation, and `PlayerPage`
+  shows a skeleton until it answers. Not caught by the original audit because it measured route
+  loads and titles, not click-through.
+- **FE-18 a failed box score looked like a data gap.** `/data/page?path=/box` failing showed "No box
+  score for this side", indistinguishable from a fixture with no lines. It now says the box score
+  didn't load and offers Try again.
+
+### Still open
+
+- **Cold page slices remain the query layer's cost** (`/home` 19.1 s, `/origins` 17.6 s, `/history`
+  one 30.2 s 502). The client no longer gives up at the first 8 s, but a 17 s page is still a 17 s
+  page — that fix lives in `docs/perf-route-audit.md`.
+- **CLS at 720px is 0.402**: the filter bar grows from 84 to 176px when the facets arrive, because
+  the position pills and league select wrap onto a second row. Fix: render placeholder pills while
+  the list is pending. At 1440 it is 0.054 and at 360 it is 0.
+- **Dead CSS is not safely removable from a static scan.** 41 class names never appear in a
+  `className` string and 221 never appear in the DOM of the 16 default route states — but
+  `cards-grid`, `clear-x` and every `cmp-*` show up only under interaction, so the heuristic's false
+  positive rate is too high to delete from. Left as-is, deliberately.
+- **No real assistive technology and no physical device.** Announcements are inferred from focus and
+  roles; touch was emulated. A screen-reader pass and one real phone are the remaining evidence.
+- **22 `@media (max-width: 640px)` blocks** remain, each beside the component it belongs to. Merging
+  them is a refactor with visual risk and no measured benefit; the duplicates that actually
+  conflicted are gone.
+
+### The gate
+
+`npm run fe:smoke` (`scripts/fe-smoke.mjs`) asserts the fixes against any base URL — 8 checks, 26
+assertions, exit code 1 on failure. Run it after `npm run db:probe`; it was green on the deployed
+site before this section was written.

@@ -121,22 +121,34 @@ function HonoursCard({ team }: { team: Team }) {
 function SeriesCard({ team }: { team: Team }) {
   const [result, setResult] = React.useState<{ season: string; rows: import("../lib/series").Series[] } | null>(null);
   const [fixtures, setFixtures] = React.useState<Fixture[]>([]);
+  // "we have not looked yet" and "we looked and there is nothing" are different states: without
+  // this flag a team whose slice carries no series kept the skeleton on screen forever
+  const [settled, setSettled] = React.useState(false);
 
   React.useEffect(() => {
     let alive = true;
+    setSettled(false);
     const slice = pageSlice("/team") as Extract<PageSlice, { route: "/team" }> | null;
     if (slice) {
       // a database-backed load carries the series, so this page never fetches the game log — but the
       // score beside each meeting still comes from the scorecard
       setResult(slice.series.season ? { season: slice.series.season, rows: slice.series.rows as any } : null);
+      setSettled(true);
       loadScores().then((payload) => alive && setFixtures(fixturesFor(team, payload)));
       return () => {
         alive = false;
       };
     }
-    loadGames().then((all) => {
-      if (alive) setResult(seriesFor(team, all));
-    });
+    loadGames()
+      .then((all) => {
+        if (alive) setResult(seriesFor(team, all));
+      })
+      .catch(() => {
+        if (alive) setResult(null);
+      })
+      .finally(() => {
+        if (alive) setSettled(true);
+      });
     // the scorecard for each meeting, from the same feed the schedule reads
     loadScores().then((payload) => alive && setFixtures(fixturesFor(team, payload)));
     return () => {
@@ -144,8 +156,8 @@ function SeriesCard({ team }: { team: Team }) {
     };
   }, [team.id]);
 
-  if (!result) return <SkeletonCard title="Season series" sub="Rebuilding from the box scores" rows={5} cols={4} />;
-  if (result.rows.length < 3) return null;
+  if (!settled) return <SkeletonCard title="Season series" sub="Rebuilding from the box scores" rows={5} cols={4} />;
+  if (!result || result.rows.length < 3) return null;
 
   // the newest meeting with that opponent — the series aggregate is a season, but the score
   // we can show is the last game we hold for it

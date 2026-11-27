@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { loadScores } from "../lib/schedule";
 import { Link, navigate, useRoute } from "../lib/app";
 import { data, teamBySlug } from "../lib/data";
-import { Card, Empty, SkeletonCard, TeamLogo } from "../components/ui";
+import { Card, Empty, LoadError, SkeletonCard, TeamLogo } from "../components/ui";
 
 type Game = { date: string; home: string; away: string; hs: number; as: number };
 
@@ -20,6 +20,16 @@ export default function Versus() {
   const teamA = teamBySlug.get(slugA);
   const teamB = teamBySlug.get(slugB);
   const [games, setGames] = useState<Game[] | null>(null);
+  // a feed that never answers must not leave the skeleton up forever
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    if (games) {
+      setStalled(false);
+      return;
+    }
+    const t = setTimeout(() => setStalled(true), 10000);
+    return () => clearTimeout(t);
+  }, [games]);
 
   useEffect(() => {
     let alive = true;
@@ -104,7 +114,13 @@ export default function Versus() {
 
       <TeamPickers teams={teams} a={slugA} b={slugB} />
 
-      {games === null ? (
+      {games === null && stalled ? (
+        <LoadError
+          title="The meetings didn't load"
+          body="The results feed was asked for and did not answer. Reloading asks again."
+          onRetry={() => window.location.reload()}
+        />
+      ) : games === null ? (
         <SkeletonCard title="Meetings" sub="Reading the results feed" rows={5} cols={3} />
       ) : meetings.length ? (
         /* the series arrives when the results feed resolves: it settles in once

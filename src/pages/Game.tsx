@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { loadScores } from "../lib/schedule";
 import { Link, useRoute } from "../lib/app";
 import { data, fmtDate, teamBySlug, teamSetActive } from "../lib/data";
-import { Card, Empty, PlayerAvatar, Skeleton, SkeletonRows, Term, TeamLogo } from "../components/ui";
+import { Card, Empty, LoadError, PlayerAvatar, Skeleton, SkeletonRows, Term, TeamLogo } from "../components/ui";
 import type { GameRow } from "../lib/types";
 
 /**
@@ -61,16 +61,39 @@ export default function Game() {
 
   // a database-backed load asks for the box score of this fixture instead of scanning every log
   const [box, setBox] = useState<any[] | null>(null);
+  // the boot can paint this route without its team set (a stale link, a failed /team-set): the
+  // skeleton must not run forever, because a page stuck loading reads exactly like a broken one
+  const [stalled, setStalled] = useState(false);
+  // a box score that fails to arrive is not the same as a fixture we hold no lines for, and the
+  // empty state said "No box score for this side" for both — a transient 502 read as a data gap
+  const [boxError, setBoxError] = useState(false);
+  const [boxAttempt, setBoxAttempt] = useState(0);
   useEffect(() => {
     if (!home || !away || !teamSetActive()) return;
     const ctl = new AbortController();
     const qs = new URLSearchParams({ path: "/box", date, teams: `${home.id},${away.id}` });
+    setBoxError(false);
     fetch(`${import.meta.env.BASE_URL}data/page?${qs}`, { signal: ctl.signal })
-      .then((r) => (r.ok ? r.json() : { lines: [] }))
+      .then((r) => {
+        if (!r.ok) throw new Error(`box score answered ${r.status}`);
+        return r.json();
+      })
       .then((d) => setBox(d.lines ?? []))
-      .catch(() => null);
+      .catch((err) => {
+        if (!ctl.signal.aborted) setBoxError(true);
+        void err;
+      });
     return () => ctl.abort();
-  }, [date, home?.id, away?.id]);
+  }, [date, home?.id, away?.id, boxAttempt]);
+
+  useEffect(() => {
+    if (logs || box || boxError) {
+      setStalled(false);
+      return;
+    }
+    const t = setTimeout(() => setStalled(true), 10000);
+    return () => clearTimeout(t);
+  }, [logs, box, boxError]);
 
   const lines = useMemo(() => {
     if (box) {
@@ -134,7 +157,13 @@ export default function Game() {
         </div>
       </div>
 
-      {!logs ? (
+      {!logs && stalled ? (
+        <LoadError
+          title="This game didn't load"
+          body="The box score and the scorecard were both asked for and neither arrived. Reloading asks again."
+          onRetry={() => window.location.reload()}
+        />
+      ) : !logs ? (
         <div className="game-grid" aria-busy="true">
           {[0, 1].map((i) => (
             <Card key={i} padded={false} className="standings-card">
@@ -181,7 +210,21 @@ export default function Game() {
                           <tr key={l.id}>
                             <td>
                               <Link to={`/player/${l.slug}`} className="leader-name">
-                                <PlayerAvatar player={{ ...data.players.find((p) => p.id === l.id)! }} size={22} />
+                                {/* the box score and the loaded player set are different slices: a player
+                                    with a line can be outside the set, so the row's own fields carry the
+                                    avatar instead of a spread of `find(...)!` (which made `{}` and took
+                                    the whole route down through `name.replace`) */}
+                                {
+                                  (() => {
+                                    const hit = data.players.find((p) => p.id === l.id);
+                                    return (
+                                      <PlayerAvatar
+                                        player={{ name: l.name, photo: l.photo, teamId: hit?.teamId ?? "" }}
+                                        size={22}
+                                      />
+                                    );
+                                  })()
+                                }
                                 <span>{l.name}</span>
                               </Link>
                             </td>
@@ -197,7 +240,16 @@ export default function Game() {
                   </div>
                 ) : (
                   <p className="muted small" style={{ padding: "4px 18px 16px" }}>
-                    No box score for this side.
+                    {boxError ? (
+                      <>
+                        The box score didn't load.{" "}
+                        <button className="link-btn" onClick={() => setBoxAttempt((n) => n + 1)}>
+                          Try again
+                        </button>
+                      </>
+                    ) : (
+                      "No box score for this side."
+                    )}
                   </p>
                 )}
               </Card>

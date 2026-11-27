@@ -318,6 +318,25 @@ export default function Editor() {
     return () => clearTimeout(t);
   }, [notice]);
 
+  // the sign-in panel and the field editor are dialogs now: focus lands in the first control of
+  // whichever is on screen, and Escape leaves the surface instead of doing nothing
+  useEffect(() => {
+    const target = document.querySelector<HTMLElement>(
+      ".cms-signin input, .cms-field input, .cms-field textarea, .cms-field select",
+    );
+    target?.focus();
+  }, [cms.signedIn, editing]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if ((document.activeElement as HTMLElement | null)?.closest(".cms-field, .cms-signin")) return;
+      exit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cms.pending.length]);
+
   // mark fields with an unsaved change, so a scan of the page shows what you touched
   useEffect(() => {
     const touched = new Map<string, Element[]>();
@@ -356,6 +375,9 @@ export default function Editor() {
       {cms.signedIn && editing ? (
         <div
           className="cms-field"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${editing.label}`}
           style={{
             top: editing.rect.top,
             left: editing.rect.left,
@@ -418,6 +440,9 @@ export default function Editor() {
       {!cms.signedIn ? (
         <form
           className="cms-signin"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Admin sign-in"
           onSubmit={(e) => {
             e.preventDefault();
             if (usePass) {

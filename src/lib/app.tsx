@@ -47,7 +47,10 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
 
     const onChange = () => {
       setRoute(parseLocation());
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      // back/forward keeps the browser's own scroll restoration; only a pushed navigation starts
+      // at the top (see navigate()), or going back lands at the top of the page every time
+      if (window.history.state?.laxdbPush) window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      else restoreScroll(keyOf());
     };
     window.addEventListener("popstate", onChange);
     window.addEventListener(ROUTE_EVENT, onChange);
@@ -61,6 +64,30 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useRoute = () => useContext(RouteCtx);
+
+/**
+ * Scroll positions by path, so Back lands where the visitor left. The browser's own restoration
+ * runs before React has painted the route, and a list that is still loading is too short to scroll
+ * to 900 — the measured result was 338 of 900. Recording the position on the way out and applying
+ * it once the document is tall enough is what makes it exact.
+ */
+const scrollMemory = new Map<string, number>();
+const keyOf = () => window.location.pathname + window.location.search;
+
+function restoreScroll(key: string, tries = 25): void {
+  const y = scrollMemory.get(key) ?? 0;
+  if (!y) return;
+  let n = 0;
+  const tick = () => {
+    if (document.documentElement.scrollHeight >= y + window.innerHeight - 4 || n >= tries) {
+      window.scrollTo(0, y);
+      return;
+    }
+    n += 1;
+    setTimeout(tick, 80);
+  };
+  setTimeout(tick, 60);
+}
 
 /** Push a new URL. `to` is a path with an optional query ("/players?league=ncaa-d1"). */
 export function navigate(to: string, { replace = false }: { replace?: boolean } = {}) {
@@ -76,8 +103,12 @@ export function navigate(to: string, { replace = false }: { replace?: boolean } 
     window.scrollTo({ top: 0, behavior: "smooth" });
     return;
   }
-  if (replace) window.history.replaceState(null, "", to);
-  else window.history.pushState(null, "", to);
+  // remember where the visitor was, so Back can put them back there (see restoreScroll)
+  scrollMemory.set(here, window.scrollY);
+  // `laxdbPush` is what tells the router a popstate came from a link click rather than the back
+  // button: only the former resets the scroll position
+  if (replace) window.history.replaceState({ laxdbPush: false }, "", to);
+  else window.history.pushState({ laxdbPush: true }, "", to);
   window.dispatchEvent(new Event(ROUTE_EVENT));
 }
 

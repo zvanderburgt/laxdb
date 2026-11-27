@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useCompare, useRoute, useTheme } from "../lib/app";
 import {
   ageOf,
@@ -11,6 +11,7 @@ import {
   leagueById,
   teamByName,
   playerBySlug,
+  loadPlayerBySlug,
   seasonTotals,
   teamById,
   gameSummary,
@@ -52,8 +53,51 @@ type Tab = "overview" | "stats" | "gamelog" | "awards" | "scouting";
 export default function PlayerPage() {
   const route = useRoute();
   const slug = route.path.split("/")[2] ?? "";
-  const player = playerBySlug.get(slug);
+  const known = playerBySlug.get(slug);
+  // a click from /players is a push, not a document load: the slice for this slug was never asked
+  // for, so fetch it here instead of rendering "Player not found" for a player who exists
+  const [player, setPlayer] = useState<Player | undefined>(known);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    if (known) {
+      setPlayer(known);
+      setMissing(false);
+      return;
+    }
+    if (!slug) {
+      setMissing(true);
+      return;
+    }
+    let alive = true;
+    setMissing(false);
+    loadPlayerBySlug(slug)
+      .then((p) => {
+        if (!alive) return;
+        if (p) setPlayer(p);
+        else setMissing(true);
+      })
+      .catch(() => alive && setMissing(true));
+    return () => {
+      alive = false;
+    };
+  }, [slug, known]);
+
+  useEffect(() => {
+    document.title = player ? `${player.name} · LAXDB` : "Player · LAXDB";
+  }, [player]);
+
   if (!player) {
+    if (!missing) {
+      return (
+        <div className="page">
+          <div className="card players-loading" aria-busy="true">
+            <span className="sr-only" role="status">Loading this profile</span>
+            <div className="skel" style={{ height: 140, borderRadius: 18 }} />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="page">
         <Empty title="Player not found" body="That profile may have moved. Search the database instead." />

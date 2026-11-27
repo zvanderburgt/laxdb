@@ -102,6 +102,15 @@ function retryBoot(): void {
 let prefetchInstalled = false;
 
 /**
+ * Routes that have no page slice and answer entirely from the client: head-to-head, one game,
+ * compare and my roster. They already draw their own "not found" / "pick two programs" state, so a
+ * missing dataset is not a reason to replace the document with the boot error — a stale share link
+ * to `/vs/<one-slug>` used to read as a site outage.
+ */
+const clientOnlyRoute = () =>
+  /^\/(vs|game|compare|my-roster)(\/|$)/.test(window.location.pathname);
+
+/**
  * Boot order, cheapest source first.
  *
  * The build bakes the landing page's slice into this document, and every other route keeps its last
@@ -130,7 +139,12 @@ async function boot(): Promise<void> {
 
   if (!plans.length) {
     // /players draws its own rows and has no slice to cache; an unmapped route throws here
-    await loadDataset();
+    try {
+      await loadDataset();
+    } catch (err) {
+      // a client-only route has nothing to load and its own empty state to draw
+      if (!clientOnlyRoute()) throw err;
+    }
     await overrides;
     paint();
     warmOnIdle();
@@ -178,6 +192,13 @@ async function boot(): Promise<void> {
     // a stored copy is still on screen, so this failure costs freshness, not the page
     if (paintedHash !== null) {
       console.warn("[laxdb] revalidation failed; the stored copy stays on screen", failure);
+      return;
+    }
+    // a client-only route whose team set did not resolve draws its own not-found state: it must not
+    // replace the document with a boot error (a stale /game/ or /vs/ link read as an outage)
+    if (clientOnlyRoute()) {
+      paint();
+      warmOnIdle();
       return;
     }
     throw failure ?? new Error("this page has no data source");

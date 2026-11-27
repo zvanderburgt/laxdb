@@ -185,7 +185,14 @@ npm run typecheck    # type check without emitting
 npm run warm         # ask the edge for every page route, so no visitor meets a cold function
 npm run seed:check   # how big the baked home slice in dist/index.html is
 npm run db:probe     # what every route shows when the database fails (500, 502, junk, hang, timeout)
+npm run fe:smoke     # the front-end invariants the 2026-11 audit found broken (--base to point at a deploy)
 ```
+
+`fe:smoke` is the gate on the front end's own contract: a game page draws its box score, a click from
+`/players` opens the profile, the menu sheet opens between 1061 and 1160px, dark primary buttons clear
+4.5:1, the team page settles, the list is paged, a stale `/vs/` link renders the picker, and reduced
+motion keeps its feedback. It runs against the served site, so point it at a deploy with
+`--base https://laxdb.netlify.app` when checking production.
 
 `db:probe` is the gate on the data layer's failure behaviour: it serves `dist/` from a fake origin
 whose `/data/*` is scripted, drives headless Chrome, and asserts each route still puts something on

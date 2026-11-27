@@ -161,21 +161,26 @@ NLL, MCLA or the box leagues), and the dataset is split into an index plus a sea
    `/sitemap.xml`, and decide whether Cloudflare sits in front for per-IP rate limits on the feeds
    (`docs/crawling.md`).
 
-## Next — from the front-end audit (2026-11-27)
+## Shipped — the front-end audit (2026-11-27)
 
-`docs/frontend-audit.md` scored the front end 10/20 with two P0s that are own passes, not polish:
+`docs/frontend-audit.md` scored the front end 10/20 with two P0s. Both are fixed and deployed, and the
+score is 16/20 with the same harness:
 
-1. **Game pages crash on every cold load** (FE-01). `Game.tsx:186` spreads
-   `data.players.find(...)!` into `PlayerAvatar`; a box-score row whose player is not in the loaded
-   set makes `Avatar` call `.replace()` on `undefined`. Six of six fresh profiles render the error
-   boundary. Fix the lookup and make `Avatar` tolerant, with a test that renders a game whose box row
-   is outside the player slice.
-2. **Navigation is dead between 1061px and 1160px** (FE-02). The trigger appears at ≤1160, the sheet
-   is hidden from 1061 up. One media query to change, measured at both edges in
-   `.scratch/fe-audit/ladder.json`.
+1. **Game pages crashed on every cold load.** `Game.tsx` spread `data.players.find(...)!` into
+   `PlayerAvatar`; a box-score row outside the loaded player set made `Avatar` call `.replace()` on
+   `undefined`. The avatar now comes from the row, `Avatar` tolerates a missing name, and a failed
+   `/box` request says so instead of looking like a fixture with no lines.
+2. **Navigation was dead between 1061 and 1160px.** The sheet guard is now `min-width: 1161px`, the
+   inverse of the trigger's breakpoint.
+3. **A click from `/players` landed on "Player not found"** — found while fixing, not by the audit:
+   the player slice was only requested at boot. `loadPlayerBySlug()` fetches it on navigation.
+4. Also shipped: a timeout retries once, the team page's series card settles, the list pages 50 rows
+   at a time (9,085 → 3,275 DOM nodes, CLS 0.13 → 0.054), dark fills use a token at 4.70:1, the menu
+   sheet takes and returns focus, the CMS panels are dialogs, game URLs are in the sitemap (1,041),
+   and Back restores its scroll position.
 
-Behind those: the 8 s slice deadline with no retry (FE-03), dark-mode primary buttons at 3.65:1
-(FE-04), and a team-page card that never leaves its skeleton (FE-05).
+The gate is `npm run fe:smoke` (8 checks). Still open: the query layer's cold page slices (17–19 s),
+CLS 0.402 at 720px where the filter bar gains a second row, a screen-reader pass and one real phone.
 
 ## Next — small, no new feed
 

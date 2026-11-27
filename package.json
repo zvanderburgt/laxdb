@@ -20,7 +20,8 @@
     "db:probe": "node scripts/db-failure-probe.mjs",
     "buildKeepData": "tsc -b && vite build && node scripts/gen-sitemap.mjs",
     "seed:check": "node scripts/bake-home-seed.mjs --check",
-    "warm": "node scripts/warm-cache.mjs"
+    "warm": "node scripts/warm-cache.mjs",
+    "fe:smoke": "node scripts/fe-smoke.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

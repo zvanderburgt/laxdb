@@ -17,13 +17,13 @@ export function Avatar({
   className = "",
   photo,
 }: {
-  name: string;
+  name?: string;
   size?: number;
   radius?: number;
   className?: string;
   photo?: string;
 }) {
-  const initials = name
+  const initials = (name ?? "")
     .replace(/[^A-Za-z' ]/g, "")
     .split(" ")
     .filter(Boolean)

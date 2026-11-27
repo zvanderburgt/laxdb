@@ -477,9 +477,10 @@ const SLICE_TIMEOUT_MS = 8000;
  * Fetch one slice, with a deadline and one retry for a failure that might actually be transient.
  *
  * The retry is deliberately narrow. A 4xx is the request's own fault and asking again earns the same
- * answer, so it fails immediately. A **timeout** is not retried either: the database is not slow,
- * it is not answering, and a second wait only doubles how long the visitor stares at a skeleton.
- * A 5xx/429 and a dropped connection get exactly one more try.
+ * answer, so it fails immediately. A **timeout** now gets exactly one more try: cold page functions
+ * were measured at 17–19 s, so the first 8 s budget can expire while the database is still working,
+ * and one more wait is cheaper than a dead page. A 5xx/429 and a dropped connection get the same
+ * single retry.
  */
 async function fetchSliceText(url: string): Promise<string> {
   let lastError: unknown = null;
@@ -494,9 +495,13 @@ async function fetchSliceText(url: string): Promise<string> {
       lastError = err;
     } catch (err) {
       if (ctl.signal.aborted) {
-        throw new Error(`${url} did not answer within ${SLICE_TIMEOUT_MS / 1000}s`);
+        lastError = new Error(`${url} did not answer within ${SLICE_TIMEOUT_MS / 1000}s`);
+      } else if (err instanceof Error && /answered 4\d\d/.test(err.message)) {
+        // the request itself is wrong: a second attempt cannot fix it
+        throw err;
+      } else {
+        lastError = err;
       }
-      lastError = err;
     } finally {
       clearTimeout(timer);
     }
@@ -611,6 +616,39 @@ export async function loadDataset(): Promise<void> {
 
   const years = data.players.flatMap((p) => p.seasons.map((s) => Number(s.season))).filter(Boolean);
   SEASON_RANGE = years.length ? [String(Math.min(...years)), String(Math.max(...years))] : ["", ""];
+}
+
+/**
+ * Fetch one player's slice for a client-side navigation and merge its players, teams and leagues
+ * into the lookups the profile reads.
+ *
+ * The boot only asks for the slice of the URL the document opened on. Every later move is a push,
+ * so without this a click from /players landed on `playerBySlug.get(slug) === undefined` and the
+ * profile rendered "Player not found" — while the same URL worked when loaded directly.
+ */
+export async function loadPlayerBySlug(slug: string): Promise<Player | null> {
+  const base = import.meta.env.BASE_URL;
+  const text = await fetchSliceText(`${base}data/player?slug=${encodeURIComponent(slug)}`);
+  let slice: PlayerSlice;
+  try {
+    slice = JSON.parse(text) as PlayerSlice;
+  } catch {
+    return null;
+  }
+  if (!slice?.player) return null;
+  const players = [slice.player, ...(slice.mates ?? []), ...(slice.similar ?? []).map((s) => s.player)];
+  for (const p of players) normalizePlayer(p);
+  for (const p of players) {
+    playerById.set(p.id, p);
+    playerBySlug.set(p.slug, p);
+  }
+  for (const t of slice.teams ?? []) {
+    t.logo = assetUrl(t.logo);
+    teamById.set(t.id, t);
+    teamBySlug.set(t.slug, t);
+  }
+  for (const l of slice.leagues ?? []) leagueById.set(l.id, l);
+  return playerBySlug.get(slug) ?? null;
 }
 
 /**

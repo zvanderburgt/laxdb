@@ -36,6 +36,8 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   const [menu, setMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const menuBtn = useRef<HTMLButtonElement | null>(null);
+  const menuPanel = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setMenu(false);
@@ -43,8 +45,29 @@ export function Nav() {
 
   useEffect(() => {
     if (!menu) return;
+    // the sheet is the only navigation at this width: opening it moves focus into it, Escape and
+    // the last Tab return focus to the trigger, and Tab cannot walk out into the page behind it
+    const items = () => [...(menuPanel.current?.querySelectorAll<HTMLElement>("a[href]") ?? [])];
+    items()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenu(false);
+      if (e.key === "Escape") {
+        setMenu(false);
+        menuBtn.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const list = items();
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || active === menuPanel.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -124,6 +147,7 @@ export function Nav() {
               )}
             </button>
             <button
+              ref={menuBtn}
               className={`iconbtn menubtn ${menu ? "is-open" : ""}`}
               onClick={() => setMenu((m) => !m)}
               aria-label={menu ? "Close menu" : "Menu"}
@@ -141,7 +165,7 @@ export function Nav() {
       {menu ? (
         <>
           <div className="menu-scrim" onClick={() => setMenu(false)} />
-          <nav className="mobile-menu" id="mobile-menu" aria-label="Main">
+          <nav className="mobile-menu" id="mobile-menu" aria-label="Main" ref={menuPanel}>
             {NAV.map((n) => (
               <Link
                 key={n.to}

@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from "react";
 import { CompareProvider, Link, RouterProvider, ThemeProvider, useRoute } from "./lib/app";
-import { leagueById, playerBySlug, teamBySlug } from "./lib/data";
+import { data, leagueById, playerBySlug, teamBySlug } from "./lib/data";
 import { CompareTray, Footer, Nav } from "./components/Chrome";
 import Home from "./pages/Home";
 import Players from "./pages/Players";
@@ -51,7 +51,12 @@ function Cms() {
 function titleFor(path: string) {
   const seg = path.split("/").filter(Boolean);
   if (seg.length === 0) return "LAXDB — The lacrosse player database";
-  if (seg[0] === "player") return `${playerBySlug.get(seg[1] ?? "")?.name ?? "Player"} · LAXDB`;
+  // the slug index is built from the player-set slice, which is not every player: fall back to the
+  // loaded rows before giving up, or a client-side navigation titles the tab "Player · LAXDB"
+  const playerName =
+    playerBySlug.get(seg[1] ?? "")?.name ??
+    data.players.find((p) => p.slug === seg[1])?.name;
+  if (seg[0] === "player") return `${playerName ?? "Player"} · LAXDB`;
   if (seg[0] === "team") return `${teamBySlug.get(seg[1] ?? "")?.name ?? "Team"} · LAXDB`;
   if (seg[0] === "league") return `${leagueById.get(seg[1] ?? "")?.name ?? "League"} · LAXDB`;
   const label = {
@@ -66,9 +71,17 @@ function Routes() {
   // the editor mutates the dataset in place; this is what tells React to paint the new value
   useDataRevision();
   const seg = path.split("/").filter(Boolean);
+  const main = React.useRef<HTMLElement | null>(null);
+  const firstPath = React.useRef(path);
 
   useEffect(() => {
     document.title = titleFor(path);
+    // a client-side navigation replaces the whole document body: without moving focus, a keyboard
+    // or screen-reader visitor stays where the old page was and hears nothing
+    if (firstPath.current !== path) {
+      firstPath.current = path;
+      main.current?.focus({ preventScroll: false });
+    }
   }, [path]);
 
   let page: React.ReactNode;
@@ -101,7 +114,7 @@ function Routes() {
   return (
     <div className="app">
       <Nav />
-      <main key={path}>{page}</main>
+      <main key={path} ref={main} tabIndex={-1}>{page}</main>
       <CompareTray />
       <Cms />
       <Footer />

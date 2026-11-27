@@ -18,6 +18,10 @@
   --hover: rgba(0, 0, 0, 0.03);
   --accent: #0071e3;
   --accent-hover: #0077ed;
+  /* the fill behind white text: dark theme's brighter accent (#0a84ff) only clears 3.65:1 with
+     white, so filled buttons keep this step in both themes */
+  --accent-fill: #0071e3;
+  --accent-fill-hover: #0077ed;
   --accent-soft: rgba(0, 113, 227, 0.1);
   /* text on a tinted accent surface: the fill blue only clears 3.98:1 on its own
      10–12% tint, so small accent copy uses this darker step of the same hue */
@@ -59,6 +63,9 @@
   --hover: rgba(255, 255, 255, 0.05);
   --accent: #0a84ff;
   --accent-hover: #3d9bff;
+  /* filled surfaces stay on the darker step: white on #0a84ff is 3.65:1, on this it is 4.70:1 */
+  --accent-fill: #0071e3;
+  --accent-fill-hover: #006bd6;
   --accent-soft: rgba(10, 132, 255, 0.16);
   --accent-ink: #6fb2ff; /* on the dark theme's tint, not the light one */
   --amber-ink: #ffc46b;
@@ -130,6 +137,9 @@ button:focus:not(:focus-visible) { outline: none; }
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 .app:has(.tray) main { padding-bottom: 88px; }
 main { flex: 1; }
+/* the router moves focus here after a client-side navigation so the page change is announced;
+   the target is programmatic, so it must not draw the keyboard ring */
+main:focus { outline: none; }
 /* route continuity: a new page settles in instead of appearing between two frames */
 main { animation: pageIn var(--dur-2) var(--ease-out); }
 @keyframes pageIn {
@@ -204,7 +214,7 @@ main { animation: pageIn var(--dur-2) var(--ease-out); }
   height: 26px;
   border-radius: 10px;
   color: #fff;
-  background: var(--accent);
+  background: var(--accent-fill);
 }
 
 .nav-links { display: flex; gap: 4px; margin-left: 6px; }
@@ -282,8 +292,8 @@ kbd {
   transition: background 0.2s var(--ease), transform 0.15s var(--ease), border-color 0.2s;
 }
 .btn:active { transform: scale(0.975); }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary { background: var(--accent-fill); color: #fff; }
+.btn-primary:hover { background: var(--accent-fill-hover); }
 .btn-secondary { background: var(--card); color: var(--text); border-color: var(--hairline-strong); }
 .btn-secondary:hover { background: var(--hover); }
 .btn-ghost { background: transparent; color: var(--text-2); }
@@ -917,6 +927,18 @@ kbd {
   border-top: 1px solid var(--hairline);
 }
 
+/* the list's pager and the height it reserves: the table used to arrive and push the footer down
+   by itself (CLS 0.13), and fifty rows a page is what keeps the mounted tree small */
+.players-board, .cards-grid { min-height: 60vh; }
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 18px 0 4px;
+}
+.pager .btn[disabled] { opacity: 0.45; cursor: default; }
+
 .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .mini-table th {
   text-align: left;
@@ -1068,7 +1090,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
   color: var(--text-2);
 }
 .league-pill.t1 { background: rgba(0, 113, 227, 0.12); color: var(--accent-ink); }
-.league-pill.t2 { background: rgba(122, 92, 250, 0.14); color: #6a4cf0; }
+.league-pill.t2 { background: rgba(122, 92, 250, 0.14); color: #6446e6; }
 .league-pill.t3 { background: rgba(255, 149, 0, 0.15); color: var(--amber-ink); }
 .league-pill.t4 { background: rgba(48, 209, 88, 0.15); color: var(--green); }
 [data-theme="dark"] .league-pill.t2 { color: #b39bff; }
@@ -1828,7 +1850,13 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  /* motion goes, feedback stays: entry animations stop dead (the three targeted blocks below keep
+     their own behaviour) while colour and opacity transitions keep running at the fast step — the
+     old rule zeroed every transition, so a hover or a state change produced no visible response */
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
   html { scroll-behavior: auto; }
 }
 
@@ -1991,7 +2019,6 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 
   .page { padding: 24px 16px 44px; }
   .page-head { margin-bottom: 16px; }
-  .card-toolbar { padding: 16px; }
   .feature-band { padding: 24px 20px; }
 }
 
@@ -2023,10 +2050,6 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 .record-table th, .record-table td { padding: 9px 7px; font-size: 12px; }
 .record-table th { font-size: 10px; }
 .record-table th:first-child, .record-table td:first-child { padding-left: 14px; }
-@media (max-width: 640px) {
-  .record-table th, .record-table td { padding: 8px 6px; font-size: 12px; }
-}
-
 /* a wide table must not widen its grid track: without this the record book pushes
    the whole column past the viewport on a phone */
 .leader-grid > *, .stack > * { min-width: 0; }
@@ -2280,7 +2303,6 @@ th.sortable .sort-caret { margin-left: 4px; font-size: 10px; opacity: 0.7; }
 /* the header kept a 24px gutter while body content dropped to 16px on phones */
 @media (max-width: 640px) {
   .nav-inner { padding: 0 16px; }
-  .profile-hero-inner { padding: 0 16px; }
 }
 
 /* the four hero stats should span the card, not huddle at the left */
@@ -2653,8 +2675,10 @@ a.vs-team:hover { color: var(--accent); }
 @media (max-width: 640px) {
   .mobile-menu { left: 16px; right: 16px; }
 }
-/* the sheet must not survive a resize past the breakpoint where the trigger hides */
-@media (min-width: 1061px) {
+/* the sheet must not survive a resize past the breakpoint where the trigger hides. The trigger is
+   shown at ≤1160, so the guard has to start at 1161: at 1061 it hid the sheet while the nav links
+   were already gone, leaving 1061–1160 with a menu button that opened nothing. */
+@media (min-width: 1161px) {
   .mobile-menu, .menu-scrim { display: none; }
 }
 
