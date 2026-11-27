@@ -316,8 +316,8 @@ Each finding's evidence file is named in its entry; `results.jsonl`, `keyboard.j
 
 ## Status after the fix pass
 
-Same day, same harness, one deploy later (`assets/index-DZMq5Dl_.js` → then `index-*.js` after the
-last build). Every number below is from the live site after the deploy, not from a local build.
+Same day, same harness, after the deploy that serves `assets/index-DkQ9bp2F.js`. Every number below is
+from the live site after that deploy, not from a local build.
 
 ### Scorecard now
 
