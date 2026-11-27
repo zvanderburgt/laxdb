@@ -412,3 +412,37 @@ from the live site after that deploy, not from a local build.
 `npm run fe:smoke` (`scripts/fe-smoke.mjs`) asserts the fixes against any base URL — 8 checks, 26
 assertions, exit code 1 on failure. Run it after `npm run db:probe`; it was green on the deployed
 site before this section was written.
+
+## Visual pass — spacing and text fit
+
+Measured, not eyeballed: 16 routes × 8 widths (360, 390, 414, 640, 768, 1024, 1440, 1920), every
+cell rendered before it was read. Per cell: page overflow against `innerWidth`, clipped text
+(`scrollWidth > clientWidth`), text painting past its own box or its card, sibling collisions,
+vertical gaps between stacked siblings, card padding tuples, plus the alignment checks (shared lefts,
+pill heights and centres, numeric right edges, title-vs-first-cell).
+
+**Spacing is clean.** Every sibling gap measured across the 128 passes sits on the project's
+4/6/8/12/16/20/24/32/44 scale — 8/16 dominate, 44 for section rhythm — with 0 off-scale outside the
+load-error card. Card insets repeat one value per surface (16 or 20). No page scrolls horizontally:
+the 4–7px a width-only probe reports at 360 is the scrollbar gutter (`scrollWidth === innerWidth`).
+
+Six defects, each fixed and live:
+
+| Where | Was | Now |
+| --- | --- | --- |
+| Segmented controls that wrap (Leaders at ≤640) | the sliding pill took the **track's** height — 100×70 over a 34px tab, so it painted a grey block across the row below in dark mode | pill follows the selected tab (100×34) and moves between wrapped rows (`translate(x, y)` + measured height) |
+| Block list heads ≤640 (coaches, league leaderboards) | role/position right-aligned in a 46% column: 40 coach role cells per phone width cut to "Senior Associate Direc…", leaderboard names cut 5–28px | the meta takes its own line under the name, full text, indented past the rank |
+| Teams directory | league subtitle `nowrap` in a 272px card: 107 of 475 cards clipped, up to 59px | two-line clamp; 0 clipped at every width |
+| History — career table | needs ~660px but sat in this section's ≤420px second column: 306px sideways scroll at 1024, 249px at 1440, scrollbar hidden | the section is one column at every width; the table is fully visible |
+| Coaches directory table | four `nowrap` columns, 1834px intrinsic: 704px sideways scroll inside a 1130px card at 1440 | fixed layout, wrapping role column, ellipsis identity cells; fits the card, Conference drops ≤1000 |
+| Team roster, 1001–1160 | name column 20px short ("Matthew Neboshynsk…") | narrower position/class/stat columns below 1160 |
+
+**Left alone deliberately.** The players table's capped `.team-name` (21 cells, ≤35px) is that
+12-column table's documented cap and the block list replaces it ≤820. The box-score table scrolls
+sideways on phones by design. 12–16 coaches cells still ellipsis on long programme/conference names
+("University of North Carolina-Wilmington Seah…") — ellipsis beats the 704px scroll it had before.
+Three cells rendered the load-error card mid-sweep; that is the cold-slice deadline reported above,
+not a layout fault.
+
+Verified on the deploy (`assets/index-C5zbHsME.js` / `index-Dqo9jBU8.css`) with `fe:smoke` green
+(26/26) and the same 128-cell measurement re-run clean.
