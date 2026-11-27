@@ -164,7 +164,8 @@ NLL, MCLA or the box leagues), and the dataset is split into an index plus a sea
 ## Shipped — the front-end audit (2026-11-27)
 
 `docs/frontend-audit.md` scored the front end 10/20 with two P0s. Both are fixed and deployed, and the
-score is 16/20 with the same harness:
+score is 17/20 with the same harness (axe-core 4.10.2 reports no WCAG 2.1 A/AA violation on any of the
+16 routes):
 
 1. **Game pages crashed on every cold load.** `Game.tsx` spread `data.players.find(...)!` into
    `PlayerAvatar`; a box-score row outside the loaded player set made `Avatar` call `.replace()` on

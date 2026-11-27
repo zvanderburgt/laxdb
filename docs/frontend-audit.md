@@ -9,7 +9,7 @@ Measured 2026-11-27 against the live deploy (`https://laxdb.netlify.app`, bundle
 The plan this executes is `docs/frontend-audit-plan.md`.
 
 > **Fix pass, same day.** The findings below are the audit as measured. A follow-up pass fixed the
-> two P0s and most of the P1/P2 list; the scorecard moved **10/20 → 16/20**. What changed, what is
+> two P0s and most of the P1/P2 list; the scorecard moved **10/20 → 17/20**. What changed, what is
 > still open, and the two defects that only appeared while fixing are in
 > [Status after the fix pass](#status-after-the-fix-pass) at the end. The findings themselves are
 > left as written, with the measurements that justified them.
@@ -323,12 +323,12 @@ from the live site after that deploy, not from a local build.
 
 | # | Dimension | Was | Now | What closed |
 |---|-----------|-----|-----|-------------|
-| 1 | Accessibility | 2 | **3** | Nav reachable in the 1061–1160 band, dark fills at 4.70:1, sheet takes and returns focus, CMS panels are dialogs with focus and Escape, route changes focus `<main>` |
+| 1 | Accessibility | 2 | **4** | Nav reachable in the 1061–1160 band, dark fills at 4.70:1, sheet takes and returns focus, CMS panels are dialogs with focus and Escape, route changes focus `<main>`, and axe finds nothing on WCAG 2.1 A/AA across all 16 routes |
 | 2 | Performance | 2 | **3** | A timeout retries once, the team card settles, the list is paged (9,085 → 3,275 nodes), skeleton matches a page of rows (CLS 0.13 → 0.054 at 1440) |
 | 3 | Theming | 3 | **4** | Filled surfaces use a token (`--accent-fill`), so dark mode keeps AA without a per-component colour |
 | 4 | Responsive | 2 | **3** | 320px reflow and 200% zoom show zero horizontal overflow; the sheet fits at 320; real-device touch still unverified |
 | 5 | Implementation integrity | 1 | **3** | The crash, the not-found contract, the page title, game URLs in the sitemap and Back's scroll position are fixed |
-| **Total** | | **10/20** | **16/20** | Good — address the weak dimensions |
+| **Total** | | **10/20** | **17/20** | Good — one dimension still weak, three at 4 |
 
 ### Closed
 
@@ -360,6 +360,8 @@ from the live site after that deploy, not from a local build.
 - **FE-12 reduced motion** — the global kill keeps `animation-duration: 0.001ms` but no longer zeroes
   transitions. Measured under emulated `prefers-reduced-motion: reduce`: entry animation 0s,
   transition 0.06s.
+- **Accessibility, automated** — axe-core 4.10.2 (`WCAG 2.1 A/AA`) over 16 routes: **0 violations**,
+  with the scanner validated against injected defects. Evidence: `.scratch/fe-audit/axe.json`.
 - **FE-13 duplicates** — the repeated `.card-toolbar` and `.profile-hero-inner` rules are gone and the
   two conflicting `.record-table` rules at 640 collapsed to the one that was winning (23 → 22 blocks).
 - **FE-15 sitemap** — game pages are generated from `public/scores.json` with the schedule's own name
@@ -396,8 +398,11 @@ from the live site after that deploy, not from a local build.
   `className` string and 221 never appear in the DOM of the 16 default route states — but
   `cards-grid`, `clear-x` and every `cmp-*` show up only under interaction, so the heuristic's false
   positive rate is too high to delete from. Left as-is, deliberately.
-- **No real assistive technology and no physical device.** Announcements are inferred from focus and
-  roles; touch was emulated. A screen-reader pass and one real phone are the remaining evidence.
+- **No real assistive technology and no physical device.** axe-core 4.10.2 reports **zero** WCAG 2.1
+  A/AA violations on all 16 routes (validated against injected defects: it catches `button-name`,
+  `image-alt` and `link-name`), and the keyboard walk is clean, so the automated half of an
+  accessibility audit is done. A human screen-reader session and one physical phone are still the
+  remaining evidence — neither is obtainable from this box.
 - **22 `@media (max-width: 640px)` blocks** remain, each beside the component it belongs to. Merging
   them is a refactor with visual risk and no measured benefit; the duplicates that actually
   conflicted are gone.
