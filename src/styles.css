@@ -1178,6 +1178,10 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 .hero-avatar { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 14px 34px -14px rgba(0, 0, 0, 0.45); }
 .profile-id { flex: 1; min-width: 240px; }
 .profile-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
+/* a tag is a fixed 24px pill; the All-America badge is a sentence ("All-American ·
+   Honorable Mention, ’24") and wraps at every phone width, so its second line painted
+   outside the pill and over the name. Profile tags grow instead of clipping. */
+.profile-tags .tag { height: auto; min-height: 24px; padding-block: 3px; }
 .profile-id h1 { font-size: clamp(24px, 2.6vw, 28px); font-weight: 650; letter-spacing: -0.025em; line-height: 1.15; }
 .profile-sub {
   display: flex;
