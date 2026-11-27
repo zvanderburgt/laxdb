@@ -1063,7 +1063,7 @@ select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-s
 /* `.as-button`'s font reset is later in the file than `.tag`, so a tag that is also a
    button rendered at the body's 15px/22 instead of the tag's 12px/18 — the All-America
    badge measured 307px wide on desktop and wrapped to a second line on every phone. */
-.tag.as-button { font-size: 12px; font-weight: 600; line-height: 18px; letter-spacing: -0.005em; border: 0; }
+.tag.as-button { font-size: 12px; font-weight: 600; line-height: 18px; letter-spacing: -0.005em; border: 0; text-wrap: balance; }
 .mini-card > div { flex: 1; min-width: 0; }
 .mini-card-pts { font-size: 16px; font-weight: 600; display: flex; flex-direction: column; align-items: flex-end; }
 .mini-card-pts span { font-size: 10px; letter-spacing: 0.08em; color: var(--text-3); font-weight: 600; }
