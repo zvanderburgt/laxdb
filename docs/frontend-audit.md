@@ -384,9 +384,14 @@ from the live site after that deploy, not from a local build.
 - **Cold page slices remain the query layer's cost** (`/home` 19.1 s, `/origins` 17.6 s, `/history`
   one 30.2 s 502). The client no longer gives up at the first 8 s, but a 17 s page is still a 17 s
   page — that fix lives in `docs/perf-route-audit.md`.
-- **CLS at 720px is 0.402**: the filter bar grows from 84 to 176px when the facets arrive, because
-  the position pills and league select wrap onto a second row. Fix: render placeholder pills while
-  the list is pending. At 1440 it is 0.054 and at 360 it is 0.
+- **CLS at 720px is 0.402** (repeatable over five loads; 0 when the observer happens to attach late).
+  Two causes, one fixed: the filter bar's pill row is now reserved with nine skeleton pills while the
+  facets are in flight (pending bar 84 → 169px, the loaded bar is 176px), which removed the 92px gap.
+  What remains is the row height: at 720px a real block row measures ~158px and a page of them is
+  **7,910px**, while the generic skeleton card is **1,939px** — 5,971px of movement. The fix is to
+  render the pending state as the same block list at the same row height; a first attempt at that
+  collapsed to a 2px card and was reverted rather than shipped. At 1440 it is 0.054 and at 360 it is
+  0.
 - **Dead CSS is not safely removable from a static scan.** 41 class names never appear in a
   `className` string and 221 never appear in the DOM of the 16 default route states — but
   `cards-grid`, `clear-x` and every `cmp-*` show up only under interaction, so the heuristic's false

@@ -301,7 +301,11 @@ export default function Players() {
         </div>
 
         <div className="pos-pills">
-          {posOptions.map((p) => (
+          {/* nine placeholder pills while the facets are in flight: an empty pill row is 84px
+              shorter than a full one, and that is the 0.4 layout shift at 720px */}
+          {pending
+            ? Array.from({ length: 9 }).map((_, i) => <span key={i} className="pill pill-skel" aria-hidden="true" />)
+            : posOptions.map((p) => (
             <button
               key={p}
               className={`pill ${pos.includes(p) ? "is-on" : ""}`}
@@ -405,9 +409,9 @@ export default function Players() {
       ) : pending ? (
         <div className="card players-loading" aria-busy="true">
           <span className="sr-only" role="status">Loading the player table</span>
-          {/* the skeleton carries a page's worth of rows: twelve rows of placeholder under a fifty
-              row answer is what pushed the footer down by 0.13 when the data landed */}
-          <SkeletonRows rows={50} cols={6} />
+          {/* a page's worth of placeholder rows: the answer is fifty rows, and a shorter skeleton is
+              what pushed the footer down when the data landed (CLS 0.13 → 0.054 at 1440) */}
+          <SkeletonRows rows={PAGE} cols={6} />
         </div>
       ) : rows.length === 0 ? (
         <Empty title="No players match" body="Try clearing a filter or searching a different name." />
